@@ -9,7 +9,6 @@ cargo run --example lab01_check
 
 ## Terminal output
 
-TODO: Record chain, block height, and best-block hash.
 
 ```NetworkSnapshot {
     chain: "regtest",
@@ -20,7 +19,7 @@ TODO: Record chain, block height, and best-block hash.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
+
 https://drive.google.com/drive/folders/1mP1ycuASg9SOfhFiHK00MdBMmprZZjQp?usp=drive_link
 
 
