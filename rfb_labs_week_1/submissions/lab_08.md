@@ -33,8 +33,6 @@ https://drive.google.com/drive/folders/1mP1ycuASg9SOfhFiHK00MdBMmprZZjQp?usp=dri
 
 ## Explanation
 
-TODO: Explain hash links, Merkle roots, proof of work, and confirmation depth.
-
 A block header ties three separate mechanisms together to make the blockchain tamper-evident. The hash link is previous_block_hash — my block at height 103 explicitly embeds the hash of the block before it (28a3aa19...). This means every header is cryptographically bound to its predecessor: if anyone altered a past block, that block's own hash would change, which would break the previous_block_hash reference stored in the next block, cascading forward through every block mined since. Rewriting history isn't just "editing a record" — it requires re-mining the altered block and every single block built on top of it.
 
 The Merkle commitment is the merkle_root field — a single hash that summarizes every transaction inside the block, Changing even one byte of one transaction in that block would produce a completely different Merkle root, which would change the block's own hash, which would in turn break the hash link described above. This is what lets a block header "commit" to an entire set of transactions using a fixed-size, 32-byte value, without needing to store the full transaction list in the header itself.

@@ -15,8 +15,7 @@ fn main() {
     let block_hash = "2e69f34a27acdd327da77e12aaeb42e7812b0c5977392976b4e3b315a03698d9";
     let mining_address = "bcrt1qq6jewkpw6yv97xpxkt8yf2j33p68fhe7kn4sfc";
 
-    let report =
-        build_security_report(&rpc, "receiver", txid, block_hash, mining_address).unwrap();
+    let report = build_security_report(&rpc, "receiver", txid, block_hash, mining_address).unwrap();
 
     println!("{report:#?}");
 }

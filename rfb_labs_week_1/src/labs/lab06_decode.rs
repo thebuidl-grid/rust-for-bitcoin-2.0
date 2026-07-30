@@ -113,19 +113,25 @@ pub fn identify_payment_and_change(
 /// Calculate `sum(inputs) - sum(outputs)`.
 pub fn calculate_fee(transaction: &DecodedTransaction) -> LabResult<f64> {
     // TODO: reject impossible negative fees and return the BTC fee.
-    let input_total: f64 = transaction
+    const SATS_PER_BTC: f64 = 100_000_000.0;
+
+    let input_total_sats: i64 = transaction
         .inputs
         .iter()
-        .map(|input| input.previous_value)
+        .map(|input| (input.previous_value * SATS_PER_BTC).round() as i64)
         .sum();
-    let output_total: f64 = transaction.outputs.iter().map(|output| output.value).sum();
-    let fee = input_total - output_total;
+    let output_total_sats: i64 = transaction
+        .outputs
+        .iter()
+        .map(|output| (output.value * SATS_PER_BTC).round() as i64)
+        .sum();
+    let fee_sats = input_total_sats - output_total_sats;
 
-    if fee < 0.0 {
+    if fee_sats < 0 {
         return Err(LabError::Parse(format!(
-            "calculated a negative fee ({fee}), inputs must cover outputs"
+            "calculated a negative fee ({fee_sats} sats), inputs must cover outputs"
         )));
     }
 
-    Ok(fee)
+    Ok(fee_sats as f64 / SATS_PER_BTC)
 }
