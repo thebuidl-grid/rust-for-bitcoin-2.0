@@ -9,7 +9,7 @@ docker exec polar-n3-backend1 bitcoin-cli -regtest -rpcuser=polaruser -rpcpasswo
 
 ## Terminal output
 
-miner UTXOs: [
+`miner UTXOs: [
     Utxo {
         txid: "dda96d926694608d4699a9858ec6ac324f9633a7a3a64562aa76389285ca1be3",
         vout: 0,
@@ -36,7 +36,7 @@ selected spendable UTXO: Some(
     },
 )
 outpoint: OutPoint { txid: "dda96d926694608d4699a9858ec6ac324f9633a7a3a64562aa76389285ca1be3", vout: 0 }
-sum of spendable UTXOs: 50
+sum of spendable UTXOs: 50`
 
 
 ## Evidence references

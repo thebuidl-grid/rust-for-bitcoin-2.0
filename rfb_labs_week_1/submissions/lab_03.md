@@ -8,7 +8,7 @@ cargo run --example lab03_check
 
 ## Terminal output
 
-CoinbaseMaturityReport {
+`CoinbaseMaturityReport {
     height_after_first_block: 2,
     balance_after_first_block: WalletBalances {
         trusted: 0.0,
@@ -22,7 +22,7 @@ CoinbaseMaturityReport {
         untrusted_pending: 0.0,
         immature: 5000.0,
     },
-}
+}`
 
 
 ## Evidence references
