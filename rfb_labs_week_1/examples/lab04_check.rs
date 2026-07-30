@@ -1,4 +1,6 @@
-use rfb_labs_week_1::labs::lab04_utxos::{list_unspent, outpoint, select_spendable_utxo, sum_spendable_utxos};
+use rfb_labs_week_1::labs::lab04_utxos::{
+    list_unspent, outpoint, select_spendable_utxo, sum_spendable_utxos,
+};
 use rfb_labs_week_1::rpc::ProcessRpc;
 
 fn main() {
