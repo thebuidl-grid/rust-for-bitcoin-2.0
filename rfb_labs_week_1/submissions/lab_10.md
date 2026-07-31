@@ -80,12 +80,10 @@ header transcripts recorded above. All commands ran only on the local regtest ne
 
 ## Explanation
 
-Both nodes began from the same height-110 block. While partitioned, backend1 added two
-blocks and backend2 added four, so each node temporarily considered its own private tip
-active. On reconnection, backend1 learned about backend2's branch and reorganized to it
-because its chainwork (`...00e6`) exceeded the short branch's chainwork (`...00e2`). The
-two tips then converged on the same height-114 hash. Bitcoin Core retained the displaced
-two-block branch as a `valid-fork`; its old tip has `-1` confirmations because it is valid
-but no longer part of the active most-work chain. This demonstrates that nodes select the
-valid chain with the greatest accumulated proof of work, not merely the chain they saw
-first.
+Both nodes started from the same block at height 110. While disconnected, backend1 mined
+two blocks and backend2 mined four, so they ended with different active tips. After they
+reconnected, backend1 switched to backend2's branch because it had more chainwork
+(`...00e6` instead of `...00e2`). Both nodes then agreed on the height-114 tip, while the
+old two-block branch remained visible as a `valid-fork` with `-1` confirmations. The choice
+was based on accumulated work among valid branches, not miner identity, arrival order, or
+outside claims.

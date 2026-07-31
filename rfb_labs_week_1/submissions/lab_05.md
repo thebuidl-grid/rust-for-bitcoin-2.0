@@ -34,9 +34,8 @@ both the send result and the node's local mempool.
 
 ## Explanation
 
-The miner wallet first selected inputs, built the outputs, and signed the transaction.
-Broadcast then delivered those bytes to the node. The node validated the transaction for
-policy/consensus and admitted it to its local mempool, but that pool is not the blockchain.
-The observed zero confirmations, null block hash, and receiver `untrusted_pending: 1`
-prove it was merely broadcast and locally accepted. Confirmation requires a miner to
-include that same serialized transaction in a valid block on the active chain.
+The miner wallet selected inputs, created the outputs, signed the transaction, and sent it
+to the node. The node accepted it into its mempool, but it was not in a block yet. That is
+why it had zero confirmations, no block hash, and appeared as 1 BTC of
+`untrusted_pending` in the receiver wallet. It only became confirmed after a miner added
+the transaction to a valid block.

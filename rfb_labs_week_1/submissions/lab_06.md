@@ -37,9 +37,8 @@ input value without treating the mempool spend as removal.
 
 ## Explanation
 
-The observed equation is
-`5,000,000,000 = 100,000,000 + 4,899,997,180 + 2,820` satoshis. The
-receiver output is identified by its known address; the other standard output returns
-surplus to a fresh miner change address. Inputs commit existing output values, while the
-new transaction explicitly lists only its outputs. The 2,820-sat fee is therefore the
-unassigned difference between input and output sums; no special fee output exists.
+The transaction spent a 5,000,000,000-sat input. It created a 100,000,000-sat payment and
+a 4,899,997,180-sat change output, leaving 2,820 sats as the fee. The receiver output was
+identified by its known address, and the other standard output was change back to the
+miner wallet. There is no separate fee output; the fee is the difference between the
+input and output totals.

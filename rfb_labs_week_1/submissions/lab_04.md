@@ -33,9 +33,7 @@ Bitcoin Core `getbalance` reconciliation.
 
 ## Explanation
 
-A UTXO is a specific unspent transaction output containing an amount and locking script.
-Its outpoint is the unique `txid:vout` coordinate shown above. Spending references that
-coordinate and consumes the whole output; it does not subtract from an account row. The
-wallet balance is a view derived by finding controlled, eligible UTXOs and summing their
-values. Here there was exactly one spendable UTXO, so its 50 BTC value independently
-matched the 50 BTC wallet balance; the later coinbase outputs were still immature.
+A UTXO is one transaction output that has not been spent. Its outpoint is the `txid:vout`
+pair used to identify it. Spending consumes that output rather than subtracting from an
+account balance. In this wallet, the only spendable UTXO was worth 50 BTC, so summing the
+spendable outputs matched `getbalance`; the newer coinbase outputs were still immature.

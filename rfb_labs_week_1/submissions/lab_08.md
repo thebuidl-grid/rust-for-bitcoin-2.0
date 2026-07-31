@@ -34,12 +34,9 @@ Lab 07, before and after exactly five additional blocks.
 
 ## Explanation
 
-`previousblockhash` links height 102 to its parent, so changing prior history would also
-change every descendant header. The Merkle root commits the block header to its full
-transaction set, including the payment. Miners vary header fields such as the nonce while
-searching for a hash below the target encoded by `bits`; regtest's target is intentionally
-easy, so nonce 0 can be valid. `chainwork` measures accumulated proof of work, which nodes
-use to compare valid branches. Five descendants increased the payment from one to six
-confirmations, increasing the work an alternative branch must surpass. Confirmations
-cannot make an invalid transaction valid—every node still validates scripts and consensus
-rules before accepting either the transaction or its block.
+`previousblockhash` links this block to its parent, and the Merkle root commits to the
+block's transactions. Miners change header fields such as the nonce while looking for a
+hash below the target encoded by `bits`; regtest uses an easy target, so nonce 0 was valid
+here. `chainwork` records accumulated proof of work and lets nodes compare valid branches.
+Mining five more blocks raised the payment from one to six confirmations, but every node
+still checks the transaction and block rules regardless of confirmation count.

@@ -36,9 +36,7 @@ transaction record, and verbose block were queried.
 
 ## Explanation
 
-Mining did not rewrite the serialized transaction: its TXID remained
-`7d962b...8152`. What changed was its placement in shared history. A miner selected the
-existing mempool transaction and committed it in block `2ed108...12ae`; the node accepted
-that block as the active tip. Consequently the mempool dropped the TXID, the receiver
-reclassified 1 BTC from pending to trusted, `gettransaction` reported one confirmation,
-and the containing block's transaction array directly proved membership.
+Mining did not change the transaction or its TXID. It moved from the mempool into block
+`2ed108...12ae`, which became the active tip. The mempool was then empty, the receiver's
+1 BTC moved from pending to trusted, and `gettransaction` reported one confirmation. The
+same TXID in the block's transaction list confirmed that this was the containing block.

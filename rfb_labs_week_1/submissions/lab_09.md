@@ -45,10 +45,8 @@ confirmation block was mined.
 
 ## Explanation
 
-Bitcoin inputs reference complete UTXOs, so Alice could not take only part of any 0.4 BTC
-output. Paying 1 BTC plus a fee required all three inputs (1.2 BTC total). The receiver got
-the exact 1 BTC output; 0.19994480 BTC returned to a fresh Alice change address, and the
-remaining 5,520 sats were the fee. Combining inputs publicly links those outpoints in one
-transaction. Observers often apply the common-input-ownership heuristic and infer that a
-single spender controlled them, reducing privacy even though the heuristic is not an
-absolute proof of identity.
+Each input spends a complete UTXO, so Alice needed all three 0.4 BTC outputs to cover a
+1 BTC payment and the fee. The receiver got exactly 1 BTC, 0.19994480 BTC returned to a
+new Alice change address, and the remaining 5,520 sats paid the fee. Combining the three
+inputs also links them on-chain. Someone analyzing the transaction may guess that one
+owner controlled all three inputs, although that heuristic is not always correct.

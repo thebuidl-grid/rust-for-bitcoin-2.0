@@ -36,10 +36,8 @@ captured before any additional maturity blocks were generated.
 
 ## Explanation
 
-Bitcoin consensus applies `COINBASE_MATURITY = 100`: a coinbase output cannot be spent
-until 100 blocks have been built after its block. At height 1 the first 50 BTC reward was
-present but entirely `immature`, so the real 1 BTC send failed with Core error `-6`.
-After mining 100 more blocks, the tip was height 101 and that first reward had 101
-confirmations, making 50 BTC trusted/spendable. The 100 later rewards were newer and
-remained immature, totaling 5,000 BTC. This is why a fresh-chain demonstration mines
-1 + 100 = 101 blocks.
+A coinbase output cannot be spent until it reaches the 100-block maturity requirement. At
+height 1, the first 50 BTC reward was still immature, so the 1 BTC payment failed with
+Core error `-6`. After 100 more blocks, the tip reached height 101 and the first reward
+became part of the trusted 50 BTC balance. The newer 5,000 BTC in coinbase rewards was
+still immature.

@@ -36,10 +36,8 @@ material is included.
 
 ## Explanation
 
-`listwallets` proved both named wallets were loaded (Polar also loaded an empty-name
-default wallet). A wallet-scoped RPC needs `-rpcwallet` because one node can load several
-independent descriptor/key stores. The same address can therefore produce different
-answers depending on which wallet is queried. In the observed wrong context, Bitcoin
-Core did not claim the receiver address for the miner: it returned `ismine: false` and
-`solvable: false`. Both generated addresses start with `bcrt1`, the Bech32 human-readable
-prefix used by regtest.
+`listwallets` showed that `miner` and `receiver` were loaded, along with Polar's default
+empty-name wallet. I used `-rpcwallet` because address and balance calls need the wallet
+whose keys are being checked. The receiver address returned `ismine: true` in `receiver`
+and `false` in `miner`, which confirmed the wallet boundary. Both addresses start with
+`bcrt1`, the Bech32 prefix used on regtest.
