@@ -34,6 +34,7 @@ pub struct Utxo {
     pub txid: String,
     pub vout: u32,
     pub address: Option<String>,
+    #[serde(rename = "scriptPubKey")]
     pub script_pub_key: String,
     pub amount: f64,
     pub confirmations: u64,
