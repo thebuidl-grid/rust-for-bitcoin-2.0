@@ -7,7 +7,6 @@ bitcoin-cli -regtest listwallets
 bitcoin-cli -regtest -rpcwallet="miner" getnewaddress "miner_funding_label"
 bitcoin-cli -regtest -rpcwallet="miner" getaddressinfo "bcrt1qt5m7jev9lpy088gwlwr0tfpxd97psvnwa77ppu"
 
-TODO: Record how you created and inspected both wallets and addresses.
 
 ## Terminal output
 loadwallet
@@ -47,7 +46,6 @@ bitcoin@backend1:/$  bitcoin-cli -regtest -rpcwallet="miner" getaddressinfo "bcr
 }
 ```
 
-TODO: Include loaded wallets, addresses, and ownership evidence.
 
 ## Evidence references
 
@@ -55,14 +53,11 @@ TODO: Include loaded wallets, addresses, and ownership evidence.
 
 * **Figure 1**: Terminal output demonstrating createwallet and listwallets execution.
 
----
-
 ![Execiution output2](lab2_1.png)
 
 * **Figure 2:** Terminal output showing loadwallet, getnewaddress, and getaddressinfo confirmation.
 
 
-TODO: Link screenshots or describe the attached evidence.
 
 ## Explanation
 - Bitcoin Core supports multi-wallet operation, allowing several distinct wallet files to be loaded concurrently in memory on a single node instance.
@@ -71,4 +66,4 @@ TODO: Link screenshots or describe the attached evidence.
 
 - When querying getaddressinfo, the "ismine": true field proves that the selected wallet possesses the private key and public key derivation path necessary to sign transactions and spend funds arriving at that address.
 
-TODO: Explain wallet context and the purpose of `-rpcwallet`.
+

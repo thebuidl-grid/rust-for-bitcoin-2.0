@@ -4,8 +4,6 @@
 # Lab 03 — Coinbase maturity
 
 ## Commands used
-TODO: Record mining, balance inspection, and premature-spend commands.
-
 
 ```bash
 # 1. Mine 1 block to miner address
@@ -20,7 +18,6 @@ bitcoin-cli -regtest -rpcwallet=miner sendtoaddress "bcrt1qttwqnjaj8eqs3vneqr6sw
 
 ## Terminal output
 
-TODO: Show balances at heights 1 and 101 plus the failed premature spend.
 
 ```bash
 # balances at 1
@@ -67,18 +64,14 @@ bitcoin@backend1:/$
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
-
 ![balances at 1 with block chain of height 2](lab3_0.png)
 
 * **Figure 1**: Terminal output demonstrating getting balance at height 1 with a chain of height 2. rolled the chain back and forth for specified  height balance inspection .
 
----![balances at 101](lab3_1.png)
+![balances at 101](lab3_1.png)
 * **Figure 2**: Terminal output demonstrating mining of wallet balances at height 101 and insufficient balance
 
 ## Explanation
-
-TODO: Explain why the first coinbase reward becomes spendable at height 101.
 
 - In Bitcoin consensus rules, newly mined block rewards (coinbase transactions) are subject to a 100-block maturity rule (COINBASE_MATURITY = 100). A coinbase output requires 100 additional blocks mined on top of it—meaning 101 total confirmations—before it can be spent in a new transaction.
 
