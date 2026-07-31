@@ -17,8 +17,7 @@
 //! | `BITCOIN_CLI` | `bitcoin-cli` | Path to the CLI binary |
 //! | `BITCOIN_CLI_ARGS` | `-regtest` | Base arguments for node A |
 //! | `NODE_B_CLI_ARGS` | unset | Base arguments for node B (lab 10 only) |
-//! | `NODE_A_PEER` | auto | Node A's address as node B sees it |
-//! | `NODE_B_PEER` | auto | Node B's address as node A sees it |
+//! | `NODE_B_PEER` | `backend2:18444` | Address node B listens on, for `addnode` |
 
 use rfb_labs_week_1::labs::{
     lab01_network, lab02_wallets, lab03_maturity, lab04_utxos, lab05_mempool, lab06_decode,
@@ -41,6 +40,10 @@ const ALICE_WALLET: &str = "alice";
 /// Attempts to observe convergence after reconnecting the two nodes in lab 10.
 const SYNC_ATTEMPTS: u32 = 30;
 const SYNC_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Address node B listens on, as node A resolves it. Polar names the second Bitcoin
+/// Core container `backend2` and keeps the regtest P2P port inside the container.
+const DEFAULT_NODE_B_PEER: &str = "backend2:18444";
 
 /// [`RpcClient`] that prints the `bitcoin-cli` command line behind every call.
 ///
@@ -122,15 +125,39 @@ fn ensure_wallet<C: RpcClient>(client: &C, name: &str) -> LabResult<()> {
     }
 }
 
-/// Ask a node for the address of its first connected peer.
-fn first_peer_address<C: RpcClient>(client: &C) -> LabResult<Option<String>> {
+/// Every connected peer's address, as `disconnectnode` expects it.
+///
+/// Two nodes that each `addnode` the other hold two connections, one inbound and one
+/// outbound. Splitting the network means dropping all of them, not just the first.
+fn all_peer_addresses<C: RpcClient>(client: &C) -> LabResult<Vec<String>> {
     let raw = client.call(None, "getpeerinfo", &[])?;
     Ok(parse_cli_value(&raw)?
         .as_array()
-        .and_then(|peers| peers.first())
-        .and_then(|peer| peer.get("addr"))
-        .and_then(Value::as_str)
-        .map(ToOwned::to_owned))
+        .map(|peers| {
+            peers
+                .iter()
+                .filter_map(|peer| peer.get("addr").and_then(Value::as_str))
+                .map(ToOwned::to_owned)
+                .collect()
+        })
+        .unwrap_or_default())
+}
+
+/// Drop every connection held by one node and report whether it is fully isolated.
+fn isolate_node<C: RpcClient>(client: &C, label: &str) -> LabResult<bool> {
+    for address in all_peer_addresses(client)? {
+        // A peer may already have gone away as the other side disconnects.
+        let _ = lab10_reorg::disconnect_peer(client, &address);
+    }
+
+    let remaining = all_peer_addresses(client)?;
+    if remaining.is_empty() {
+        println!("\n{label} is isolated\n");
+        Ok(true)
+    } else {
+        println!("\n!! {label} still has peers: {remaining:?}\n");
+        Ok(false)
+    }
 }
 
 fn env_args(variable: &str, default: &str) -> Vec<String> {
@@ -359,25 +386,17 @@ fn lab10() -> LabResult<()> {
     }
     let common_tip = before_a.best_block_hash.clone();
 
-    let peer_from_a = match env::var("NODE_B_PEER") {
-        Ok(address) => Some(address),
-        Err(_) => first_peer_address(&node_a)?,
-    };
-    let peer_from_b = match env::var("NODE_A_PEER") {
-        Ok(address) => Some(address),
-        Err(_) => first_peer_address(&node_b)?,
-    };
+    // `disconnectnode` needs the live connection address, but `addnode` needs the
+    // address node B *listens* on, which is not the same string.
+    let node_b_listen = env::var("NODE_B_PEER").unwrap_or_else(|_| DEFAULT_NODE_B_PEER.to_owned());
 
-    let Some(peer_from_a) = peer_from_a else {
-        println!("!! node A reports no peers; set NODE_B_PEER explicitly\n");
+    // Split the network. Mining into a network that is still connected proves nothing,
+    // so stop rather than record a fork that never happened.
+    let isolated_a = isolate_node(&node_a, "node A")?;
+    let isolated_b = isolate_node(&node_b, "node B")?;
+    if !(isolated_a && isolated_b) {
+        println!("!! could not fully split the nodes; no fork to observe\n");
         return Ok(());
-    };
-
-    // Split the network.
-    lab10_reorg::disconnect_peer(&node_a, &peer_from_a)?;
-    if let Some(address) = &peer_from_b {
-        // Ignore an already-disconnected peer on the other side.
-        let _ = lab10_reorg::disconnect_peer(&node_b, address);
     }
 
     ensure_wallet(&node_a, MINER_WALLET)?;
@@ -394,8 +413,12 @@ fn lab10() -> LabResult<()> {
         node_b: lab10_reorg::get_chain_tip(&node_b)?,
     };
     report("competing private tips", &competing);
+    if competing.node_a.best_block_hash == competing.node_b.best_block_hash {
+        println!("!! both nodes share a tip, so the split did not hold\n");
+        return Ok(());
+    }
 
-    lab10_reorg::reconnect_peer(&node_a, &peer_from_a)?;
+    lab10_reorg::reconnect_peer(&node_a, &node_b_listen)?;
 
     let mut final_tips = ForkSnapshot {
         node_a: lab10_reorg::get_chain_tip(&node_a)?,
