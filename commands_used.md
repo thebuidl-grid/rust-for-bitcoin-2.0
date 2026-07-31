@@ -1,6 +1,13 @@
-* ****
+* **Sanitize the grader scripts cleanly**
 ```bash
 sed -i 's/\r$//' grader/*.sh
 ```
-git add grader/*.sh
-git commit -m "fix: convert script line endings from CRLF to LF"
+* **rewrite a completely clean .gitattributes to lock LF line endings permanently**
+```bash
+printf '*.sh text eol=lf\n' > .gitattributes
+
+# verifies if the '*' above is added
+cat .gitattributes
+```
+
+git commit --amend --no-edit
