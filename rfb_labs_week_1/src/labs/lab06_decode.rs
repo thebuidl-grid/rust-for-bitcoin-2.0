@@ -34,7 +34,7 @@ pub fn decode_verbose_transaction<C: RpcClient>(
         .and_then(Value::as_array)
         .ok_or(LabError::MissingField("vin"))?
         .iter()
-        .map(decode_input)
+        .map(|vin| decode_input(client, vin))
         .collect::<LabResult<Vec<_>>>()?;
 
     let outputs = value
@@ -53,18 +53,44 @@ pub fn decode_verbose_transaction<C: RpcClient>(
     })
 }
 
-fn decode_input(vin: &Value) -> LabResult<DecodedInput> {
-    let prevout = vin
-        .get("prevout")
-        .ok_or(LabError::MissingField("prevout"))?;
+fn decode_input<C: RpcClient>(client: &C, vin: &Value) -> LabResult<DecodedInput> {
+    let previous_output = OutPoint {
+        txid: required_string(vin, "txid")?,
+        vout: decode_vout_index(vin, "vout")?,
+    };
+
+    let previous_value = match vin.get("prevout") {
+        Some(prevout) => required_f64(prevout, "value")?,
+        // Bitcoin Core fills `prevout` from a block's undo data, which does not exist
+        // while the transaction is unconfirmed. Read the spent output from the funding
+        // transaction instead, so the fee is auditable straight from the mempool.
+        None => previous_output_value(client, &previous_output)?,
+    };
 
     Ok(DecodedInput {
-        previous_output: OutPoint {
-            txid: required_string(vin, "txid")?,
-            vout: decode_vout_index(vin, "vout")?,
-        },
-        previous_value: required_f64(prevout, "value")?,
+        previous_output,
+        previous_value,
     })
+}
+
+/// Look up the value an outpoint carried, by decoding the transaction that created it.
+fn previous_output_value<C: RpcClient>(client: &C, outpoint: &OutPoint) -> LabResult<f64> {
+    let raw = client.call(
+        None,
+        "getrawtransaction",
+        &[outpoint.txid.clone(), "1".to_owned()],
+    )?;
+
+    parse_cli_value(&raw)?
+        .get("vout")
+        .and_then(Value::as_array)
+        .ok_or(LabError::MissingField("vout"))?
+        .iter()
+        .find(|output| output.get("n").and_then(Value::as_u64) == Some(u64::from(outpoint.vout)))
+        .ok_or_else(|| {
+            LabError::Parse(format!("{} has no output {}", outpoint.txid, outpoint.vout))
+        })
+        .and_then(|output| required_f64(output, "value"))
 }
 
 fn decode_output(vout: &Value) -> LabResult<DecodedOutput> {
