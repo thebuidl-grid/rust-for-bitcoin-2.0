@@ -2,16 +2,34 @@
 
 ## Commands used
 
-TODO: Record the commands used to inspect and calculate wallet UTXOs.
+- List miner UTXOs: `bitcoin-cli -rpcwallet=miner listunspent`
+- Miner balances: `bitcoin-cli -rpcwallet=miner getbalances`
 
 ## Terminal output
 
-TODO: Include txid, vout, amount, confirmations, script, and spendable state.
+```text
+selected UTXO:
+  txid: e539f2ff605f56b57e3cc791a06eec6c510d7cd64a58f4f0f6f368dd70e4ef35
+  vout: 0
+  outpoint: e539f2ff605f56b57e3cc791a06eec6c510d7cd64a58f4f0f6f368dd70e4ef35:0
+  address: bcrt1q3rvxyt9lknf9ccczql4rglx5afsrqaw0avjaud
+  scriptPubKey: 001488d8622cbfb4d25c630207ea347cd4ea603075cf
+  amount: 50.0 BTC
+  confirmations: 101
+  spendable: true
+
+sum_spendable_utxos: 50.0 BTC
+wallet_trusted_balance: 50.0 BTC
+sums_match: true
+```
 
 ## Evidence references
-
-TODO: Link screenshots or describe the attached evidence.
+![alt text](image.png)
 
 ## Explanation
 
-TODO: Explain outpoints, UTXOs, and why a wallet balance is their sum.
+An outpoint is the unique coordinate of a transaction output: its transaction ID
+plus output index (`txid:vout`). A UTXO is an output that has not yet been consumed
+by a later transaction. Bitcoin does not maintain an account-style balance entry;
+the wallet derives its balance by finding outputs it can spend and summing their
+values. Here the single spendable 50 BTC UTXO exactly matched the trusted balance.
