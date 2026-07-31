@@ -1,7 +1,7 @@
 //! Lab 06 — decode a transaction and prove value conservation.
 
 use crate::model::{DecodedInput, DecodedOutput, DecodedTransaction, OutPoint, PaymentAndChange};
-use crate::rpc::{parse_cli_value, RpcClient};
+use crate::rpc::{parse_cli_value, required_f64, RpcClient};
 use crate::{LabError, LabResult};
 use serde::Deserialize;
 
@@ -19,7 +19,7 @@ struct RpcTransaction {
 struct RpcInput {
     txid: String,
     vout: u32,
-    prevout: RpcPreviousOutput,
+    prevout: Option<RpcPreviousOutput>,
 }
 
 #[derive(Deserialize)]
@@ -53,19 +53,35 @@ pub fn decode_verbose_transaction<C: RpcClient>(
     )?;
     let transaction: RpcTransaction = serde_json::from_value(parse_cli_value(&response)?)?;
 
+    let mut inputs = Vec::with_capacity(transaction.vin.len());
+    for input in transaction.vin {
+        let previous_value = match input.prevout {
+            Some(previous_output) => previous_output.value,
+            None => {
+                let previous_output_response = client.call(
+                    None,
+                    "gettxout",
+                    &[
+                        input.txid.clone(),
+                        input.vout.to_string(),
+                        "false".to_owned(),
+                    ],
+                )?;
+                required_f64(&parse_cli_value(&previous_output_response)?, "value")?
+            }
+        };
+        inputs.push(DecodedInput {
+            previous_output: OutPoint {
+                txid: input.txid,
+                vout: input.vout,
+            },
+            previous_value,
+        });
+    }
+
     Ok(DecodedTransaction {
         txid: transaction.txid,
-        inputs: transaction
-            .vin
-            .into_iter()
-            .map(|input| DecodedInput {
-                previous_output: OutPoint {
-                    txid: input.txid,
-                    vout: input.vout,
-                },
-                previous_value: input.prevout.value,
-            })
-            .collect(),
+        inputs,
         outputs: transaction
             .vout
             .into_iter()
