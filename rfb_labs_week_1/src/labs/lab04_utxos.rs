@@ -1,29 +1,56 @@
 //! Lab 04 — inspect UTXOs and outpoints.
 
 use crate::model::{OutPoint, Utxo};
-use crate::rpc::RpcClient;
-use crate::LabResult;
+use crate::rpc::{
+    parse_cli_value, required_f64, required_string, required_u64, RpcClient,
+};use crate::LabResult;
 
 /// Return all UTXOs tracked by the selected wallet.
 pub fn list_unspent<C: RpcClient>(client: &C, wallet_name: &str) -> LabResult<Vec<Utxo>> {
-    // TODO: call listunspent in wallet context and decode every returned UTXO.
-    todo!("Lab 04: list unspent outputs")
+    let response = client.call(Some(wallet_name), "listunspent", &[])?;
+    let value = parse_cli_value(&response)?;
+
+    let mut utxos = Vec::new();
+
+    for item in value.as_array().unwrap() {
+        utxos.push(Utxo {
+            txid: required_string(item, "txid")?,
+            vout: required_u64(item, "vout")? as u32,
+            address: item["address"].as_str().map(str::to_owned),
+            script_pub_key: required_string(item, "scriptPubKey")?,
+            amount: required_f64(item, "amount")?,
+            confirmations: required_u64(item, "confirmations")?,
+            spendable: item["spendable"]
+    .as_bool()
+    .ok_or(crate::LabError::Parse("missing spendable".to_string()))?,
+        });
+    }
+
+    Ok(utxos)
 }
 
 /// Select one spendable UTXO, preferring the one with the most confirmations.
 pub fn select_spendable_utxo(utxos: &[Utxo]) -> Option<Utxo> {
-    // TODO: filter by spendable and select deterministically.
-    todo!("Lab 04: select a spendable UTXO")
+    utxos
+        .iter()
+        .filter(|u| u.spendable)
+        .max_by_key(|u| u.confirmations)
+        .cloned()
 }
 
 /// Convert a UTXO into its unique `txid:vout` coordinate.
 pub fn outpoint(utxo: &Utxo) -> OutPoint {
-    // TODO: return the matching outpoint.
-    todo!("Lab 04: construct an outpoint")
+    OutPoint {
+        txid: utxo.txid.clone(),
+        vout: utxo.vout,
+    }
 }
 
 /// Sum only the spendable UTXOs.
 pub fn sum_spendable_utxos(utxos: &[Utxo]) -> f64 {
-    // TODO: ignore non-spendable entries and sum BTC amounts.
-    todo!("Lab 04: calculate spendable wallet balance")
+    utxos
+        .iter()
+        .filter(|u| u.spendable)
+        .map(|u| u.amount)
+        .sum()
 }
