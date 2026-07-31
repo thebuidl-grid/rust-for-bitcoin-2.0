@@ -25,7 +25,7 @@ Best block hash:
 
 ## Evidence references
 
-- Screenshot: `evidence/lab01_networks.png`
+- Screenshot: ![Lab 01 Terminal](../evidence/lab01_networks.png)
 - The screenshot shows the successful execution of:
   - `bitcoin-cli getblockchaininfo`
   - `bitcoin-cli getblockcount`
