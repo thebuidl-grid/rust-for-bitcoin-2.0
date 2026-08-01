@@ -56,7 +56,7 @@ The attached screenshots show:
 - Five additional mined blocks.
 - The transaction with 7 confirmations after the additional blocks.
 
-![Lab 08 Terminal](../evidence/lab08_security.png)
+![Lab 08 Terminal](evidence/lab08_security.png)
 
 ## Explanation
 

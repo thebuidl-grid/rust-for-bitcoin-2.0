@@ -44,7 +44,7 @@ immature: 5000.00000000
 
 The screenshot below shows the wallet's unspent transaction outputs (UTXOs), including the transaction ID (`txid`), output index (`vout`), locking script (`scriptPubKey`), amount, number of confirmations, and spendable status.
 
-![Lab 04 Terminal](../evidence/lab04_utxos.png)
+![Lab 04 Terminal](evidence/lab04_utxos.png)
 
 ## Explanation
 

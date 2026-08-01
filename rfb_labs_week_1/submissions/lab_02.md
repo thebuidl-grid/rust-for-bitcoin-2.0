@@ -59,7 +59,7 @@ bitcoin@backend1:/$
 
 The screenshot below shows the successful execution of the wallet and address commands.
 
-![Lab 02 Terminal](../evidence/lab02_wallets.png)
+![Lab 02 Terminal](evidence/lab02_wallets.png)
 
 ## Explanation
 

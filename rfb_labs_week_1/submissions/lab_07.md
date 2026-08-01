@@ -39,7 +39,7 @@ The attached terminal screenshots show:
 - The transaction with one confirmation and its block hash.
 - The mined block containing the transaction ID in its `tx` array.
 
-![Lab 07 Terminal](../evidence/lab07_confirmation.png)
+![Lab 07 Terminal](evidence/lab07_confirmation.png)
 
 ## Explanation
 

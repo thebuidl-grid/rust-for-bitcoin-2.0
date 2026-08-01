@@ -32,7 +32,7 @@ Chainwork:
 
 The attached screenshot shows the current chain tip on the regtest node, including the block height, best block hash, difficulty, and accumulated chainwork.
 
-![Lab 10 Terminal](../evidence/lab10_chaintip.png)
+![Lab 10 Terminal](evidence/lab10_chaintip.png)
 
 ## Explanation
 

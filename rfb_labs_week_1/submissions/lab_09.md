@@ -64,7 +64,7 @@ The attached screenshots show:
 - A 1 BTC payment output.
 - A change output returning the remaining funds after deducting the miner fee.
 
-![Lab 09 Terminal](../evidence/lab09_coin_selection.png)
+![Lab 09 Terminal](evidence/lab09_coin_selection.png)
 
 ## Explanation
 

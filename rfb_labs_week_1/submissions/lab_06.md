@@ -38,7 +38,7 @@ Fee:
 
 The screenshot below shows the verbose decoded transaction, including its inputs (`vin`), outputs (`vout`), output addresses, output values, and virtual transaction size.
 
-![Lab 06 Terminal](../evidence/lab06_transaction.png)
+![Lab 06 Terminal](evidence/lab06_transaction.png)
 
 ## Explanation
 

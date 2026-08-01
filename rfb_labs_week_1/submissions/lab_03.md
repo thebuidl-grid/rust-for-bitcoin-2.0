@@ -49,7 +49,7 @@ immature: 5000.00000000
 
 ## Evidence references
 
-![Lab 03 Terminal](../evidence/lab03_maturity.png)
+![Lab 03 Terminal](evidence/lab03_maturity.png)
 
 ## Explanation
 

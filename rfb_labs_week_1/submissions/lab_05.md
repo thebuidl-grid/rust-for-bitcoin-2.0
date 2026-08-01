@@ -42,7 +42,7 @@ immature: 0.00000000 BTC
 
 The screenshot below shows the transaction being broadcast, its presence in the node's mempool, the sender's wallet reporting zero confirmations, and the receiver's wallet showing the funds as an unconfirmed pending balance.
 
-![Lab 05 Terminal](../evidence/lab05_mempool.png)
+![Lab 05 Terminal](evidence/lab05_mempool.png)
 
 ## Explanation
 
