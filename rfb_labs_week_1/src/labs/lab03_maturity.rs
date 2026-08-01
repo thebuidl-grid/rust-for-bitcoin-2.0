@@ -84,11 +84,14 @@ pub fn demonstrate_coinbase_maturity<C: RpcClient>(
         .as_u64()
         .ok_or(LabError::Parse("block height must be a number".to_string()))?;
     let balance_after_first_block = get_balances(client, miner_wallet)?;
-    let premature_spend_error = attempt_payment(client, miner_wallet, receiver_address, 1.0)
+    let premature_spend_error = match attempt_payment(client, miner_wallet, receiver_address, 1.0)
         .err()
         .ok_or(LabError::Parse(
             "expected an insufficient-funds RPC error".to_string(),
-        ))?;
+        ))? {
+        LabError::Rpc(message) => message,
+        other => other.to_string(),
+    };
 
     mine_blocks(client, miner_address, 100)?;
     let final_height = client
@@ -101,7 +104,7 @@ pub fn demonstrate_coinbase_maturity<C: RpcClient>(
     Ok(CoinbaseMaturityReport {
         height_after_first_block,
         balance_after_first_block,
-        premature_spend_error: format!("{premature_spend_error}"),
+        premature_spend_error,
         final_height,
         final_balance,
     })
