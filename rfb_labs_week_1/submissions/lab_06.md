@@ -29,8 +29,8 @@ docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/
 
 ## Evidence references
 
-- `screenshots/lab6.png` (decoded transaction showing vin, vout, script details, and vsize)
-- `screenshots/lab6-decode.png` (value summary and fee math evidence)
+- `submissions/evidence/lab6.png` (decoded transaction showing vin, vout, script details, and vsize)
+- `submissions/evidence/lab6-decode.png` (value summary and fee math evidence)
 
 ## Explanation
 

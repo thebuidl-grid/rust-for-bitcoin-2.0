@@ -43,8 +43,8 @@ docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/
 
 ## Evidence references
 
-- `screenshots/lab9.png` (terminal view of wallet setup, funding, and confirmed Alice UTXOs)
-- `screenshots/lab9-02.png` (terminal view of spend transaction decode and receiver wallet view)
+- `submissions/evidence/lab9.png` (terminal view of wallet setup, funding, and confirmed Alice UTXOs)
+- `submissions/evidence/lab9-02.png` (terminal view of spend transaction decode and receiver wallet view)
 
 ## Explanation
 

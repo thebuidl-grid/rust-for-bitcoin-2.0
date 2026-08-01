@@ -29,8 +29,8 @@ Spendable-sum reconciliation with wallet balance:
 
 ## Evidence references
 
-- `screenshots/lab4-listunspent.png` (selected spendable UTXO: `txid`, `vout`, amount, confirmations, and `scriptPubKey`)
-- `screenshots/lab4-balances.png` (`getbalances` output used to reconcile trusted wallet balance with spendable UTXO sum)
+- `submissions/evidence/lab4-listunspent.png` (selected spendable UTXO: `txid`, `vout`, amount, confirmations, and `scriptPubKey`)
+- `submissions/evidence/lab4-balances.png` (`getbalances` output used to reconcile trusted wallet balance with spendable UTXO sum)
 
 ## Explanation
 

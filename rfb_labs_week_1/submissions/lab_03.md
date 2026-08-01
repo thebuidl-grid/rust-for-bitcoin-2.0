@@ -34,10 +34,10 @@ This shows the first coinbase reward became spendable at height 101, while later
 
 ## Evidence references
 
-- `screenshots/lab3block.png` (mine 1 block and observe the first post-mine height)
-- `screenshots/lab3-send-error.png` (premature 1 BTC spend attempt returns `Insufficient funds`)
-- `screenshots/lab3-block-101.png` (after mining 100 more blocks)
-- `screenshots/lab3-balances.png` (final balances showing trusted and immature values)
+- `submissions/evidence/lab3block.png` (mine 1 block and observe the first post-mine height)
+- `submissions/evidence/lab3-send-error.png` (premature 1 BTC spend attempt returns `Insufficient funds`)
+- `submissions/evidence/lab3-block-101.png` (after mining 100 more blocks)
+- `submissions/evidence/lab3-balances.png` (final balances showing trusted and immature values)
 
 ## Explanation
 

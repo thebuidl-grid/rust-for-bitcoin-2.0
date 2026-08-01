@@ -39,9 +39,9 @@ docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/
 
 ## Evidence references
 
-- `screenshots/lab10.png` (terminal view of chain-tip and best-header inspection)
-- `screenshots/lab10-02.png` (terminal view of peer/disconnect/reconnect commands and outputs)
-- `screenshots/lab10-03.png` (terminal view confirming final chain tip status)
+- `submissions/evidence/lab10.png` (terminal view of chain-tip and best-header inspection)
+- `submissions/evidence/lab10-02.png` (terminal view of peer/disconnect/reconnect commands and outputs)
+- `submissions/evidence/lab10-03.png` (terminal view confirming final chain tip status)
 
 ## Explanation
 

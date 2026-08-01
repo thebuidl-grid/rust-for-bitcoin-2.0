@@ -27,8 +27,8 @@ docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/
 
 ## Evidence references
 
-- `screenshots/lab5.png` (terminal evidence for transaction broadcast and mempool checks)
-- `screenshots/lab5-balances.png` (receiver wallet balance evidence showing pending/trusted state)
+- `submissions/evidence/lab5.png` (terminal evidence for transaction broadcast and mempool checks)
+- `submissions/evidence/lab5-balances.png` (receiver wallet balance evidence showing pending/trusted state)
 
 ## Explanation
 

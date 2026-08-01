@@ -25,7 +25,7 @@ docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/
 
 ## Evidence references
 
-- `screenshots/lab7.png` (combined terminal capture for mempool empty, receiver transaction confirmation, and block tx membership)
+- `submissions/evidence/lab7.png` (combined terminal capture for mempool empty, receiver transaction confirmation, and block tx membership)
 
 ## Explanation
 

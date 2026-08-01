@@ -26,8 +26,8 @@ docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/
 
 ## Evidence references
 
-- `screenshots/lab8.png`
-- `screenshots/lab8-2.png`
+- `submissions/evidence/lab8.png`
+- `submissions/evidence/lab8-2.png`
 
 ## Explanation
 
