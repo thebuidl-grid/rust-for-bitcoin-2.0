@@ -80,7 +80,7 @@ pub fn get_transaction_status<C: RpcClient>(
         confirmations: raw.confirmations,
         fee: raw.fee,
         block_hash: raw.blockhash,
-        amount: raw.amount,
+        amount: raw.amount.unwrap_or(0.0),
     })
 }
 

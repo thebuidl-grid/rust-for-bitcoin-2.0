@@ -34,16 +34,12 @@ pub struct Utxo {
     pub txid: String,
     pub vout: u32,
     pub address: Option<String>,
-    #[serde(default)] // 👈 Makes missing `label` default to None
-    pub label: Option<String>,
     #[serde(rename = "scriptPubKey")]
     pub script_pub_key: String,
     pub amount: f64,
     pub confirmations: u64,
     #[serde(default)] // 👈 Defaults to false if missing
     pub spendable: bool,
-    #[serde(default)] // 👈 Fixes "missing field solvable" panic
-    pub solvable: bool,
 }
 
 impl Utxo {
@@ -63,7 +59,7 @@ pub struct WalletTransactionStatus {
     pub fee: Option<f64>,
     #[serde(rename = "blockhash")]
     pub block_hash: Option<String>,
-    pub amount: Option<f64>,
+    pub amount: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
