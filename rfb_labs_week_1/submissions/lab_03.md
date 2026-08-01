@@ -105,15 +105,28 @@ bitcoin@backend1:/$
 <!-- TODO: Link screenshots or describe the attached evidence. -->
 Screenshot 1 shows miner balance before anf after mining first block
 
+
+![alt text](<../screenshots/lab003_balance_of _miner _b4_ ANd_after_generating_block.png>)
+
 Screenshot 2 shows error when trying to spend immature BTC
 
 
+![alt text](../screenshots/lab003_error_when_try_to_send_immature_BTC.png)
+
 Screenshot 3 shows miner mining 100 more blocks so the first block mine can reach maturity
+
+
+![alt text](../screenshots/lab003_generate_100_new_blocks.png)
 
 Screenshot 4 shows balance of miner after extra 100 block so first rewards get matured, and balance after sending 10BTC to reciever, and balance of receiver after receiving the 10BTC.
 
+
+![alt text](../screenshots/lab003_send_10_btc_after_miner_reward_matures.png)
+
 Screenshot 5 shows the test result lab03 implementation
 
+
+![alt text](../screenshots/lab003_test.png)
 
 ## Explanation
 

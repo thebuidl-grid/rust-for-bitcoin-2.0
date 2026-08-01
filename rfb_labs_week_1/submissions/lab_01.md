@@ -54,10 +54,10 @@ bitcoin@backend1:/$ bitcoin-cli getbestblockhash
 
 
 The first screen shot show all test for lab01 passes 
-
+![alt text](../screenshots/lab01_test.png)
 
 The second sscreenshot shows the me caling the bitcoin rpc methods on Polar terminal and it's corresponding response.
-
+![alt text](../screenshots/lab001_polar_rpc_call.png)
 
 ## Explanation
 
