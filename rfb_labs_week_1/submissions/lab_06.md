@@ -30,7 +30,7 @@ calculated fee: 0.00002820 BTC
 ```
 
 ## Evidence references
-![alt text](image-4.png)
+![alt text](evidence/image-4.png)
 ## Explanation
 
 The input contributes 50 BTC. The transaction assigns 1 BTC to the receiver and

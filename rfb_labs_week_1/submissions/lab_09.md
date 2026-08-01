@@ -42,7 +42,7 @@ combined spend:
 ```
 
 ## Evidence references
-![alt text](image-9.png)
+![alt text](evidence/image-9.png)
 ## Explanation
 
 Each selected input spends its referenced UTXO completely; inputs are not partially

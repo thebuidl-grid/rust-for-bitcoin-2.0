@@ -24,7 +24,7 @@ sums_match: true
 ```
 
 ## Evidence references
-![alt text](image.png)
+![alt text](evidence/image.png)
 
 ## Explanation
 

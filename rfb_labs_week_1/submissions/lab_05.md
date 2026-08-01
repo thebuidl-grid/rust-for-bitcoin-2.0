@@ -26,7 +26,7 @@ receiver_balance:
 ```
 
 ## Evidence references
-![alt text](image-3.png)
+![alt text](evidence/image-3.png)
 
 ## Explanation
 

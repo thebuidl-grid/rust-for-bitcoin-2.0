@@ -31,7 +31,7 @@ final_balance:
 ```
 
 ## Evidence references
-![alt text](image.png)
+![alt text](evidence/image.png)
 
 ## Explanation
 

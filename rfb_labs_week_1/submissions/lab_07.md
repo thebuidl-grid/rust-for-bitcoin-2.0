@@ -18,7 +18,7 @@ transaction_is_in_block: true
 ```
 
 ## Evidence references
-![alt text](image-5.png)
+![alt text](evidence/image-5.png)
 
 ## Explanation
 

@@ -29,7 +29,7 @@ receiver:
 ```
 
 ## Evidence references
-![alt text](image-7.png)
+![alt text](evidence/image-7.png)
 
 ## Explanation
 

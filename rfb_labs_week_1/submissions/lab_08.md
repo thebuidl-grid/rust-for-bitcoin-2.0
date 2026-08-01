@@ -27,7 +27,7 @@ payment confirmations after mining: 6
 ```
 
 ## Evidence references
-![alt text](image-6.png)
+![alt text](evidence/image-6.png)
 
 ## Explanation
 
