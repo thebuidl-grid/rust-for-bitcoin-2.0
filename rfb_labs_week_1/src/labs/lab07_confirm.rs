@@ -2,7 +2,7 @@
 
 use crate::labs::lab03_maturity::mine_blocks;
 use crate::labs::lab05_mempool::{get_raw_mempool, get_transaction_status};
-use crate::labs::lab_helper::required_array;
+use crate::labs::lab00_helper::required_array;
 use crate::model::ConfirmationReport;
 use crate::rpc::{parse_cli_value, required_u64, RpcClient};
 

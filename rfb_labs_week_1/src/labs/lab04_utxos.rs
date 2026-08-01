@@ -1,6 +1,6 @@
 //! Lab 04 — inspect UTXOs and outpoints.
 
-use crate::labs::lab_helper::{required_bool, required_u32};
+use crate::labs::lab00_helper::{required_bool, required_u32};
 use crate::model::{OutPoint, Utxo};
 use crate::rpc::{parse_cli_value, required_f64, required_string, required_u64, RpcClient};
 use crate::{LabError, LabResult};

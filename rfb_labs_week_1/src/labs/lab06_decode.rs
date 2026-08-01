@@ -3,7 +3,7 @@
 use crate::model::{DecodedInput, DecodedOutput, DecodedTransaction, OutPoint, PaymentAndChange};
 use crate::rpc::{parse_cli_value, required_f64, required_string, required_u64, RpcClient};
 
-use crate::labs::lab_helper::required_array;
+use crate::labs::lab00_helper::required_array;
 
 use crate::{LabError, LabResult};
 
