@@ -17,7 +17,33 @@ pub fn list_unspent<C: RpcClient>(client: &C, wallet_name: &str) -> LabResult<Ve
     utxos_array
         .iter()
         .map(|v| {
-            serde_json::from_value::<Utxo>(v.clone()).map_err(|e| LabError::Parse(e.to_string()))
+            // Manually extract fields to handle scriptPubKey -> script_pub_key
+            let obj = v.as_object()
+                .ok_or_else(|| LabError::Parse("expected object".to_string()))?;
+            
+            Ok(Utxo {
+                txid: obj.get("txid")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| LabError::Parse("missing txid".to_string()))?
+                    .to_string(),
+                vout: obj.get("vout")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| LabError::Parse("missing vout".to_string()))? as u32,
+                address: obj.get("address").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                script_pub_key: obj.get("scriptPubKey")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| LabError::Parse("missing scriptPubKey".to_string()))?
+                    .to_string(),
+                amount: obj.get("amount")
+                    .and_then(|v| v.as_f64())
+                    .ok_or_else(|| LabError::Parse("missing amount".to_string()))?,
+                confirmations: obj.get("confirmations")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| LabError::Parse("missing confirmations".to_string()))?,
+                spendable: obj.get("spendable")
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| LabError::Parse("missing spendable".to_string()))?,
+            })
         })
         .collect()
 }
