@@ -79,15 +79,15 @@ bitcoin@backend1:/$  bitcoin-cli -regtest getrawmempool
 
 
 ## Evidence references
-![mining](lab7_0.png)
+![mining](evidence/lab7_0.png)
 * **Figure 1**
 - mining and emptying the mempool
 
-![block](lab7_1.png)
+![block](evidence/lab7_1.png)
 * **Figure 2**
 - block inpection for the confirmed transaction
 
-![tx confrimations](lab7_3.png)
+![tx confrimations](evidence/lab7_3.png)
 * **Figure 3**
 - confirmation tx confirmation from zero to 1
 

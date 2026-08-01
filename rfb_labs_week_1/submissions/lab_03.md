@@ -64,11 +64,11 @@ bitcoin@backend1:/$
 
 ## Evidence references
 
-![balances at 1 with block chain of height 2](lab3_0.png)
+![balances at 1 with block chain of height 2](evidence/lab3_0.png)
 
 * **Figure 1**: Terminal output demonstrating getting balance at height 1 with a chain of height 2. rolled the chain back and forth for specified  height balance inspection .
 
-![balances at 101](lab3_1.png)
+![balances at 101](evidence/lab3_1.png)
 * **Figure 2**: Terminal output demonstrating mining of wallet balances at height 101 and insufficient balance
 
 ## Explanation

@@ -55,10 +55,10 @@
 
 ## Evidence references
 
-![sending tx and memepool list](lab5_0.png)
+![sending tx and memepool list](evidence/lab5_0.png)
 * **Figure 1**
 
-![balances](lab5_1.png)
+![balances](evidence/lab5_1.png)
 * **Figure 2**
 
 ## Explanation

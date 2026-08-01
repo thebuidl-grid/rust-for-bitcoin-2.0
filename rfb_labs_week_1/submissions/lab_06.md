@@ -72,11 +72,11 @@ bitcoin-cli -regtest getrawtransaction "33812f0d3b58d8f6674895ee0636c841edbe565a
 
 ## Evidence references
 
-![alt text](lab6_0.png)
+![alt text](evidence/lab6_0.png)
 * **Figure 1**
 - the raw transaction hex and transaction header info
 
-![alt text](lab6_1.png)
+![alt text](evidence/lab6_1.png)
 * **Figure 2**
 - vin and vout transaction
 

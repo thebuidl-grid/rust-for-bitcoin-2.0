@@ -60,10 +60,10 @@ tx header fields
 
 
 ## Evidence references
-![mining five block and tx confirmation chnage](lab8_0.png)
+![mining five block and tx confirmation chnage](evidence/lab8_0.png)
 - mining five block and tx confirmation chnage
 ---
-![block confirmation counter](lab8_1.png)
+![block confirmation counter](evidence/lab8_1.png)
 - the updated block counter from 1 to 6
 
 

@@ -57,7 +57,7 @@ getbestblockhash
 
 ## Evidence references
 
-![Terminal and Test Execution Output](Screenshot%202026-07-31%20081123.png)
+![Terminal and Test Execution Output](evidence/lab1.png)
 
 * **Cargo Test Suite:** All 4 tests in `tests/lab_01.rs` (`builds_verified_network_snapshot`, `reads_best_block_hash`, `reads_block_height`, `reads_regtest_chain`) passed successfully.
 * **Code Formatting:** Standard formatting verified via `cargo fmt --check`.

@@ -147,13 +147,13 @@ bitcoin-cli -regtest -rpcwallet="miner2" listunspent
 
 ## Evidence references
 
-![creating miner2 wallet](lab9_0.png)
+![creating miner2 wallet](evidence/lab9_0.png)
 - creating wallet, loading three seperate tx, and mining a block
 
-![utxos for miner2](lab9_1.png)
+![utxos for miner2](evidence/lab9_1.png)
 - part of the list unpent utxos for miner2
 
-![miner2 tx to miner](lab9_2.png)
+![miner2 tx to miner](evidence/lab9_2.png)
 - part of decoded tx of miner2 to miner 
 
 

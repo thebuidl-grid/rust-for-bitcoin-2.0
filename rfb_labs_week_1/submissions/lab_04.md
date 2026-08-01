@@ -32,10 +32,10 @@ bitcoin-cli -regtest -rpcwallet="miner" listunspent 0 9999999
 
 ## Evidence references
 
-![utxo analytics 101](lab4_0.png)
+![utxo analytics 101](evidence/lab4_0.png)
 * **Figure 1**: Terminal output demonstrating list of current utxos in miner wallet
 ---
-![utxo analytics 101](lab4_1.png)
+![utxo analytics 101](evidence/lab4_1.png)
 * **Figure 1**: Terminal output demonstrating list of current utxos in miner wallet with mini and max conf values to overide the default ones
 
 

@@ -49,11 +49,11 @@ bitcoin@backend1:/$  bitcoin-cli -regtest -rpcwallet="miner" getaddressinfo "bcr
 
 ## Evidence references
 
-![Execution Output1](lab2_0.png)
+![Execution Output1](evidence/lab2_0.png)
 
 * **Figure 1**: Terminal output demonstrating createwallet and listwallets execution.
 
-![Execiution output2](lab2_1.png)
+![Execiution output2](evidence/lab2_1.png)
 
 * **Figure 2:** Terminal output showing loadwallet, getnewaddress, and getaddressinfo confirmation.
 
