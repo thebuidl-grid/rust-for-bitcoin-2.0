@@ -12,4 +12,3 @@ pub mod lab07_confirm;
 pub mod lab08_security;
 pub mod lab09_coin_selection;
 pub mod lab10_reorg;
-pub mod lab00_helper;

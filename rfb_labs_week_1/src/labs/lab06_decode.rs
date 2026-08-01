@@ -1,9 +1,9 @@
 //! Lab 06 — decode a transaction and prove value conservation.
 
+use serde_json::Value;
+
 use crate::model::{DecodedInput, DecodedOutput, DecodedTransaction, OutPoint, PaymentAndChange};
 use crate::rpc::{parse_cli_value, required_f64, required_string, required_u64, RpcClient};
-
-use crate::labs::lab00_helper::required_array;
 
 use crate::{LabError, LabResult};
 
@@ -157,4 +157,13 @@ pub fn calculate_fee(transaction: &DecodedTransaction) -> LabResult<f64> {
     }
 
     Ok(fee_sats as f64 / 100_000_000.0)
+}
+
+
+pub fn required_array(value: &Value, field: &'static str) -> LabResult<Vec<Value>> {
+    value
+        .get(field)
+        .and_then(Value::as_array)
+        .map(ToOwned::to_owned)
+        .ok_or(LabError::MissingField(field))
 }

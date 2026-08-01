@@ -1,8 +1,9 @@
 //! Lab 07 — confirm a transaction and prove block membership.
 
+use serde_json::Value;
+
 use crate::labs::lab03_maturity::mine_blocks;
 use crate::labs::lab05_mempool::{get_raw_mempool, get_transaction_status};
-use crate::labs::lab00_helper::required_array;
 use crate::model::ConfirmationReport;
 use crate::rpc::{parse_cli_value, required_u64, RpcClient};
 
@@ -67,4 +68,13 @@ pub fn confirm_and_locate_transaction<C: RpcClient>(
         mempool_is_empty,
         transaction_is_in_block,
     })
+}
+
+
+pub fn required_array(value: &Value, field: &'static str) -> LabResult<Vec<Value>> {
+    value
+        .get(field)
+        .and_then(Value::as_array)
+        .map(ToOwned::to_owned)
+        .ok_or(LabError::MissingField(field))
 }

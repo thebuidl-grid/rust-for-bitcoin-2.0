@@ -1,6 +1,7 @@
 //! Lab 04 — inspect UTXOs and outpoints.
 
-use crate::labs::lab00_helper::{required_bool, required_u32};
+use serde_json::Value;
+
 use crate::model::{OutPoint, Utxo};
 use crate::rpc::{parse_cli_value, required_f64, required_string, required_u64, RpcClient};
 use crate::{LabError, LabResult};
@@ -67,4 +68,21 @@ pub fn outpoint(utxo: &Utxo) -> OutPoint {
 /// Sum only the spendable UTXOs.
 pub fn sum_spendable_utxos(utxos: &[Utxo]) -> f64 {
     utxos.iter().filter(|u| u.spendable).map(|u| u.amount).sum()
+}
+
+pub fn required_u32(value: &Value, field: &'static str) -> LabResult<u32> {
+    let n = value
+        .get(field)
+        .and_then(Value::as_u64)
+        .ok_or(LabError::MissingField(field))?;
+
+    u32::try_from(n).map_err(|_| LabError::MissingField(field))
+}
+
+
+pub fn required_bool(value: &Value, field: &'static str) -> LabResult<bool> {
+    value
+        .get(field)
+        .and_then(Value::as_bool)
+        .ok_or(LabError::MissingField(field))
 }
