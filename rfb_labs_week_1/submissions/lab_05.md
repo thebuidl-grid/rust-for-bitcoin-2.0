@@ -4,18 +4,31 @@
 
 cargo test --test lab_05
 docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/.bitcoin/regtest/.cookie -rpcwallet=receiver getnewaddress classmate
-docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/.bitcoin/regtest/.cookie -rpcwallet=miner sendtoaddress <receiver_address> 1
+docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/.bitcoin/regtest/.cookie -rpcwallet=miner sendtoaddress "$RECEIVER_ADDR" 1
 docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/.bitcoin/regtest/.cookie getrawmempool
-docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/.bitcoin/regtest/.cookie -rpcwallet=miner gettransaction <txid>
+docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/.bitcoin/regtest/.cookie -rpcwallet=miner gettransaction "$TXID"
 docker exec polar-n1-backend1 bitcoin-cli -regtest -rpccookiefile=/home/bitcoin/.bitcoin/regtest/.cookie -rpcwallet=receiver getbalances
 
 ## Terminal output
 
-TODO: Show the TXID, zero confirmations, mempool entry, and pending balance.
+- Receiver address generated:
+	- `bcrt1q8zmquj362hyyqu9uawvk63hj4e937jyd3fav6p`
+- Broadcast TXID:
+	- `608468411918a587f203ec07024d44cc5a227be5f1f253207c809b6239f39272`
+- `getrawmempool` contained that TXID immediately after broadcast.
+- Sender wallet view (`gettransaction`):
+	- `confirmations: 0`
+	- `fee: -0.00002820`
+	- `bip125-replaceable: yes`
+- Receiver wallet balances (`getbalances`):
+	- `trusted: 0.00000000`
+	- `untrusted_pending: 1.00000000`
+	- `immature: 0.00000000`
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
+- `screenshots/lab5.png` (terminal evidence for transaction broadcast and mempool checks)
+- `screenshots/lab5-balances.png` (receiver wallet balance evidence showing pending/trusted state)
 
 ## Explanation
 
