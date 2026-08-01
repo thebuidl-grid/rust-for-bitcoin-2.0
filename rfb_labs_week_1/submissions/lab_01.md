@@ -15,8 +15,8 @@ best_block_hash:  7590e2ee7f48d2d8d39e9021518059a814c0b50ed86b816b05612a76adbc34
 
 ## Evidence references
 
-- Polar network running: ../evidence/lab01/polar-screenshot.png
-- Node info panel confirming regtest: ../evidence/lab01/node-info.png
+- Polar network running: ../evidence/polar-screenshot.png
+- Node info panel confirming regtest: ../evidence/node-info.png
 ## Explanation
 
 regtest lets you mine blocks instantly on demand, it keeps you fully isolated from the real network state, and lets you use fake coins freely for testing.
