@@ -67,7 +67,7 @@ running regtest node rather than any other network.
 
 ## Evidence references
 
-- Screenshot: `submissions/images/Screenshot from 2026-08-01 13-57-53.png` — IDE
+- Screenshot: `submissions/evidence/Screenshot from 2026-08-01 13-57-53.png` — IDE
   terminal running `cargo test --test lab_01`, all 4 tests passing.
 - Docker: `docker ps` shows container `polar-n1-backend1` (image
   `polarlightning/bitcoind:30.0`) `Up`, with regtest P2P/RPC ports mapped

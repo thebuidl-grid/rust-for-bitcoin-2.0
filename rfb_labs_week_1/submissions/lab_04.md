@@ -51,7 +51,7 @@ Cross-check: `bitcoin-cli -rpcwallet=miner getbalance` → `50.00000000`.
 
 ## Evidence references
 
-- Screenshot: `submissions/images/Screenshot from 2026-08-01 13-58-25.png` — IDE
+- Screenshot: `submissions/evidence/Screenshot from 2026-08-01 13-58-25.png` — IDE
   terminal running `cargo test --test lab_04`, all 4 tests passing.
 - `txid` = `8309b0a666fc79ec679cc77bc44d5ac3cda3962c27f991a7f35b4b8912f606bd`,
   `vout` = `0`, `amount` = `50.0`, `confirmations` = `101`,

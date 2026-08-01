@@ -81,7 +81,7 @@ sum(inputs) == sum(outputs) + fee ? true
 
 ## Evidence references
 
-- Screenshot: `submissions/images/Screenshot from 2026-08-01 13-58-25.png` — IDE
+- Screenshot: `submissions/evidence/Screenshot from 2026-08-01 13-58-25.png` — IDE
   terminal running `cargo test --test lab_06`, all 4 tests passing.
 - Every consumed input: `8309b0a666fc79ec679cc77bc44d5ac3cda3962c27f991a7f35b4b8912f606bd:0`
   (the matured 50 BTC coinbase from Lab 04), worth `50.0` BTC.

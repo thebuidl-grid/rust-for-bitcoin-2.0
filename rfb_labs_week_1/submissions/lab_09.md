@@ -85,7 +85,7 @@ MultiUtxoAudit {
 
 ## Evidence references
 
-- Screenshot: `submissions/images/Screenshot from 2026-08-01 13-58-42.png` — IDE
+- Screenshot: `submissions/evidence/Screenshot from 2026-08-01 13-58-42.png` — IDE
   terminal running `cargo test --test lab_09`, all 4 tests passing.
 - Alice owned exactly 3 distinct UTXOs of `0.4` BTC each before spending:
   `760067ae...:1`, `e160ae39...:1`, `b1972e1c...:0`.

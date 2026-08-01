@@ -62,7 +62,7 @@ $ bitcoin-cli -rpcwallet=receiver getbalances
 
 ## Evidence references
 
-- Screenshot: `submissions/images/Screenshot from 2026-08-01 13-58-25.png` — IDE
+- Screenshot: `submissions/evidence/Screenshot from 2026-08-01 13-58-25.png` — IDE
   terminal running `cargo test --test lab_05`, all 4 tests passing.
 - TXID `cfb0ea5976993f1245ada575b4472138ac9d91fcbea342068e82ef5ea29f1cfe`
   appears in `getrawmempool`'s output (`mempool_contains_tx: true`), proving

@@ -54,7 +54,7 @@ Cross-check: `bitcoin-cli -rpcwallet=receiver getbalances` →
 
 ## Evidence references
 
-- Screenshot: `submissions/images/Screenshot from 2026-08-01 13-58-25.png` — IDE
+- Screenshot: `submissions/evidence/Screenshot from 2026-08-01 13-58-25.png` — IDE
   terminal running `cargo test --test lab_07`, all 4 tests passing.
 - `getrawmempool` returns `[]` — TXID `cfb0ea59...29f1cfe` has left the
   mempool.

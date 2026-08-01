@@ -98,7 +98,7 @@ ReorgReport {
 
 ## Evidence references
 
-- Screenshot: `submissions/images/Screenshot from 2026-08-01 13-58-42.png` — IDE
+- Screenshot: `submissions/evidence/Screenshot from 2026-08-01 13-58-42.png` — IDE
   terminal running `cargo test --test lab_10`, all 4 tests passing.
 - Both nodes started from the identical common tip (height 118,
   `2311a984...`), proven by matching `getblockchaininfo` output on both

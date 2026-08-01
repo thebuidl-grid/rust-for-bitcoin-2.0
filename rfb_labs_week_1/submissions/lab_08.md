@@ -50,7 +50,7 @@ SecurityReport {
 
 ## Evidence references
 
-- Screenshot: `submissions/images/Screenshot from 2026-08-01 13-58-42.png` — IDE
+- Screenshot: `submissions/evidence/Screenshot from 2026-08-01 13-58-42.png` — IDE
   terminal running `cargo test --test lab_08`, all 4 tests passing.
 - Block hash `0e0e0b599c631219e78abae3a7c965c07117cb5943e90cc6bdf72df803c38c58`
   at height `104`.

@@ -49,7 +49,7 @@ miner owns classmate address?     = false (expected false)
 
 ## Evidence references
 
-- Screenshot: `submissions/images/Screenshot from 2026-08-01 13-57-53.png` — IDE
+- Screenshot: `submissions/evidence/Screenshot from 2026-08-01 13-57-53.png` — IDE
   terminal running `cargo test --test lab_02`, all 4 tests passing.
 - `listwallets` shows `["", "miner", "receiver"]` — both `miner` and `receiver`
   are loaded alongside the node's default `""` wallet, proving both wallets

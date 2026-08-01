@@ -73,7 +73,7 @@ same final numbers:
 
 ## Evidence references
 
-- Screenshot: `submissions/images/Screenshot from 2026-08-01 13-57-53.png` — IDE
+- Screenshot: `submissions/evidence/Screenshot from 2026-08-01 13-57-53.png` — IDE
   terminal running `cargo test --test lab_03`, all 4 tests passing.
 - After mining one block (height 3), `trusted = 0` and `immature = 50` — the
   50 BTC subsidy exists but cannot be spent yet.
