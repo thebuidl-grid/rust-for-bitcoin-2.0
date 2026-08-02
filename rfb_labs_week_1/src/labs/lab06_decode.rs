@@ -2,9 +2,9 @@
 
 use serde::de::value;
 
-use crate::model::{DecodedTransaction, OutPoint, PaymentAndChange, DecodedInput, DecodedOutput};
-use crate::rpc::{RpcClient, parse_cli_value, required_string, required_f64, required_u64};
-use crate::{LabResult, LabError};
+use crate::model::{DecodedInput, DecodedOutput, DecodedTransaction, OutPoint, PaymentAndChange};
+use crate::rpc::{parse_cli_value, required_f64, required_string, required_u64, RpcClient};
+use crate::{LabError, LabResult};
 
 /// Decode a transaction with enough verbosity to include every spent output's value.
 pub fn decode_verbose_transaction<C: RpcClient>(
@@ -15,59 +15,75 @@ pub fn decode_verbose_transaction<C: RpcClient>(
     // - txid and vsize
     // - each vin's txid, vout, and prevout.value
     // - each vout's n, value, scriptPubKey.hex, and optional address
-    let call = client.call(None, "getrawtransaction", &[txid.to_string(), "2".to_string()])?;
+    let call = client.call(
+        None,
+        "getrawtransaction",
+        &[txid.to_string(), "2".to_string()],
+    )?;
     let cli_response = parse_cli_value(&call)?;
 
     let txid = required_string(&cli_response, "txid")?;
     let vsize = required_u64(&cli_response, "vsize")?;
 
-    let vin = cli_response.get("vin").and_then(|v|v.as_array()).ok_or_else(|| LabError::MissingField(&"vin"))?;
+    let vin = cli_response
+        .get("vin")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| LabError::MissingField(&"vin"))?;
 
-    let inputs = vin.iter().map(|v|{
-        let txid = required_string(v, "txid")?;
-        let vout = required_u64(v, "vout")? as u32;
+    let inputs = vin
+        .iter()
+        .map(|v| {
+            let txid = required_string(v, "txid")?;
+            let vout = required_u64(v, "vout")? as u32;
 
-        let prevout = v.get("prevout").ok_or_else(|| LabError::MissingField("prevout"))?;
-        let prevout_value = required_f64(prevout, "value")?;
+            let prevout = v
+                .get("prevout")
+                .ok_or_else(|| LabError::MissingField("prevout"))?;
+            let prevout_value = required_f64(prevout, "value")?;
 
-        Ok(
-            DecodedInput{
+            Ok(DecodedInput {
                 previous_output: OutPoint { txid, vout },
-                previous_value: prevout_value
-            }
+                previous_value: prevout_value,
+            })
+        })
+        .collect::<LabResult<Vec<_>>>()?;
 
-        )
-    }).collect::<LabResult<Vec<_>>>()?;
+    let vout = cli_response
+        .get("vout")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| LabError::MissingField(&"vout"))?;
 
-    let vout = cli_response.get("vout").and_then(|v|v.as_array()).ok_or_else(|| LabError::MissingField(&"vout"))?;
+    let outputs = vout
+        .iter()
+        .map(|v| {
+            let n = required_u64(v, "n")? as u32;
+            let value = required_f64(v, "value")?;
+            let script_pk = v
+                .get("scriptPubKey")
+                .ok_or_else(|| LabError::MissingField(&"script_pub_key"))?;
 
-    let outputs = vout.iter().map(|v| {
-        let n = required_u64(v, "n")? as u32;
-        let value = required_f64(v, "value")?;
-        let script_pk = v.get("scriptPubKey").ok_or_else(||LabError::MissingField(&"script_pub_key"))?;
+            let spk_hex = required_string(script_pk, "hex")?;
+            let spk_addr = if required_string(script_pk, "address").is_ok() {
+                Some(required_string(script_pk, "address")?)
+            } else {
+                None
+            };
 
-        let spk_hex = required_string(script_pk, "hex")?;
-        let spk_addr = if required_string(script_pk, "address").is_ok() {
-            Some(required_string(script_pk,"address")?)
-        } else {
-            None
-        };
-
-        Ok(
-            DecodedOutput{
+            Ok(DecodedOutput {
                 vout: n,
                 value,
                 address: spk_addr,
-                script_pub_key_hex: spk_hex
-            }
-        )
-    }).collect::<LabResult<Vec<_>>>()?;
+                script_pub_key_hex: spk_hex,
+            })
+        })
+        .collect::<LabResult<Vec<_>>>()?;
 
-    Ok(
-        DecodedTransaction { txid, inputs, outputs, vsize }
-
-    )
-
+    Ok(DecodedTransaction {
+        txid,
+        inputs,
+        outputs,
+        vsize,
+    })
 }
 
 /// Return every previous output consumed by the transaction.
