@@ -2,7 +2,20 @@
 
 ## Commands used
 
-TODO: Record funding, confirmation, spending, and decoding commands.
+<!-- TODO: Record funding, confirmation, spending, and decoding commands. -->
+```bash
+# Send BTC
+bitcoin-cli -rpcwallet=<wallet> sendtoaddress <address> <amount>
+
+# Mine Block
+bitcoin-cli -generatetoaddress <block-count> <address>
+
+# List UTXOs
+bitcoin-cli -rpcwallet=<wallet> listunspent
+
+# Decode transaction
+bitcoin-cli  getrawtransaction <tx-hash> 2
+```
 
 ## Terminal output
 

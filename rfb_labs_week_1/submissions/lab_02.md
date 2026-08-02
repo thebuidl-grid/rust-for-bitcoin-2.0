@@ -117,24 +117,21 @@ bitcoin@backend1:/$
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
+<!-- TODO: Link screenshots or describe the attached evidence. -->
 The first screen shot shows me creating wallet and listing wallets created with the right RPC methods
-
 
 ![alt text](../screenshots/lab002_wallet_create_list.png)
 
 The second screenshot generate newaddress for the wallet passing the -rpcwallet flag  and get the addressinfo of the address generated
 
-
 ![alt text](../screenshots/Lab002_createwallet_get-address.png)
 
 The third screenshot shows the result of the test on lab02
-
 
 ![alt text](../screenshots/lab002_test.png)
 
 ## Explanation
 
-TODO: Explain wallet context and the purpose of `-rpcwallet`.
+<!-- TODO: Explain wallet context and the purpose of `-rpcwallet`. -->
 
 The `-rpcwallet` parameter tells Bitcoin Core to execute the RPC in the context of the specified wallet, ensuring operations like address generation, balance queries, and transaction creation use the correct wallet's keys and UTXO set.
