@@ -1,10 +1,10 @@
 //! Lab 03 — demonstrate coinbase maturity.
 
-use serde_json::Value;
-use crate::model::{CoinbaseMaturityReport, WalletBalances};
-use crate::rpc::{RpcClient, parse_cli_value, required_f64};
-use crate::{LabResult, LabError};
 use crate::labs::lab01_network::get_block_height;
+use crate::model::{CoinbaseMaturityReport, WalletBalances};
+use crate::rpc::{parse_cli_value, required_f64, RpcClient};
+use crate::{LabError, LabResult};
+use serde_json::Value;
 
 /// Mine `count` blocks to an address and return the generated block hashes.
 pub fn mine_blocks<C: RpcClient>(client: &C, address: &str, count: u64) -> LabResult<Vec<String>> {

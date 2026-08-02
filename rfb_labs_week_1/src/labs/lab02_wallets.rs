@@ -1,8 +1,8 @@
 //! Lab 02 — create wallets and receiving addresses.
 
+use crate::rpc::{parse_cli_value, RpcClient};
+use crate::{LabError, LabResult};
 use serde_json::Value;
-use crate::rpc::{RpcClient, parse_cli_value};
-use crate::{LabResult, LabError};
 
 /// Create a wallet with the supplied name.
 pub fn create_wallet<C: RpcClient>(client: &C, wallet_name: &str) -> LabResult<()> {
@@ -15,7 +15,7 @@ pub fn create_wallet<C: RpcClient>(client: &C, wallet_name: &str) -> LabResult<(
 pub fn list_wallets<C: RpcClient>(client: &C) -> LabResult<Vec<String>> {
     // TODO: call listwallets and decode its JSON string array.
     let call = client.call(None, "listwallets", &[])?;
-    let cli_response = parse_cli_value(&call)? ;
+    let cli_response = parse_cli_value(&call)?;
     cli_response
         .as_array()
         .ok_or_else(|| LabError::Parse("expected array".to_string()))?

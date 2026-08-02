@@ -1,8 +1,8 @@
 //! Lab 01 — build and verify a regtest network.
-use serde_json::Value;
 use crate::model::NetworkSnapshot;
-use crate::rpc::{RpcClient, parse_cli_value, required_string};
-use crate::{LabResult, LabError};
+use crate::rpc::{parse_cli_value, required_string, RpcClient};
+use crate::{LabError, LabResult};
+use serde_json::Value;
 
 /// Return the active chain reported by `getblockchaininfo`.
 pub fn get_chain<C: RpcClient>(client: &C) -> LabResult<String> {
@@ -18,9 +18,9 @@ pub fn get_block_height<C: RpcClient>(client: &C) -> LabResult<u64> {
     // TODO: call getblockcount and parse the numeric response.
     let call = client.call(None, "getblockcount", &[])?;
     let cli_response = parse_cli_value(&call)?;
-    cli_response.as_u64().ok_or(
-        LabError::Parse(String::from("expected a u64 value"))
-    )
+    cli_response
+        .as_u64()
+        .ok_or(LabError::Parse(String::from("expected a u64 value")))
 }
 
 /// Return the node's current best-block hash.
@@ -47,11 +47,9 @@ pub fn inspect_network<C: RpcClient>(client: &C) -> LabResult<NetworkSnapshot> {
     let block_height = get_block_height(client)?;
     let best_blockhash = get_best_block_hash(client)?;
 
-    Ok(
-        NetworkSnapshot {
-            chain,
-            block_height,
-            best_block_hash: best_blockhash
-        }
-    )
+    Ok(NetworkSnapshot {
+        chain,
+        block_height,
+        best_block_hash: best_blockhash,
+    })
 }

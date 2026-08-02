@@ -1,10 +1,10 @@
 //! Lab 05 — broadcast a transaction and observe the mempool.
 
-use crate::model::{MempoolObservation, WalletBalances, WalletTransactionStatus};
-use crate::rpc::{RpcClient, parse_cli_value, required_string, required_f64, required_u64};
-use crate::{LabResult, LabError};
-use serde_json::Value;
 use crate::labs::lab03_maturity::get_balances;
+use crate::model::{MempoolObservation, WalletBalances, WalletTransactionStatus};
+use crate::rpc::{parse_cli_value, required_f64, required_string, required_u64, RpcClient};
+use crate::{LabError, LabResult};
+use serde_json::Value;
 
 /// Send bitcoin from one wallet and return the TXID.
 pub fn send_btc<C: RpcClient>(

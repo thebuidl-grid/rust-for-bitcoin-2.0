@@ -1,8 +1,8 @@
 //! Lab 04 — inspect UTXOs and outpoints.
 
 use crate::model::{OutPoint, Utxo};
-use crate::rpc::{RpcClient, parse_cli_value, required_f64, required_u64, required_string};
-use crate::{LabResult, LabError};
+use crate::rpc::{parse_cli_value, required_f64, required_string, required_u64, RpcClient};
+use crate::{LabError, LabResult};
 use serde_json::Value;
 
 /// Return all UTXOs tracked by the selected wallet.
@@ -11,12 +11,13 @@ pub fn list_unspent<C: RpcClient>(client: &C, wallet_name: &str) -> LabResult<Ve
     let call = client.call(Some(wallet_name), "listunspent", &[])?;
     let value: Value = serde_json::from_str(&call).map_err(|e| LabError::Parse(e.to_string()))?;
 
-    let entries = value.as_array().ok_or(LabError::MissingField("listunspent"))?;
+    let entries = value
+        .as_array()
+        .ok_or(LabError::MissingField("listunspent"))?;
 
     entries
         .iter()
         .map(|entry| {
-
             let txid = required_string(entry, "txid")?;
 
             let vout = required_u64(entry, "vout")?;
