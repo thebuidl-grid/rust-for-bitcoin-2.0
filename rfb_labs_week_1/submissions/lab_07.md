@@ -21,6 +21,7 @@ bitcoin-cli getrawmempool
 ## Terminal output
 
 <!-- TODO: Show the empty mempool, confirmation count, block hash, and TXID in block. -->
+```bash
 bitcoin@backend1:/$ bitcoin-cli generatetoaddress 1 bcrt1qn893ldl3w0zt5myjm0lxh3kpreedtwtnsc0272
 [
   "3099247c5d3142780f74c5ec4f80ec266b316ac297d03ec10bc8d55e4f129060"
@@ -95,7 +96,7 @@ bitcoin@backend1:/$ bitcoin-cli getblock 2435845577ede896b61bb1a9bada81c92762d15
     "5973f6d0548485a3abf7e0afb640a3a52e1ed515b2eb94a32e9047174368d53f"
   ]
 }
-bitcoin@backend1:/$ ```bash
+bitcoin@backend1:/$ 
 
 ```
 
