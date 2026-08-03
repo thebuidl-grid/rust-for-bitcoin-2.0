@@ -2,6 +2,7 @@
 
 use crate::model::{MultiUtxoAudit, Utxo};
 use crate::rpc::RpcClient;
+use crate::LabError;
 use crate::LabResult;
 
 /// Send three separate 0.4 BTC funding transactions and return their TXIDs.
@@ -11,7 +12,20 @@ pub fn create_three_funding_transactions<C: RpcClient>(
     alice_address: &str,
 ) -> LabResult<Vec<String>> {
     // TODO: call sendtoaddress three times, each for 0.4 BTC.
-    todo!("Lab 09: create three separate funding transactions")
+    (0..3)
+        .map(|_| {
+            let raw = client.call(
+                Some(miner_wallet),
+                "sendtoaddress",
+                &[alice_address.to_owned(), "0.4".to_owned()],
+            )?;
+            let value = crate::rpc::parse_cli_value(&raw)?;
+            value
+                .as_str()
+                .map(ToOwned::to_owned)
+                .ok_or_else(|| LabError::Parse(format!("expected a txid string, got: {value}")))
+        })
+        .collect()
 }
 
 /// Return confirmed UTXOs belonging to the supplied address.
@@ -21,7 +35,11 @@ pub fn confirmed_utxos_for_address<C: RpcClient>(
     address: &str,
 ) -> LabResult<Vec<Utxo>> {
     // TODO: call listunspent and retain confirmed outputs for this address.
-    todo!("Lab 09: locate Alice's confirmed UTXOs")
+    let utxos = crate::labs::lab04_utxos::list_unspent(client, wallet_name)?;
+    Ok(utxos
+        .into_iter()
+        .filter(|utxo| utxo.confirmations > 0 && utxo.address.as_deref() == Some(address))
+        .collect())
 }
 
 /// Send 1 BTC from Alice and return the new TXID.
@@ -31,7 +49,16 @@ pub fn send_combined_payment<C: RpcClient>(
     receiver_address: &str,
 ) -> LabResult<String> {
     // TODO: call sendtoaddress for 1 BTC.
-    todo!("Lab 09: create a spend requiring multiple inputs")
+    let raw = client.call(
+        Some(alice_wallet),
+        "sendtoaddress",
+        &[receiver_address.to_owned(), "1".to_owned()],
+    )?;
+    let value = crate::rpc::parse_cli_value(&raw)?;
+    value
+        .as_str()
+        .map(ToOwned::to_owned)
+        .ok_or_else(|| LabError::Parse(format!("expected a txid string, got: {value}")))
 }
 
 /// Decode Alice's spend and prove that multiple funding UTXOs were combined.
@@ -47,5 +74,23 @@ pub fn audit_multi_utxo_spend<C: RpcClient>(
     // 3. Identify payment and change.
     // 4. Calculate fee and input count.
     // 5. Record the funding outpoints.
-    todo!("Lab 09: audit multi-UTXO coin selection")
+    let spend_txid = send_combined_payment(client, alice_wallet, receiver_address)?;
+    let transaction = crate::labs::lab06_decode::decode_verbose_transaction(client, &spend_txid)?;
+
+    let funding_outpoints = funding_utxos
+        .iter()
+        .map(crate::labs::lab04_utxos::outpoint)
+        .collect();
+
+    let payment_and_change =
+        crate::labs::lab06_decode::identify_payment_and_change(&transaction, receiver_address)?;
+    let fee = crate::labs::lab06_decode::calculate_fee(&transaction)?;
+
+    Ok(MultiUtxoAudit {
+        funding_outpoints,
+        spend_txid,
+        spend_input_count: transaction.inputs.len(),
+        payment_and_change,
+        fee,
+    })
 }
