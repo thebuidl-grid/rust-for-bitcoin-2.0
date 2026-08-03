@@ -73,9 +73,11 @@ bitcoin@backend1:/$
 <!-- TODO: Link screenshots or describe the attached evidence. -->
 Screenshot of bitcoin-cli methods on polar terminal, showing the block confirmation, mining additional 5 blocks , then showing the block confirmation after.
 
+![alt text](evidence/lab008_polar_methods.png)
 
-Sreenshot of lab09 implementation passing 
+Sreenshot of lab08 implementation passing 
 
+![alt text](evidence/lab008_test.png)
 
 ## Explanation
 

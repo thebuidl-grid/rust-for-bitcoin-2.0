@@ -132,7 +132,7 @@ bitcoin@backend2:/$
 <!-- TODO: Link screenshots or describe the attached evidence. -->
 SCREENSHOT OF TEST PASSING IMPLEMEMNTATION OF LAB10
 
-![alt text](../screenshots/lab10_test.png)
+![alt text](evidence/lab10_test.png)
 
 ## Explanation
 

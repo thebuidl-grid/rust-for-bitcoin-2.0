@@ -105,8 +105,11 @@ bitcoin@backend1:/$
 <!-- TODO: Link screenshots or describe the attached evidence. -->
 screenshot shows the polar response for different methods called
 
+![alt text](evidence/lab007_polar_methods.png)
 
 screenshot shows the test passing for lab07 implementation.
+
+![alt text](evidence/lab007_test.png)
 
 ## Explanation
 

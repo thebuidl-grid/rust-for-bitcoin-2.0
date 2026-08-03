@@ -79,8 +79,15 @@ bitcoin@backend1:/$ bitcoin-cli -rpcwallet=receiver getbalances
 
 FIRST: THE BALANCE BEFORE AND AFTER, RUNNING THE SENDTOADDRESS METHOD
 
+![alt text](evidence/lab005_bal_b4_transfer_send_then_bal_after.png)
 
 SECOND: SHOWS THE TX IN THE MEMPOOL, THE THE TRANSACTION DETAILS OF THE TRANSACTION, {Since the transaction is not yet mined and added to a block, it doesnt have a blockhash} 
+
+![alt text](evidence/lab005_mempool_transaction_details.png)
+
+THIRD: TEST OF LAB_05 IMPLEMENTATION
+
+![alt text](evidence/lab005_test.png)
 
 ## Explanation
 

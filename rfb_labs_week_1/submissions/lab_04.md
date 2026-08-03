@@ -117,27 +117,24 @@ bitcoin@backend1:/$ bitcoin-cli -rpcwallet=miner getrawtransaction 5973f6d054848
   "time": 1785587064,
   "blocktime": 1785587064
 }
-bitcoin@backend1:/$ 
-
-```
-
+bitcoin@backevidence
 ## Evidence references
 
 <!-- TODO: Link screenshots or describe the attached evidence. -->
 The first screenshot show list of utxo of miner wallets
 
 
-![alt text](../screenshots/lab004_list_miner_unspent_utsx.png)
+![alt text](evidence/lab004_list_miner_unspent_utsx.png)
 
 The second screensht show transaction details of one of the UTXO from the transaction id
 
 
-![alt text](<../screenshots/lab004_get_transaction_details_of_a utxo.png>)
+![alt text](<evidence/lab004_get_transaction_details_of_a utxo.png>)
 
 The third screenshot show the test result of lba004 implementation
 
 
-![alt text](../screenshots/lab004_test.png)
+![alt text](evidence/lab004_test.png)
 ## Explanation
 
 <!-- TODO: Explain outpoints, UTXOs, and why a wallet balance is their sum. -->

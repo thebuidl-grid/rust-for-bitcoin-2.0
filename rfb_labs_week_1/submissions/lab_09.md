@@ -227,6 +227,8 @@ bitcoin@backend1:/$ bitcoin-cli -rpcwallet=alice getbalances
 <!-- TODO: Link screenshots or describe the attached evidence. -->
 SCREENSHOT OF TEST PASSING FOR IMPLEMENTATION OF LAB09
 
+![alt text](evidence/lab_09test.png)
+
 
 ## Explanation
 

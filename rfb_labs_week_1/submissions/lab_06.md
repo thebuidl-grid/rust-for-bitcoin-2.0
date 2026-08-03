@@ -87,11 +87,11 @@ bitcoin@backend1:/$
 <!-- TODO: Link screenshots or describe the attached evidence. -->
 screenhsot of polar response when call the getrawtransaction bitcoin-cli methods and its parameters
 
-![alt text](../screenshots/lab006_getrawtx.png)
+![alt text](evidence/lab006_getrawtx.png)
 
 screenshot of test passing after impllementing lab006
 
-![alt text](../screenshots/lab006_test.png)
+![alt text](evidence/lab006_test.png)
 
 ## Explanation
 
