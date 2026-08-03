@@ -46,8 +46,8 @@ pub fn build_reorg_report(
 ) -> ReorgReport {
     // TODO: nodes converge when their final best hashes and heights match.
     // todo!("Lab 10: report most-work-chain convergence")
-    ?
-    /**
+    
+    /*
      * Convergence means both nodes now name the same block as their tip at the same
      *height, which is what the most-work rule forces the shorter branch to accept.
      */
