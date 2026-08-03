@@ -1,0 +1,392 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running `target/debug/rfb-labs-week-1 lab10`
+
+==============================================================================
+Lab 10 — observe competing branches and a reorganization
+==============================================================================
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getblockchaininfo
+  {
+    "chain": "regtest",
+    "blocks": 110,
+    "headers": 110,
+    "bestblockhash": "4d3fbe42caa7f427858c9f2bd1aa71a4e3ae806efe198abd7ba75943ddb30056",
+    "bits": "207fffff",
+    "target": "7fffff0000000000000000000000000000000000000000000000000000000000",
+    "difficulty": 4.656542373906925e-10,
+    "time": 1785500870,
+    "mediantime": 1785500869,
+    "verificationprogress": 1,
+    "initialblockdownload": false,
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000de",
+    "size_on_disk": 34658,
+    "pruned": false,
+    "warnings": [
+    ]
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18444 -rpcuser=polaruser -rpcpassword=polarpass getblockchaininfo
+  {
+    "chain": "regtest",
+    "blocks": 110,
+    "headers": 110,
+    "bestblockhash": "4d3fbe42caa7f427858c9f2bd1aa71a4e3ae806efe198abd7ba75943ddb30056",
+    "bits": "207fffff",
+    "target": "7fffff0000000000000000000000000000000000000000000000000000000000",
+    "difficulty": 4.656542373906925e-10,
+    "time": 1785500870,
+    "mediantime": 1785500869,
+    "verificationprogress": 1,
+    "initialblockdownload": false,
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000de",
+    "size_on_disk": 34658,
+    "pruned": false,
+    "warnings": [
+    ]
+  }
+
+--- node A tip before split ---
+{
+  "height": 110,
+  "best_block_hash": "4d3fbe42caa7f427858c9f2bd1aa71a4e3ae806efe198abd7ba75943ddb30056",
+  "chainwork": "00000000000000000000000000000000000000000000000000000000000000de"
+}
+
+
+--- node B tip before split ---
+{
+  "height": 110,
+  "best_block_hash": "4d3fbe42caa7f427858c9f2bd1aa71a4e3ae806efe198abd7ba75943ddb30056",
+  "chainwork": "00000000000000000000000000000000000000000000000000000000000000de"
+}
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getpeerinfo
+  [
+    {
+      "id": 0,
+      "addr": "172.22.0.2:43486",
+      "addrbind": "172.22.0.3:18444",
+      "network": "not_publicly_routable",
+      "services": "0000000000000c49",
+      "servicesnames": [
+        "NETWORK",
+        "WITNESS",
+        "COMPACT_FILTERS",
+        "NETWORK_LIMITED",
+        "P2P_V2"
+      ],
+      "relaytxes": true,
+      "lastsend": 1785501233,
+      "lastrecv": 1785501233,
+      "last_transaction": 0,
+      "last_block": 0,
+      "bytessent": 2659,
+      "bytesrecv": 7519,
+      "conntime": 1785500752,
+      "timeoffset": 0,
+      "pingtime": 0.002818,
+      "minping": 0.000508,
+      "version": 70016,
+      "subver": "/Satoshi:30.0.0/",
+      "inbound": true,
+      "bip152_hb_to": false,
+      "bip152_hb_from": false,
+      "startingheight": 0,
+      "presynced_headers": -1,
+      "synced_headers": 110,
+      "synced_blocks": 110,
+      "inflight": [
+      ],
+      "addr_relay_enabled": true,
+      "addr_processed": 0,
+      "addr_rate_limited": 0,
+      "permissions": [
+      ],
+      "minfeefilter": 0.00000100,
+      "bytessent_per_msg": {
+        "feefilter": 58,
+        "getheaders": 90,
+        "headers": 228,
+        "inv": 58,
+        "ping": 145,
+        "pong": 145,
+        "sendaddrv2": 33,
+        "sendcmpct": 30,
+        "sendheaders": 33,
+        "verack": 33,
+        "version": 135,
+        "wtxidrelay": 33
+      },
+      "bytesrecv_per_msg": {
+        "feefilter": 58,
+        "getaddr": 33,
+        "getheaders": 180,
+        "headers": 22,
+        "inv": 6264,
+        "ping": 145,
+        "pong": 145,
+        "sendaddrv2": 33,
+        "sendcmpct": 30,
+        "sendheaders": 33,
+        "verack": 33,
+        "version": 135,
+        "wtxidrelay": 33
+      },
+      "connection_type": "inbound",
+      "transport_protocol_type": "v2",
+      "session_id": "4406dbc4847d5e10d8562f6e256e16ef5fe79292fb6798f8ac1d284639360a6b"
+    },
+    {
+      "id": 1,
+      "addr": "backend2",
+      "addrbind": "172.22.0.3:50468",
+      "network": "not_publicly_routable",
+      "services": "0000000000000c49",
+      "servicesnames": [
+        "NETWORK",
+        "WITNESS",
+        "COMPACT_FILTERS",
+        "NETWORK_LIMITED",
+        "P2P_V2"
+      ],
+      "relaytxes": true,
+      "lastsend": 1785501233,
+      "lastrecv": 1785501233,
+      "last_transaction": 0,
+      "last_block": 0,
+      "bytessent": 34284,
+      "bytesrecv": 4895,
+      "conntime": 1785500752,
+      "timeoffset": 0,
+      "pingtime": 0.00166,
+      "minping": 0.000385,
+      "version": 70016,
+      "subver": "/Satoshi:30.0.0/",
+      "inbound": false,
+      "bip152_hb_to": false,
+      "bip152_hb_from": true,
+      "startingheight": 0,
+      "presynced_headers": -1,
+      "synced_headers": -1,
+      "synced_blocks": -1,
+      "inflight": [
+      ],
+      "addr_relay_enabled": true,
+      "addr_processed": 0,
+      "addr_rate_limited": 0,
+      "permissions": [
+      ],
+      "minfeefilter": 0.00000100,
+      "bytessent_per_msg": {
+        "block": 269,
+        "blocktxn": 1568,
+        "cmpctblock": 30535,
+        "feefilter": 58,
+        "getaddr": 33,
+        "getheaders": 90,
+        "headers": 309,
+        "inv": 58,
+        "ping": 145,
+        "pong": 145,
+        "sendaddrv2": 33,
+        "sendcmpct": 30,
+        "verack": 33,
+        "version": 135,
+        "wtxidrelay": 33
+      },
+      "bytesrecv_per_msg": {
+        "feefilter": 58,
+        "getblocktxn": 167,
+        "getdata": 116,
+        "getheaders": 180,
+        "headers": 22,
+        "ping": 145,
+        "pong": 145,
+        "sendaddrv2": 33,
+        "sendcmpct": 60,
+        "sendheaders": 33,
+        "verack": 33,
+        "version": 135,
+        "wtxidrelay": 33
+      },
+      "connection_type": "manual",
+      "transport_protocol_type": "v2",
+      "session_id": "7648369cbcd2d038e2aa76dfb0baa091d85fc169cd78a9c20fe91bd1f259a2ab"
+    }
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass disconnectnode 172.22.0.2:43486
+  (no output)
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass disconnectnode backend2
+  (no output)
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getpeerinfo
+  [
+  ]
+
+node A is isolated
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18444 -rpcuser=polaruser -rpcpassword=polarpass getpeerinfo
+  [
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18444 -rpcuser=polaruser -rpcpassword=polarpass getpeerinfo
+  [
+  ]
+
+node B is isolated
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass listwallets
+  [
+    "",
+    "miner",
+    "receiver",
+    "alice"
+  ]
+  wallet `miner` is already loaded
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18444 -rpcuser=polaruser -rpcpassword=polarpass listwallets
+  [
+    ""
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18444 -rpcuser=polaruser -rpcpassword=polarpass createwallet miner
+  {
+    "name": "miner"
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner getnewaddress fork-a
+  bcrt1qsx0ep7fjmjyu5gsp88hr3q9av9muwlp59jluem
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18444 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner getnewaddress fork-b
+  bcrt1qwcr6lp6fjh4qg648jz8vncjqj9r0r9qxnxp4gn
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass generatetoaddress 2 bcrt1qsx0ep7fjmjyu5gsp88hr3q9av9muwlp59jluem
+  [
+    "7aee79bfbaa52cef51cd7736edd375d2ad1d9f101aad2d6bde9df68afd375f82",
+    "4ec073a618efdd0852ccb7c4fc3082aa782af7f9ff4d38128b002cbca1601f0d"
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18444 -rpcuser=polaruser -rpcpassword=polarpass generatetoaddress 4 bcrt1qwcr6lp6fjh4qg648jz8vncjqj9r0r9qxnxp4gn
+  [
+    "072c4a8eccc8f61d216b6ad268a969fbf398c80135db23cebbffb1f0204056e0",
+    "7f0a81aaf818aa52f338a205701543700bfde3688906b95e87cbf7df4be4a887",
+    "33c326e922b9cd53936861c2265edb881ff992c69e6a12b1bde4e59f98caeb66",
+    "51b766f54aa7fabc8253038cdab73aa1a4ce7a00aed9d8dfb739a7d488f0714f"
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getblockchaininfo
+  {
+    "chain": "regtest",
+    "blocks": 112,
+    "headers": 112,
+    "bestblockhash": "4ec073a618efdd0852ccb7c4fc3082aa782af7f9ff4d38128b002cbca1601f0d",
+    "bits": "207fffff",
+    "target": "7fffff0000000000000000000000000000000000000000000000000000000000",
+    "difficulty": 4.656542373906925e-10,
+    "time": 1785501248,
+    "mediantime": 1785500869,
+    "verificationprogress": 1,
+    "initialblockdownload": false,
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000e2",
+    "size_on_disk": 35254,
+    "pruned": false,
+    "warnings": [
+    ]
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18444 -rpcuser=polaruser -rpcpassword=polarpass getblockchaininfo
+  {
+    "chain": "regtest",
+    "blocks": 114,
+    "headers": 114,
+    "bestblockhash": "51b766f54aa7fabc8253038cdab73aa1a4ce7a00aed9d8dfb739a7d488f0714f",
+    "bits": "207fffff",
+    "target": "7fffff0000000000000000000000000000000000000000000000000000000000",
+    "difficulty": 4.656542373906925e-10,
+    "time": 1785501248,
+    "mediantime": 1785500869,
+    "verificationprogress": 1,
+    "initialblockdownload": false,
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000e6",
+    "size_on_disk": 35850,
+    "pruned": false,
+    "warnings": [
+    ]
+  }
+
+--- competing private tips ---
+{
+  "node_a": {
+    "height": 112,
+    "best_block_hash": "4ec073a618efdd0852ccb7c4fc3082aa782af7f9ff4d38128b002cbca1601f0d",
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000e2"
+  },
+  "node_b": {
+    "height": 114,
+    "best_block_hash": "51b766f54aa7fabc8253038cdab73aa1a4ce7a00aed9d8dfb739a7d488f0714f",
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000e6"
+  }
+}
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass addnode backend2:18444 onetry
+  (no output)
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getblockchaininfo
+  {
+    "chain": "regtest",
+    "blocks": 114,
+    "headers": 114,
+    "bestblockhash": "51b766f54aa7fabc8253038cdab73aa1a4ce7a00aed9d8dfb739a7d488f0714f",
+    "bits": "207fffff",
+    "target": "7fffff0000000000000000000000000000000000000000000000000000000000",
+    "difficulty": 4.656542373906925e-10,
+    "time": 1785501248,
+    "mediantime": 1785500869,
+    "verificationprogress": 1,
+    "initialblockdownload": false,
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000e6",
+    "size_on_disk": 36446,
+    "pruned": false,
+    "warnings": [
+    ]
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18444 -rpcuser=polaruser -rpcpassword=polarpass getblockchaininfo
+  {
+    "chain": "regtest",
+    "blocks": 114,
+    "headers": 114,
+    "bestblockhash": "51b766f54aa7fabc8253038cdab73aa1a4ce7a00aed9d8dfb739a7d488f0714f",
+    "bits": "207fffff",
+    "target": "7fffff0000000000000000000000000000000000000000000000000000000000",
+    "difficulty": 4.656542373906925e-10,
+    "time": 1785501248,
+    "mediantime": 1785500869,
+    "verificationprogress": 1,
+    "initialblockdownload": false,
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000e6",
+    "size_on_disk": 35850,
+    "pruned": false,
+    "warnings": [
+    ]
+  }
+
+--- ReorgReport ---
+{
+  "common_tip_before_split": "4d3fbe42caa7f427858c9f2bd1aa71a4e3ae806efe198abd7ba75943ddb30056",
+  "competing_tips": {
+    "node_a": {
+      "height": 112,
+      "best_block_hash": "4ec073a618efdd0852ccb7c4fc3082aa782af7f9ff4d38128b002cbca1601f0d",
+      "chainwork": "00000000000000000000000000000000000000000000000000000000000000e2"
+    },
+    "node_b": {
+      "height": 114,
+      "best_block_hash": "51b766f54aa7fabc8253038cdab73aa1a4ce7a00aed9d8dfb739a7d488f0714f",
+      "chainwork": "00000000000000000000000000000000000000000000000000000000000000e6"
+    }
+  },
+  "final_tips": {
+    "node_a": {
+      "height": 114,
+      "best_block_hash": "51b766f54aa7fabc8253038cdab73aa1a4ce7a00aed9d8dfb739a7d488f0714f",
+      "chainwork": "00000000000000000000000000000000000000000000000000000000000000e6"
+    },
+    "node_b": {
+      "height": 114,
+      "best_block_hash": "51b766f54aa7fabc8253038cdab73aa1a4ce7a00aed9d8dfb739a7d488f0714f",
+      "chainwork": "00000000000000000000000000000000000000000000000000000000000000e6"
+    }
+  },
+  "converged": true
+}
+
+converged: true
+

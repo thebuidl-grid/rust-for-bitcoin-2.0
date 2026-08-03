@@ -1,0 +1,1262 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running `target/debug/rfb-labs-week-1 all`
+
+==============================================================================
+Lab 01 — build and verify a regtest network
+==============================================================================
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getblockchaininfo
+  {
+    "chain": "regtest",
+    "blocks": 1,
+    "headers": 1,
+    "bestblockhash": "7a14162c67d301c3b7deabcb63a1bcaee079c84f69227ff3171d010b0d76701a",
+    "bits": "207fffff",
+    "target": "7fffff0000000000000000000000000000000000000000000000000000000000",
+    "difficulty": 4.656542373906925e-10,
+    "time": 1785500755,
+    "mediantime": 1785500755,
+    "verificationprogress": 1,
+    "initialblockdownload": false,
+    "chainwork": "0000000000000000000000000000000000000000000000000000000000000004",
+    "size_on_disk": 590,
+    "pruned": false,
+    "warnings": [
+    ]
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getblockcount
+  1
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getbestblockhash
+  7a14162c67d301c3b7deabcb63a1bcaee079c84f69227ff3171d010b0d76701a
+
+--- NetworkSnapshot ---
+{
+  "chain": "regtest",
+  "block_height": 1,
+  "best_block_hash": "7a14162c67d301c3b7deabcb63a1bcaee079c84f69227ff3171d010b0d76701a"
+}
+
+
+==============================================================================
+Lab 02 — create wallets and addresses
+==============================================================================
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass listwallets
+  [
+    ""
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass createwallet miner
+  {
+    "name": "miner"
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass listwallets
+  [
+    "",
+    "miner"
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass createwallet receiver
+  {
+    "name": "receiver"
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass listwallets
+  [
+    "",
+    "miner",
+    "receiver"
+  ]
+
+loaded wallets: ["", "miner", "receiver"]
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner getnewaddress mining
+  bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=receiver getnewaddress classmate
+  bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner getaddressinfo bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q
+  {
+    "address": "bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q",
+    "scriptPubKey": "00144c1cf4b30d90f92f37d5d40c023e739842bc3204",
+    "ismine": true,
+    "solvable": true,
+    "desc": "wpkh([aa7f8695/84h/1h/0h/0/0]03a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e87)#zr45ddma",
+    "parent_desc": "wpkh([aa7f8695/84h/1h/0h]tpubDCnZrozfWbLupCMQBJ62H82Mgrp8odur5rXxBFJSJLC8yeTZFwxfUy3JywSG9bAL73K91ET3r4tKgBYFrq1GdbdXtUvPFAfiLQ6DcgvpZqT/0/*)#etfx8p0e",
+    "iswatchonly": false,
+    "isscript": false,
+    "iswitness": true,
+    "witness_version": 0,
+    "witness_program": "4c1cf4b30d90f92f37d5d40c023e739842bc3204",
+    "pubkey": "03a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e87",
+    "ischange": false,
+    "timestamp": 1785500850,
+    "hdkeypath": "m/84h/1h/0h/0/0",
+    "hdseedid": "0000000000000000000000000000000000000000",
+    "hdmasterfingerprint": "aa7f8695",
+    "labels": [
+      "mining"
+    ]
+  }
+
+miner owns bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q: true
+regtest bcrt1 prefix: true
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=receiver getaddressinfo bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q
+  {
+    "address": "bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q",
+    "scriptPubKey": "00144c1cf4b30d90f92f37d5d40c023e739842bc3204",
+    "ismine": false,
+    "solvable": false,
+    "iswatchonly": false,
+    "isscript": false,
+    "iswitness": true,
+    "witness_version": 0,
+    "witness_program": "4c1cf4b30d90f92f37d5d40c023e739842bc3204",
+    "ischange": false,
+    "labels": [
+    ]
+  }
+receiver owns bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q: false
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=receiver getaddressinfo bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4
+  {
+    "address": "bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4",
+    "scriptPubKey": "00144768e68a15a690c1dbd615dfef98dba7cd2e8e1f",
+    "ismine": true,
+    "solvable": true,
+    "desc": "wpkh([b820676c/84h/1h/0h/0/0]0310db9ad903407110caa1655fa1dc7be459ab83936abc957df6d83bfb43dd244f)#vhrhn9um",
+    "parent_desc": "wpkh([b820676c/84h/1h/0h]tpubDD1fV1o5mk2GdRJg177BSkUUTgkVYXP9FfXJFYUTKvz5k1wUTPtnTUTkiQAKhUcNcua1tA3s6a2ofBvy1TWngGxd8NPPtikRMgzE4HrGxMu/0/*)#a32txnth",
+    "iswatchonly": false,
+    "isscript": false,
+    "iswitness": true,
+    "witness_version": 0,
+    "witness_program": "4768e68a15a690c1dbd615dfef98dba7cd2e8e1f",
+    "pubkey": "0310db9ad903407110caa1655fa1dc7be459ab83936abc957df6d83bfb43dd244f",
+    "ischange": false,
+    "timestamp": 1785500851,
+    "hdkeypath": "m/84h/1h/0h/0/0",
+    "hdseedid": "0000000000000000000000000000000000000000",
+    "hdmasterfingerprint": "b820676c",
+    "labels": [
+      "classmate"
+    ]
+  }
+
+receiver owns bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4: true
+regtest bcrt1 prefix: true
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner getaddressinfo bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4
+  {
+    "address": "bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4",
+    "scriptPubKey": "00144768e68a15a690c1dbd615dfef98dba7cd2e8e1f",
+    "ismine": false,
+    "solvable": false,
+    "iswatchonly": false,
+    "isscript": false,
+    "iswitness": true,
+    "witness_version": 0,
+    "witness_program": "4768e68a15a690c1dbd615dfef98dba7cd2e8e1f",
+    "ischange": false,
+    "labels": [
+    ]
+  }
+miner owns bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4: false
+
+
+==============================================================================
+Lab 03 — demonstrate coinbase maturity
+==============================================================================
+
+This lab needs a fresh chain: the premature spend must be rejected.
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass generatetoaddress 1 bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q
+  [
+    "640dd92bfdaf585098e6e12778a1ab4ea1ade00349d307808d17da97463baecb"
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getblockcount
+  2
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner getbalances
+  {
+    "mine": {
+      "trusted": 0.00000000,
+      "untrusted_pending": 0.00000000,
+      "immature": 50.00000000
+    },
+    "lastprocessedblock": {
+      "hash": "640dd92bfdaf585098e6e12778a1ab4ea1ade00349d307808d17da97463baecb",
+      "height": 2
+    }
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner sendtoaddress bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4 1
+  !! Bitcoin Core RPC failed: error code: -6
+error message:
+Insufficient funds
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass generatetoaddress 100 bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q
+  [
+    "002377fa8026a77ab212d347a14cbe7680d952bd3f2f13693bccf774420c3d0e",
+    "6fde45493469b24132fb9d565c924fab76446f30c89f331eae8178bcde6ae1a2",
+    "6a82e21cef89e72fcf3f155fd5604ca1f5d9b3c397616f1081091a15c2c46511",
+    "4eca2d4b1638e1283c4b71088ee9083e8414496692a66503572d890588828156",
+    "4aacbdf5a3e168ef031bea87bba68f72461cf81bc8b091e83aaa9b4ee782ebb5",
+    "4558a349ffb8b1e1a7325dd6126de70a4da8d47a220b10ee53f3b14605b5fac4",
+    "4eb8a37ed9b80b79c805c80c515bca2647412cc8f3f7b0d2db8ad12c392cbc97",
+    "69610f4930544934857718499f1746c9eeafa959650e05d430d02e79940d047c",
+    "09d6f9fbc8cb0235ad7a6d2498315ddd539ac51a12583e943a38a38ea6762190",
+    "58dbbcf1fe0da7359bef0afad33e4b5e2a70189f9f96ecef6b1a5eec66570e50",
+    "7ef3ed8209a5a95913fa9b8493ccc2876b4a12c6f42b56b16fb4b9be97ddad8d",
+    "5d9655de20a0b3c518f2ca1a2c166323f0a33b707a7abaa14adad75d74f02309",
+    "29221115a60aaf0dc7a8983154faa960b595854dbfda52c172fc000b8c7f369f",
+    "46c5299460a670c7d8f07dcd85c883ce8884da4cb43fafcf0c1495e9337f34f7",
+    "07026461de89dc175179fac96ac2ed226083cfc1b37c31e0537e6165b8c3c6c6",
+    "662e001fb2d7fcd943036491de6235b68472499e7010c2f11ff9d4352aa1c8eb",
+    "69fbda0ca0567148b31c0e3fa5ca218e61d5d3629448ed9c27462aff29ea2bf1",
+    "0688df67635d3f7272f07549343b467d27ad050e2c44f84b7cbc07fd8bd24379",
+    "69ffa29cf23ce2690e542cdd46194d18412b77a19ed98ffa992682860f0c5552",
+    "15301f0773cd02c744e1102ca2d42b79c181ed0c774522533c26ce6aa02ea266",
+    "4e501e415e66982c5b624714aee56198d43273af7bd297f3bb9004cac0ab88d1",
+    "7d6a64d250a1358a4ae716aab25ef6e3bfa57e9c0da91face9f3f646cb376f56",
+    "64a3483b2e7ef2fcdfd6a282a9ab587d283f32be03141dbfda85bd47932b1a00",
+    "7a6cdb3d6de6b693b13aef84ac3e999b2f374bfb197b4b6e6b1e781ce3a1ddf0",
+    "4f294b03cd1d483a66186da4fb7b71e1ca4b531de4bd5e5a85bdaed5da4196de",
+    "30b33f1f3e95a99bce5d9ef1a6df5f203bf7c5657bf9c19bd2b8be36bd6c8bc8",
+    "42caa74a157306d18b7c9f4ed52e1e1b54893f89d737bb63cd5bdc6e6843daed",
+    "2e903f4ced312f945472c4f10f4b4a19472313f7f9739db10df97d791990ae83",
+    "754a13711312799e8b7820654eee2cc2df1a90d3a19d504e315e6f3652cf8267",
+    "01eba4905b5e640487f32c90b5b8352e1d215731679d8433861c9f012e91f85c",
+    "50d12641a857bda769752d254b5f0ff013fcc58be7bda6e35b845e4f8751323c",
+    "472913ffa7b13e2133b8641da24b135b81290ee4a202ab34659b130b94fef0f1",
+    "57673d78035108ebd4b9f0c26d843a0748f17edb2cbc861e961584930774d9b9",
+    "58dd2236952347940ed902ca1045d6cf45895a4ceaa47e907b46a8d7307253e2",
+    "747ebca4a9d8cd7aec33805b2bb0772a32fc5bcf8e230d6df55876c08206d511",
+    "6315242e7d846b3c7020a2efb615eec59fa45881f5646f5c3fc431ad57e046c9",
+    "50ef6e06a75419ad13fd32442d59e98b61cebb95a2f7805d3446b886c42c6176",
+    "4777b88891324455a552146cc1f26496516074a7ce3903031b7f2e7ec1d2670c",
+    "1cfd84dd2f951fa915f23b20d5e32114296c195f24198beb491bddcc915b8114",
+    "5ed9b83189424b25b2681f05ccae6b5072ec39ff3966a6962178c78578b4f7a8",
+    "08ddff0e0759e7ee539a930233c23b329f5a836c6b38ccc00819419b86d99735",
+    "563997772b4f1e042357d42163e9a7fcc357586d66186833409e328ea74b32a1",
+    "655e7bdd6d7053f70da87f269e522442cfd27a8b85e6b5c5c27baa49712660ae",
+    "0b3472e721ab571f019acbea84c0ed7c3d50173541f389d4d7dc2d04068fd290",
+    "6fa437d20d43575b75b6ea1037576a34b3b575c8c8c976997f4283fd544ab391",
+    "40096acb2018017d6487a64f34e9c5ef35b7f21bbd4f0008903a0979fcc7d0e8",
+    "3c1c09d7926e977561ff7b1bf187a7a2d431b0c22bd7128b18a6df1aaf6da56b",
+    "25fba4fb4ebcaf12a0aa872b35040419155776a6e8e0d77fe3b322a563f6d194",
+    "48d7ac271e07b149ff0ca5f4f4e48656b783779c09c56f11a22a97c5335da1fe",
+    "0e57e93f1e300195d0215dc8c81697c5ec594bc6f968e17d44bc87b6945b6eff",
+    "59acc93d70566e622efc9f9b35d73ae045c2c413fb7654eb46d44d57eae8a42a",
+    "289c1a8a0de5e4db0c2515c9f35ad0c010fb6330e12bd41affbce284cc8aea63",
+    "60788ffbdaac006df1972a5aa8bc55083f703fefb239c738d0c2609328403ba0",
+    "60239cafa98c2e786a1fdbf00d441e3a212388ca843b3fbdffdba3f43d51a651",
+    "2676edbe0833d5df7f0d34bfa2f271baa6704b4a29230965ae734bf98404c37a",
+    "246d880a5dd8a78a8a2226136875747f6d469a9621135e3f350bf0ff8b48eb82",
+    "0ac0b9cc172eac1ddeddc25402a376d878e6e389ee8df54314a1e13289a90b25",
+    "2dcdf05193c3213bda8115ed485f08bb814b7d8c5de904512e4b0800db79fb93",
+    "6dc860719aa0bdbd9c8a20ab24c5d97d62c6bf915851e37568079c66397757a0",
+    "35f67a9ab044ee0cb70ca1bf9edd24dc5595ff7a6ab5fa4b08872816f4d97b9c",
+    "284471a610f8b8a6fab046372bb8ce4747a7dcc3b62ea592ee67b1568cb07447",
+    "799cdf595ae378314ec9dae5f9c1158be622f18eb4457684b596937d8f22ea88",
+    "7e10db2ff4dca898b6ef027d24fe21204ce1c681f5b5d98a9a8a9c2fa37d0941",
+    "19e4a64635c27f923175b460a79cfd2ad7261995aad6b106ff4a676d32ba8310",
+    "04b71895720c943aef55a9236911aa3f5a9c09259829f361c993c6f81f0d06ae",
+    "31d70f7f0d291f8e80b78da3256067cb1ddb947f8da5e5e2fc4081cff96dbc94",
+    "375be412eb1b79e5a44d8bf85da762d3a29861c3b313493a3db6cd71c659500f",
+    "0d0fb1bae39f1ad3e28ebf0fe1fd9ed1d01f9cb3017e5547cfb356e2001d4e53",
+    "0c476288f0682ddf3e9c02c71161ea4908c3f49d7de56a6893f643e8854f3bce",
+    "0c2ed7a3760c8870112657508d7114fdf0a350403f017279453488bedf7eccae",
+    "6011c63c1b2fca93bb713b92e93d720348dbc770d7e8c9dc313eeba59350a26e",
+    "6d49b644a9361752f0cc08e0c7b8d337060cc8caf2b647018dccb2c3315bd024",
+    "38b808f2eb5e2f3b36f2aad8e74a92fa35b070e2797d2c1c74443c453d2c803b",
+    "664e3dec0ca51eefa3154b8583d759273b1f71c908926341a71218be2b3369d2",
+    "7bb5d21cb20aa5f52a7c22c811613dd15a5abaff924e2745ee4c49af58d7b7bb",
+    "2162546be58717cf9eaa44a0c37046a4508a870f522029fff3cc8a234d1c44de",
+    "242fa526317317db95be38904fde4bf074fc2a731ec43305f8ac92b5681b105d",
+    "40f80d256f3dfbfbd686f996efd56d3722ea2d5f03777665c89743f6f15fe23a",
+    "7c89522d7ba577f1917b10d69212702d1e8f0e960761fea417c554c3ff0ef590",
+    "4bf0e1b4f76d0a0ce5bdc421fc7ae6f673af7c2758fa6c6b25baad72ea2a4ae7",
+    "23abd3fa2f2db9896f95cec2d27340cb5361b6b2d3c362867fcbbe8237f1a320",
+    "6db2b087e1931d40b9934cef6b30b51b8f63ee30930a69e593acb32e7c43f499",
+    "3c10f07a560342eb822f23d1498d52cfceac3d13282a927d0392428f6472c39f",
+    "56a037f57ad19e89594b04ecc8238dc77a92c56d720e19fbae8070bbd0df5e4b",
+    "6401498e28f5b05b7a70f9812a451e62bf3e6ff40ee69f4f8568c7e8e495331f",
+    "4dddcb351d8f48def45a7fac3ae7b4a594398eb47d00043d516dbacdf3e36b81",
+    "4ff0558c1c3c09cb2207c97306d83fe5534f526b661d5c531c8d2f5076019ff7",
+    "2065ab90afe8e7ada2f0b42204566461680cce7d32cfde2cb24c775bf4309adf",
+    "674a22a8fb3fee2fbcf9e4a832fb40f05bcbc0d189a4e6af1b8a4e470e31c66a",
+    "78fe1a3d2f8f6eb6ab94f7f1762ddc64f13a7d929a12bdfb44d745d9b2698299",
+    "760dc90f5f0f29a1dc1f633c625bc1a41b37f12c63e1dc43da09647d09d0c72b",
+    "5e76f62ced6dd1d53883e834b6c82b02463e38987b479bdcfc08618ee0926bf9",
+    "739ce1380059d343e948a78f2100f6927665bd8688b43d745052e339de23c53d",
+    "5aa08c322b8da1da8f6a22d64668060499e6d80fd75336619645cdd14bdf2262",
+    "4bb409f94e399fd0952d839a4eece204fdfe3e81d1ce9ce525e7d1aa770fb3ec",
+    "29b330c867961ae79bb64c99460ec4ee36a961cd54e23d7f7203c6aa451b2b23",
+    "181135116da45d2deb77f7f11c335780bdaa1830aeb670ebdba2efa03d5e0c59",
+    "1542ac69589ebbb3b6de36d396c4b29e260b95194486ee70dca4fbba2583c633",
+    "42fc133b49ea6101c8aa613cb7baba5a41c04eb56bf906cebcb378e930e9915d",
+    "2bd214eac37965a28be72f17a1bdfddc1491477b56ec4f74fcbb2c6df792f511"
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getblockcount
+  102
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner getbalances
+  {
+    "mine": {
+      "trusted": 50.00000000,
+      "untrusted_pending": 0.00000000,
+      "immature": 5000.00000000
+    },
+    "lastprocessedblock": {
+      "hash": "2bd214eac37965a28be72f17a1bdfddc1491477b56ec4f74fcbb2c6df792f511",
+      "height": 102
+    }
+  }
+
+--- CoinbaseMaturityReport ---
+{
+  "height_after_first_block": 2,
+  "balance_after_first_block": {
+    "trusted": 0.0,
+    "untrusted_pending": 0.0,
+    "immature": 50.0
+  },
+  "premature_spend_error": "error code: -6\nerror message:\nInsufficient funds",
+  "final_height": 102,
+  "final_balance": {
+    "trusted": 50.0,
+    "untrusted_pending": 0.0,
+    "immature": 5000.0
+  }
+}
+
+
+==============================================================================
+Lab 04 — inspect a UTXO and its outpoint
+==============================================================================
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner listunspent
+  [
+    {
+      "txid": "1c62ddb27fc72e5abefbc40dc882296e3772e57ee4df5a3a82e1b78554282c7f",
+      "vout": 0,
+      "address": "bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q",
+      "label": "mining",
+      "scriptPubKey": "00144c1cf4b30d90f92f37d5d40c023e739842bc3204",
+      "amount": 50.00000000,
+      "confirmations": 101,
+      "spendable": true,
+      "solvable": true,
+      "desc": "wpkh([aa7f8695/84h/1h/0h/0/0]03a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e87)#zr45ddma",
+      "parent_descs": [
+        "wpkh([aa7f8695/84h/1h/0h]tpubDCnZrozfWbLupCMQBJ62H82Mgrp8odur5rXxBFJSJLC8yeTZFwxfUy3JywSG9bAL73K91ET3r4tKgBYFrq1GdbdXtUvPFAfiLQ6DcgvpZqT/0/*)#etfx8p0e"
+      ],
+      "safe": true
+    }
+  ]
+
+--- selected Utxo ---
+{
+  "txid": "1c62ddb27fc72e5abefbc40dc882296e3772e57ee4df5a3a82e1b78554282c7f",
+  "vout": 0,
+  "address": "bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q",
+  "script_pub_key": "00144c1cf4b30d90f92f37d5d40c023e739842bc3204",
+  "amount": 50.0,
+  "confirmations": 101,
+  "spendable": true
+}
+
+
+--- OutPoint ---
+{
+  "txid": "1c62ddb27fc72e5abefbc40dc882296e3772e57ee4df5a3a82e1b78554282c7f",
+  "vout": 0
+}
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner getbalances
+  {
+    "mine": {
+      "trusted": 50.00000000,
+      "untrusted_pending": 0.00000000,
+      "immature": 5000.00000000
+    },
+    "lastprocessedblock": {
+      "hash": "2bd214eac37965a28be72f17a1bdfddc1491477b56ec4f74fcbb2c6df792f511",
+      "height": 102
+    }
+  }
+spendable UTXO count: 1
+sum(spendable UTXOs) = 50 BTC
+getbalances.mine.trusted = 50 BTC
+difference = 0 BTC
+
+
+==============================================================================
+Lab 05 — broadcast and observe an unconfirmed payment
+==============================================================================
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner sendtoaddress bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4 1
+  f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getrawmempool
+  [
+    "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d"
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner gettransaction f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d
+  {
+    "amount": -1.00000000,
+    "fee": -0.00002820,
+    "confirmations": 0,
+    "trusted": true,
+    "txid": "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d",
+    "wtxid": "1869cda352d04756462cd5badbf48b20ab30eaac9b2e142e9f5bc5797e8e8caf",
+    "walletconflicts": [
+    ],
+    "mempoolconflicts": [
+    ],
+    "time": 1785500852,
+    "timereceived": 1785500852,
+    "bip125-replaceable": "yes",
+    "details": [
+      {
+        "address": "bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4",
+        "category": "send",
+        "amount": -1.00000000,
+        "vout": 0,
+        "fee": -0.00002820,
+        "abandoned": false
+      }
+    ],
+    "hex": "020000000001017f2c285485b7e1823a5adfe47ee572376e2982c80dc4fbbe5a2ec77fb2dd621c0000000000fdffffff0200e1f505000000001600144768e68a15a690c1dbd615dfef98dba7cd2e8e1ffc05102401000000160014491ab3c90954badf83fef0e5305c1add35efd79302473044022014092b180c8d85e874ed79f6ba3a53e8b44527f030fe7ad5657617e1e84fd819022056d4f66235ea94de2b512db5b86b69e1435a20d5a076720d211458275fe8310b012103a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e8766000000",
+    "lastprocessedblock": {
+      "hash": "2bd214eac37965a28be72f17a1bdfddc1491477b56ec4f74fcbb2c6df792f511",
+      "height": 102
+    }
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=receiver getbalances
+  {
+    "mine": {
+      "trusted": 0.00000000,
+      "untrusted_pending": 1.00000000,
+      "immature": 0.00000000
+    },
+    "lastprocessedblock": {
+      "hash": "2bd214eac37965a28be72f17a1bdfddc1491477b56ec4f74fcbb2c6df792f511",
+      "height": 102
+    }
+  }
+
+--- MempoolObservation ---
+{
+  "txid": "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d",
+  "mempool_contains_tx": true,
+  "sender_status": {
+    "txid": "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d",
+    "confirmations": 0,
+    "amount": -1.0,
+    "fee": -0.0000282,
+    "block_hash": null
+  },
+  "receiver_balance": {
+    "trusted": 0.0,
+    "untrusted_pending": 1.0,
+    "immature": 0.0
+  }
+}
+
+broadcast is not confirmation: confirmations = 0
+
+
+==============================================================================
+Lab 06 — decode and audit value conservation
+==============================================================================
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getrawtransaction f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d 2
+  {
+    "txid": "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d",
+    "hash": "1869cda352d04756462cd5badbf48b20ab30eaac9b2e142e9f5bc5797e8e8caf",
+    "version": 2,
+    "size": 222,
+    "vsize": 141,
+    "weight": 561,
+    "locktime": 102,
+    "vin": [
+      {
+        "txid": "1c62ddb27fc72e5abefbc40dc882296e3772e57ee4df5a3a82e1b78554282c7f",
+        "vout": 0,
+        "scriptSig": {
+          "asm": "",
+          "hex": ""
+        },
+        "txinwitness": [
+          "3044022014092b180c8d85e874ed79f6ba3a53e8b44527f030fe7ad5657617e1e84fd819022056d4f66235ea94de2b512db5b86b69e1435a20d5a076720d211458275fe8310b01",
+          "03a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e87"
+        ],
+        "sequence": 4294967293
+      }
+    ],
+    "vout": [
+      {
+        "value": 1.00000000,
+        "n": 0,
+        "scriptPubKey": {
+          "asm": "0 4768e68a15a690c1dbd615dfef98dba7cd2e8e1f",
+          "desc": "addr(bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4)#w6g0yd7d",
+          "hex": "00144768e68a15a690c1dbd615dfef98dba7cd2e8e1f",
+          "address": "bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4",
+          "type": "witness_v0_keyhash"
+        }
+      },
+      {
+        "value": 48.99997180,
+        "n": 1,
+        "scriptPubKey": {
+          "asm": "0 491ab3c90954badf83fef0e5305c1add35efd793",
+          "desc": "addr(bcrt1qfydt8jgf2jadlql77rjnqhq6m567l4un0v2p2v)#0mdhcfjp",
+          "hex": "0014491ab3c90954badf83fef0e5305c1add35efd793",
+          "address": "bcrt1qfydt8jgf2jadlql77rjnqhq6m567l4un0v2p2v",
+          "type": "witness_v0_keyhash"
+        }
+      }
+    ],
+    "hex": "020000000001017f2c285485b7e1823a5adfe47ee572376e2982c80dc4fbbe5a2ec77fb2dd621c0000000000fdffffff0200e1f505000000001600144768e68a15a690c1dbd615dfef98dba7cd2e8e1ffc05102401000000160014491ab3c90954badf83fef0e5305c1add35efd79302473044022014092b180c8d85e874ed79f6ba3a53e8b44527f030fe7ad5657617e1e84fd819022056d4f66235ea94de2b512db5b86b69e1435a20d5a076720d211458275fe8310b012103a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e8766000000"
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getrawtransaction 1c62ddb27fc72e5abefbc40dc882296e3772e57ee4df5a3a82e1b78554282c7f 1
+  {
+    "txid": "1c62ddb27fc72e5abefbc40dc882296e3772e57ee4df5a3a82e1b78554282c7f",
+    "hash": "cfd02448945bb2f525851626d5fa6a3e4af443c23c1bec64bb207aaf153b89c8",
+    "version": 2,
+    "size": 167,
+    "vsize": 140,
+    "weight": 560,
+    "locktime": 1,
+    "vin": [
+      {
+        "coinbase": "5200",
+        "txinwitness": [
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "sequence": 4294967294
+      }
+    ],
+    "vout": [
+      {
+        "value": 50.00000000,
+        "n": 0,
+        "scriptPubKey": {
+          "asm": "0 4c1cf4b30d90f92f37d5d40c023e739842bc3204",
+          "desc": "addr(bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q)#37fxt8x3",
+          "hex": "00144c1cf4b30d90f92f37d5d40c023e739842bc3204",
+          "address": "bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q",
+          "type": "witness_v0_keyhash"
+        }
+      },
+      {
+        "value": 0.00000000,
+        "n": 1,
+        "scriptPubKey": {
+          "asm": "OP_RETURN aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9",
+          "desc": "raw(6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9)#cav96mf3",
+          "hex": "6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9",
+          "type": "nulldata"
+        }
+      }
+    ],
+    "hex": "020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff025200feffffff0200f2052a010000001600144c1cf4b30d90f92f37d5d40c023e739842bc32040000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000001000000",
+    "blockhash": "640dd92bfdaf585098e6e12778a1ab4ea1ade00349d307808d17da97463baecb",
+    "confirmations": 101,
+    "time": 1785500851,
+    "blocktime": 1785500851
+  }
+
+--- DecodedTransaction ---
+{
+  "txid": "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d",
+  "inputs": [
+    {
+      "previous_output": {
+        "txid": "1c62ddb27fc72e5abefbc40dc882296e3772e57ee4df5a3a82e1b78554282c7f",
+        "vout": 0
+      },
+      "previous_value": 50.0
+    }
+  ],
+  "outputs": [
+    {
+      "vout": 0,
+      "value": 1.0,
+      "address": "bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4",
+      "script_pub_key_hex": "00144768e68a15a690c1dbd615dfef98dba7cd2e8e1f"
+    },
+    {
+      "vout": 1,
+      "value": 48.9999718,
+      "address": "bcrt1qfydt8jgf2jadlql77rjnqhq6m567l4un0v2p2v",
+      "script_pub_key_hex": "0014491ab3c90954badf83fef0e5305c1add35efd793"
+    }
+  ],
+  "vsize": 141
+}
+
+
+--- consumed outpoints ---
+[
+  {
+    "txid": "1c62ddb27fc72e5abefbc40dc882296e3772e57ee4df5a3a82e1b78554282c7f",
+    "vout": 0
+  }
+]
+
+
+--- PaymentAndChange ---
+{
+  "payment": {
+    "vout": 0,
+    "value": 1.0,
+    "address": "bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4",
+    "script_pub_key_hex": "00144768e68a15a690c1dbd615dfef98dba7cd2e8e1f"
+  },
+  "change": {
+    "vout": 1,
+    "value": 48.9999718,
+    "address": "bcrt1qfydt8jgf2jadlql77rjnqhq6m567l4un0v2p2v",
+    "script_pub_key_hex": "0014491ab3c90954badf83fef0e5305c1add35efd793"
+  }
+}
+
+vsize = 141 vB
+fee   = 0.0000282 BTC (20.00 sat/vB)
+
+sum(inputs) = sum(payment) + sum(change) + fee
+50 = 1 + 48.9999718 + 0.0000282
+
+
+==============================================================================
+Lab 07 — confirm and locate the transaction
+==============================================================================
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass generatetoaddress 1 bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q
+  [
+    "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32"
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getrawmempool
+  [
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=receiver gettransaction f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d
+  {
+    "amount": 1.00000000,
+    "confirmations": 1,
+    "blockhash": "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32",
+    "blockheight": 103,
+    "blockindex": 1,
+    "blocktime": 1785500868,
+    "txid": "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d",
+    "wtxid": "1869cda352d04756462cd5badbf48b20ab30eaac9b2e142e9f5bc5797e8e8caf",
+    "walletconflicts": [
+    ],
+    "mempoolconflicts": [
+    ],
+    "time": 1785500852,
+    "timereceived": 1785500852,
+    "bip125-replaceable": "no",
+    "details": [
+      {
+        "address": "bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4",
+        "parent_descs": [
+          "wpkh([b820676c/84h/1h/0h]tpubDD1fV1o5mk2GdRJg177BSkUUTgkVYXP9FfXJFYUTKvz5k1wUTPtnTUTkiQAKhUcNcua1tA3s6a2ofBvy1TWngGxd8NPPtikRMgzE4HrGxMu/0/*)#a32txnth"
+        ],
+        "category": "receive",
+        "amount": 1.00000000,
+        "label": "classmate",
+        "vout": 0,
+        "abandoned": false
+      }
+    ],
+    "hex": "020000000001017f2c285485b7e1823a5adfe47ee572376e2982c80dc4fbbe5a2ec77fb2dd621c0000000000fdffffff0200e1f505000000001600144768e68a15a690c1dbd615dfef98dba7cd2e8e1ffc05102401000000160014491ab3c90954badf83fef0e5305c1add35efd79302473044022014092b180c8d85e874ed79f6ba3a53e8b44527f030fe7ad5657617e1e84fd819022056d4f66235ea94de2b512db5b86b69e1435a20d5a076720d211458275fe8310b012103a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e8766000000",
+    "lastprocessedblock": {
+      "hash": "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32",
+      "height": 103
+    }
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getblock 437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32 1
+  {
+    "hash": "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32",
+    "confirmations": 1,
+    "height": 103,
+    "version": 536870912,
+    "versionHex": "20000000",
+    "merkleroot": "798e557fb4814cce9f65a88174925e38f0687172ffcde76121641d0a75fd30f5",
+    "time": 1785500868,
+    "mediantime": 1785500868,
+    "nonce": 0,
+    "bits": "207fffff",
+    "target": "7fffff0000000000000000000000000000000000000000000000000000000000",
+    "difficulty": 4.656542373906925e-10,
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000d0",
+    "nTx": 2,
+    "previousblockhash": "2bd214eac37965a28be72f17a1bdfddc1491477b56ec4f74fcbb2c6df792f511",
+    "strippedsize": 326,
+    "size": 471,
+    "weight": 1449,
+    "tx": [
+      "02fe6668e206f80cc6eb3a5a9fd3dffd868cbeaa78d47a62ca8dddba7963ab2f",
+      "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d"
+    ]
+  }
+
+--- ConfirmationReport ---
+{
+  "txid": "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d",
+  "block_hash": "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32",
+  "confirmations": 1,
+  "mempool_is_empty": true,
+  "transaction_is_in_block": true
+}
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=receiver getbalances
+  {
+    "mine": {
+      "trusted": 1.00000000,
+      "untrusted_pending": 0.00000000,
+      "immature": 0.00000000
+    },
+    "lastprocessedblock": {
+      "hash": "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32",
+      "height": 103
+    }
+  }
+
+--- receiver balances after confirmation ---
+{
+  "trusted": 1.0,
+  "untrusted_pending": 0.0,
+  "immature": 0.0
+}
+
+
+==============================================================================
+Lab 08 — inspect block commitments and confirmation depth
+==============================================================================
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getblockheader 437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32
+  {
+    "hash": "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32",
+    "confirmations": 1,
+    "height": 103,
+    "version": 536870912,
+    "versionHex": "20000000",
+    "merkleroot": "798e557fb4814cce9f65a88174925e38f0687172ffcde76121641d0a75fd30f5",
+    "time": 1785500868,
+    "mediantime": 1785500868,
+    "nonce": 0,
+    "bits": "207fffff",
+    "target": "7fffff0000000000000000000000000000000000000000000000000000000000",
+    "difficulty": 4.656542373906925e-10,
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000d0",
+    "nTx": 2,
+    "previousblockhash": "2bd214eac37965a28be72f17a1bdfddc1491477b56ec4f74fcbb2c6df792f511"
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=receiver gettransaction f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d
+  {
+    "amount": 1.00000000,
+    "confirmations": 1,
+    "blockhash": "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32",
+    "blockheight": 103,
+    "blockindex": 1,
+    "blocktime": 1785500868,
+    "txid": "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d",
+    "wtxid": "1869cda352d04756462cd5badbf48b20ab30eaac9b2e142e9f5bc5797e8e8caf",
+    "walletconflicts": [
+    ],
+    "mempoolconflicts": [
+    ],
+    "time": 1785500852,
+    "timereceived": 1785500852,
+    "bip125-replaceable": "no",
+    "details": [
+      {
+        "address": "bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4",
+        "parent_descs": [
+          "wpkh([b820676c/84h/1h/0h]tpubDD1fV1o5mk2GdRJg177BSkUUTgkVYXP9FfXJFYUTKvz5k1wUTPtnTUTkiQAKhUcNcua1tA3s6a2ofBvy1TWngGxd8NPPtikRMgzE4HrGxMu/0/*)#a32txnth"
+        ],
+        "category": "receive",
+        "amount": 1.00000000,
+        "label": "classmate",
+        "vout": 0,
+        "abandoned": false
+      }
+    ],
+    "hex": "020000000001017f2c285485b7e1823a5adfe47ee572376e2982c80dc4fbbe5a2ec77fb2dd621c0000000000fdffffff0200e1f505000000001600144768e68a15a690c1dbd615dfef98dba7cd2e8e1ffc05102401000000160014491ab3c90954badf83fef0e5305c1add35efd79302473044022014092b180c8d85e874ed79f6ba3a53e8b44527f030fe7ad5657617e1e84fd819022056d4f66235ea94de2b512db5b86b69e1435a20d5a076720d211458275fe8310b012103a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e8766000000",
+    "lastprocessedblock": {
+      "hash": "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32",
+      "height": 103
+    }
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass generatetoaddress 5 bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q
+  [
+    "186b3521f1e2ca0a9f7223f485c037ebb9dc77d4f402b61d36452d8a5c53d85f",
+    "52ed1a332e127bf963c2a96e2604f025fda672504510caa4a3da632c0692ee5c",
+    "64b70d7f5b064dcc0b37467f656b458db974244f0a9c4d3e8c9914fea39485d0",
+    "14dc8fc0c8af8d1edef1e539a56bf115e0775258b537c9a7f243bad261960293",
+    "3979e37d25849ac84b30eafc2d620c5b869d2577a28e7e36be644fe42d52fa6e"
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=receiver gettransaction f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d
+  {
+    "amount": 1.00000000,
+    "confirmations": 6,
+    "blockhash": "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32",
+    "blockheight": 103,
+    "blockindex": 1,
+    "blocktime": 1785500868,
+    "txid": "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d",
+    "wtxid": "1869cda352d04756462cd5badbf48b20ab30eaac9b2e142e9f5bc5797e8e8caf",
+    "walletconflicts": [
+    ],
+    "mempoolconflicts": [
+    ],
+    "time": 1785500852,
+    "timereceived": 1785500852,
+    "bip125-replaceable": "no",
+    "details": [
+      {
+        "address": "bcrt1qga5wdzs456gvrk7kzh07lxxm5lxjarslkxm3m4",
+        "parent_descs": [
+          "wpkh([b820676c/84h/1h/0h]tpubDD1fV1o5mk2GdRJg177BSkUUTgkVYXP9FfXJFYUTKvz5k1wUTPtnTUTkiQAKhUcNcua1tA3s6a2ofBvy1TWngGxd8NPPtikRMgzE4HrGxMu/0/*)#a32txnth"
+        ],
+        "category": "receive",
+        "amount": 1.00000000,
+        "label": "classmate",
+        "vout": 0,
+        "abandoned": false
+      }
+    ],
+    "hex": "020000000001017f2c285485b7e1823a5adfe47ee572376e2982c80dc4fbbe5a2ec77fb2dd621c0000000000fdffffff0200e1f505000000001600144768e68a15a690c1dbd615dfef98dba7cd2e8e1ffc05102401000000160014491ab3c90954badf83fef0e5305c1add35efd79302473044022014092b180c8d85e874ed79f6ba3a53e8b44527f030fe7ad5657617e1e84fd819022056d4f66235ea94de2b512db5b86b69e1435a20d5a076720d211458275fe8310b012103a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e8766000000",
+    "lastprocessedblock": {
+      "hash": "3979e37d25849ac84b30eafc2d620c5b869d2577a28e7e36be644fe42d52fa6e",
+      "height": 108
+    }
+  }
+
+--- SecurityReport ---
+{
+  "header": {
+    "hash": "437082f60d095e6233d0cef531f9b5ae193ec02aaf818d9126821dc46585fe32",
+    "height": 103,
+    "previous_block_hash": "2bd214eac37965a28be72f17a1bdfddc1491477b56ec4f74fcbb2c6df792f511",
+    "merkle_root": "798e557fb4814cce9f65a88174925e38f0687172ffcde76121641d0a75fd30f5",
+    "nonce": 0,
+    "difficulty": 4.6565423739069247e-10,
+    "bits": "207fffff",
+    "confirmations": 1,
+    "chainwork": "00000000000000000000000000000000000000000000000000000000000000d0"
+  },
+  "confirmations_before": 1,
+  "confirmations_after": 6
+}
+
+confirmations 1 -> 6 after five blocks
+
+
+==============================================================================
+Lab 09 — force multi-UTXO coin selection
+==============================================================================
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass listwallets
+  [
+    "",
+    "miner",
+    "receiver"
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass createwallet alice
+  {
+    "name": "alice"
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=alice getnewaddress funding
+  bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=receiver getnewaddress alice-payment
+  bcrt1qkk8hsu3r2pxwkmkjp6gcplr9qurrzdp50nxzjc
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner sendtoaddress bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps 0.4
+  0b25873cd463a702fa616f0b176229b3079294623726ac0b631161ea01e89514
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner sendtoaddress bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps 0.4
+  9f82aeee0e5754be331f61ab60c8672838250fbc69c30834dfc66ceebf2c0bc5
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=miner sendtoaddress bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps 0.4
+  9dca7f96e6b26307adfd87c0dcbf175eb3b9c99e77b7cd9c525b54e5d140f6c3
+
+--- funding TXIDs ---
+[
+  "0b25873cd463a702fa616f0b176229b3079294623726ac0b631161ea01e89514",
+  "9f82aeee0e5754be331f61ab60c8672838250fbc69c30834dfc66ceebf2c0bc5",
+  "9dca7f96e6b26307adfd87c0dcbf175eb3b9c99e77b7cd9c525b54e5d140f6c3"
+]
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass generatetoaddress 1 bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q
+  [
+    "517b4e47bf8cd624fa05779bc127fecae5d5550d2f085028d0ef94f1478400ee"
+  ]
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=alice listunspent
+  [
+    {
+      "txid": "9dca7f96e6b26307adfd87c0dcbf175eb3b9c99e77b7cd9c525b54e5d140f6c3",
+      "vout": 1,
+      "address": "bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps",
+      "label": "funding",
+      "scriptPubKey": "001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+      "amount": 0.40000000,
+      "confirmations": 1,
+      "spendable": true,
+      "solvable": true,
+      "desc": "wpkh([cea758ad/84h/1h/0h/0/0]0219bff14677fc9dc20a94702a36b519cf8cb5a5ceac70c399017ff55a4507feb7)#k9k6zks8",
+      "parent_descs": [
+        "wpkh([cea758ad/84h/1h/0h]tpubDCJBgRubwXDuxcJ87jPaeAJnyM69FCJ8MRxmnwwKco3GbSSZ6ULBtopSWeSgZXxo7j8gphijtZ2fQCTskpueRHKsrdRs2iTZP751JA6PmYB/0/*)#s7xelqcy"
+      ],
+      "safe": true
+    },
+    {
+      "txid": "9f82aeee0e5754be331f61ab60c8672838250fbc69c30834dfc66ceebf2c0bc5",
+      "vout": 1,
+      "address": "bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps",
+      "label": "funding",
+      "scriptPubKey": "001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+      "amount": 0.40000000,
+      "confirmations": 1,
+      "spendable": true,
+      "solvable": true,
+      "desc": "wpkh([cea758ad/84h/1h/0h/0/0]0219bff14677fc9dc20a94702a36b519cf8cb5a5ceac70c399017ff55a4507feb7)#k9k6zks8",
+      "parent_descs": [
+        "wpkh([cea758ad/84h/1h/0h]tpubDCJBgRubwXDuxcJ87jPaeAJnyM69FCJ8MRxmnwwKco3GbSSZ6ULBtopSWeSgZXxo7j8gphijtZ2fQCTskpueRHKsrdRs2iTZP751JA6PmYB/0/*)#s7xelqcy"
+      ],
+      "safe": true
+    },
+    {
+      "txid": "0b25873cd463a702fa616f0b176229b3079294623726ac0b631161ea01e89514",
+      "vout": 1,
+      "address": "bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps",
+      "label": "funding",
+      "scriptPubKey": "001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+      "amount": 0.40000000,
+      "confirmations": 1,
+      "spendable": true,
+      "solvable": true,
+      "desc": "wpkh([cea758ad/84h/1h/0h/0/0]0219bff14677fc9dc20a94702a36b519cf8cb5a5ceac70c399017ff55a4507feb7)#k9k6zks8",
+      "parent_descs": [
+        "wpkh([cea758ad/84h/1h/0h]tpubDCJBgRubwXDuxcJ87jPaeAJnyM69FCJ8MRxmnwwKco3GbSSZ6ULBtopSWeSgZXxo7j8gphijtZ2fQCTskpueRHKsrdRs2iTZP751JA6PmYB/0/*)#s7xelqcy"
+      ],
+      "safe": true
+    }
+  ]
+
+--- Alice's confirmed UTXOs ---
+[
+  {
+    "txid": "9dca7f96e6b26307adfd87c0dcbf175eb3b9c99e77b7cd9c525b54e5d140f6c3",
+    "vout": 1,
+    "address": "bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps",
+    "script_pub_key": "001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+    "amount": 0.4,
+    "confirmations": 1,
+    "spendable": true
+  },
+  {
+    "txid": "9f82aeee0e5754be331f61ab60c8672838250fbc69c30834dfc66ceebf2c0bc5",
+    "vout": 1,
+    "address": "bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps",
+    "script_pub_key": "001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+    "amount": 0.4,
+    "confirmations": 1,
+    "spendable": true
+  },
+  {
+    "txid": "0b25873cd463a702fa616f0b176229b3079294623726ac0b631161ea01e89514",
+    "vout": 1,
+    "address": "bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps",
+    "script_pub_key": "001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+    "amount": 0.4,
+    "confirmations": 1,
+    "spendable": true
+  }
+]
+
+distinct UTXO count: 3
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=alice sendtoaddress bcrt1qkk8hsu3r2pxwkmkjp6gcplr9qurrzdp50nxzjc 1
+  92c0eb2f218550091f6ca1c4b9769e83a8cf4f6e57a8f1d20d14d84994643113
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getrawtransaction 92c0eb2f218550091f6ca1c4b9769e83a8cf4f6e57a8f1d20d14d84994643113 2
+  {
+    "txid": "92c0eb2f218550091f6ca1c4b9769e83a8cf4f6e57a8f1d20d14d84994643113",
+    "hash": "7dd53b777fda078fcb4d210f3831ad60e6399b9e35d907553c1b5b075ab6369b",
+    "version": 2,
+    "size": 518,
+    "vsize": 276,
+    "weight": 1103,
+    "locktime": 109,
+    "vin": [
+      {
+        "txid": "9dca7f96e6b26307adfd87c0dcbf175eb3b9c99e77b7cd9c525b54e5d140f6c3",
+        "vout": 1,
+        "scriptSig": {
+          "asm": "",
+          "hex": ""
+        },
+        "txinwitness": [
+          "304402207b318987742c9eb02616da855dfe81c8f61f9c2eb15a114475a6c43971888c0502205fcc557c1e3103c306515069cef2dc0ea4b0c2b237351d0967413b385f8f035201",
+          "0219bff14677fc9dc20a94702a36b519cf8cb5a5ceac70c399017ff55a4507feb7"
+        ],
+        "sequence": 4294967293
+      },
+      {
+        "txid": "9f82aeee0e5754be331f61ab60c8672838250fbc69c30834dfc66ceebf2c0bc5",
+        "vout": 1,
+        "scriptSig": {
+          "asm": "",
+          "hex": ""
+        },
+        "txinwitness": [
+          "3044022072da3fe4828c1fcae8adf53d0b846f5d530b53f0d49ce53216dbf621ad544770022002b0e5a4448442052046fde41616a45103ab6527fbe44bf38d51b0abdab5e4ae01",
+          "0219bff14677fc9dc20a94702a36b519cf8cb5a5ceac70c399017ff55a4507feb7"
+        ],
+        "sequence": 4294967293
+      },
+      {
+        "txid": "0b25873cd463a702fa616f0b176229b3079294623726ac0b631161ea01e89514",
+        "vout": 1,
+        "scriptSig": {
+          "asm": "",
+          "hex": ""
+        },
+        "txinwitness": [
+          "3044022015600ed9662ae77eacb1094fdd193fc9d5cddb5c5ef35177aacb10f2471bb5e802201baafe3ddf05bf8a326a9c66b2a7bc84d22312e4c4259a695be72b636908e03401",
+          "0219bff14677fc9dc20a94702a36b519cf8cb5a5ceac70c399017ff55a4507feb7"
+        ],
+        "sequence": 4294967293
+      }
+    ],
+    "vout": [
+      {
+        "value": 0.19994480,
+        "n": 0,
+        "scriptPubKey": {
+          "asm": "0 44d79a967b704382e6383c1790e3bb7985bdbbc4",
+          "desc": "addr(bcrt1qgnte49nmwppc9e3c8stepcam0xzmmw7yqnvksw)#8433rwan",
+          "hex": "001444d79a967b704382e6383c1790e3bb7985bdbbc4",
+          "address": "bcrt1qgnte49nmwppc9e3c8stepcam0xzmmw7yqnvksw",
+          "type": "witness_v0_keyhash"
+        }
+      },
+      {
+        "value": 1.00000000,
+        "n": 1,
+        "scriptPubKey": {
+          "asm": "0 b58f787223504ceb6ed20e9180fc650706313434",
+          "desc": "addr(bcrt1qkk8hsu3r2pxwkmkjp6gcplr9qurrzdp50nxzjc)#998yyg39",
+          "hex": "0014b58f787223504ceb6ed20e9180fc650706313434",
+          "address": "bcrt1qkk8hsu3r2pxwkmkjp6gcplr9qurrzdp50nxzjc",
+          "type": "witness_v0_keyhash"
+        }
+      }
+    ],
+    "hex": "02000000000103c3f640d1e5545b529ccdb7779ec9b9b35e17bfdcc087fdad0763b2e6967fca9d0100000000fdffffffc50b2cbfee6cc6df3408c369bc0f25382867c860ab611f33be54570eeeae829f0100000000fdffffff1495e801ea6111630bac263762949207b32962170b6f61fa02a763d43c87250b0100000000fdffffff02701731010000000016001444d79a967b704382e6383c1790e3bb7985bdbbc400e1f50500000000160014b58f787223504ceb6ed20e9180fc6507063134340247304402207b318987742c9eb02616da855dfe81c8f61f9c2eb15a114475a6c43971888c0502205fcc557c1e3103c306515069cef2dc0ea4b0c2b237351d0967413b385f8f035201210219bff14677fc9dc20a94702a36b519cf8cb5a5ceac70c399017ff55a4507feb702473044022072da3fe4828c1fcae8adf53d0b846f5d530b53f0d49ce53216dbf621ad544770022002b0e5a4448442052046fde41616a45103ab6527fbe44bf38d51b0abdab5e4ae01210219bff14677fc9dc20a94702a36b519cf8cb5a5ceac70c399017ff55a4507feb702473044022015600ed9662ae77eacb1094fdd193fc9d5cddb5c5ef35177aacb10f2471bb5e802201baafe3ddf05bf8a326a9c66b2a7bc84d22312e4c4259a695be72b636908e03401210219bff14677fc9dc20a94702a36b519cf8cb5a5ceac70c399017ff55a4507feb76d000000"
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getrawtransaction 9dca7f96e6b26307adfd87c0dcbf175eb3b9c99e77b7cd9c525b54e5d140f6c3 1
+  {
+    "txid": "9dca7f96e6b26307adfd87c0dcbf175eb3b9c99e77b7cd9c525b54e5d140f6c3",
+    "hash": "0063c85ede9f5330e136bfde03993c6e5e17ce30b1654d7d8fe86ae686e6a648",
+    "version": 2,
+    "size": 222,
+    "vsize": 141,
+    "weight": 561,
+    "locktime": 108,
+    "vin": [
+      {
+        "txid": "4756716fed57af5e43fca240adb7f623a068884303def929deb454cdb2bc119b",
+        "vout": 0,
+        "scriptSig": {
+          "asm": "",
+          "hex": ""
+        },
+        "txinwitness": [
+          "3044022010b395f6d2715a43e9f78ec2a0f1f604490474371c81f07b1aad1fe063579c030220352b0ab085191940cb27a847756d462afaf62a3705d48848282361eab878169e01",
+          "03a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e87"
+        ],
+        "sequence": 4294967293
+      }
+    ],
+    "vout": [
+      {
+        "value": 49.59997180,
+        "n": 0,
+        "scriptPubKey": {
+          "asm": "0 34e419606b5e3098ff9b817a20a97d725754559f",
+          "desc": "addr(bcrt1qxnjpjcrttccf3lums9azp2tawft4g4vlx6h86v)#nn377gzn",
+          "hex": "001434e419606b5e3098ff9b817a20a97d725754559f",
+          "address": "bcrt1qxnjpjcrttccf3lums9azp2tawft4g4vlx6h86v",
+          "type": "witness_v0_keyhash"
+        }
+      },
+      {
+        "value": 0.40000000,
+        "n": 1,
+        "scriptPubKey": {
+          "asm": "0 67cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+          "desc": "addr(bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps)#4mhk228l",
+          "hex": "001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+          "address": "bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps",
+          "type": "witness_v0_keyhash"
+        }
+      }
+    ],
+    "hex": "020000000001019b11bcb2cd54b4de29f9de03438868a023f6b7ad40a2fc435eaf57ed6f7156470000000000fdffffff02fc8ca3270100000016001434e419606b5e3098ff9b817a20a97d725754559f005a62020000000016001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c02473044022010b395f6d2715a43e9f78ec2a0f1f604490474371c81f07b1aad1fe063579c030220352b0ab085191940cb27a847756d462afaf62a3705d48848282361eab878169e012103a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e876c000000",
+    "blockhash": "517b4e47bf8cd624fa05779bc127fecae5d5550d2f085028d0ef94f1478400ee",
+    "confirmations": 1,
+    "time": 1785500869,
+    "blocktime": 1785500869
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getrawtransaction 9f82aeee0e5754be331f61ab60c8672838250fbc69c30834dfc66ceebf2c0bc5 1
+  {
+    "txid": "9f82aeee0e5754be331f61ab60c8672838250fbc69c30834dfc66ceebf2c0bc5",
+    "hash": "f6fb369202fd5b4b712d5a734ea48d49f8057805c0f04bd138a7f2bf67c6f8dd",
+    "version": 2,
+    "size": 222,
+    "vsize": 141,
+    "weight": 561,
+    "locktime": 108,
+    "vin": [
+      {
+        "txid": "a28279668b2a1a6b127b5d7a5eb21a62cdf2d7090279acebb06dc8c21cf65189",
+        "vout": 0,
+        "scriptSig": {
+          "asm": "",
+          "hex": ""
+        },
+        "txinwitness": [
+          "304402207e4e6121b11a5014d3b6df8bb2ac7bec7adde896eb79cbadeb8339d44885f2a50220475ba05e6dd0a8c887fff4cd44fcff507318304b7e5ec2532bb6aa2d1470faa301",
+          "03a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e87"
+        ],
+        "sequence": 4294967293
+      }
+    ],
+    "vout": [
+      {
+        "value": 49.59997180,
+        "n": 0,
+        "scriptPubKey": {
+          "asm": "0 05030011f10a57cf11762853f5facb9fcaca919c",
+          "desc": "addr(bcrt1qq5psqy03pftu7ytk9pflt7ktnl9v4yvuu3lddj)#8jxfz77t",
+          "hex": "001405030011f10a57cf11762853f5facb9fcaca919c",
+          "address": "bcrt1qq5psqy03pftu7ytk9pflt7ktnl9v4yvuu3lddj",
+          "type": "witness_v0_keyhash"
+        }
+      },
+      {
+        "value": 0.40000000,
+        "n": 1,
+        "scriptPubKey": {
+          "asm": "0 67cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+          "desc": "addr(bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps)#4mhk228l",
+          "hex": "001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+          "address": "bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps",
+          "type": "witness_v0_keyhash"
+        }
+      }
+    ],
+    "hex": "020000000001018951f61cc2c86db0ebac790209d7f2cd621ab25e7a5d7b126b1a2a8b667982a20000000000fdffffff02fc8ca3270100000016001405030011f10a57cf11762853f5facb9fcaca919c005a62020000000016001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c0247304402207e4e6121b11a5014d3b6df8bb2ac7bec7adde896eb79cbadeb8339d44885f2a50220475ba05e6dd0a8c887fff4cd44fcff507318304b7e5ec2532bb6aa2d1470faa3012103a720d8ad5dd312336dbc974dbfa2e3accff4bdc1ada374c4fd07a4bf4fad3e876c000000",
+    "blockhash": "517b4e47bf8cd624fa05779bc127fecae5d5550d2f085028d0ef94f1478400ee",
+    "confirmations": 1,
+    "time": 1785500869,
+    "blocktime": 1785500869
+  }
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass getrawtransaction 0b25873cd463a702fa616f0b176229b3079294623726ac0b631161ea01e89514 1
+  {
+    "txid": "0b25873cd463a702fa616f0b176229b3079294623726ac0b631161ea01e89514",
+    "hash": "547afa11c1dcfac194bd3d88c017b62811f27add91639ec78dce17acde1d358e",
+    "version": 2,
+    "size": 222,
+    "vsize": 141,
+    "weight": 561,
+    "locktime": 108,
+    "vin": [
+      {
+        "txid": "f4ddd9cb43e8ec40c6ca4d34a2ba8407b285f5daefd93d1e73a3621ed82f532d",
+        "vout": 1,
+        "scriptSig": {
+          "asm": "",
+          "hex": ""
+        },
+        "txinwitness": [
+          "304402201b16b1584d8ec013d911595e6178030862559c9b0ab6e4422bb7b417cafa67f4022017e7147c4d881dca92fca7eecb0df437a9aa42a91da360a8b308078899e6d0c801",
+          "0367afa04122c8eb531893764258be248b3e17ef680091e564b93eb102a308a8e3"
+        ],
+        "sequence": 4294967293
+      }
+    ],
+    "vout": [
+      {
+        "value": 48.59994360,
+        "n": 0,
+        "scriptPubKey": {
+          "asm": "0 4c0e90d48cfe5d7e6dfd3690d4659aef6f2d7dda",
+          "desc": "addr(bcrt1qfs8fp4yvlewhum0ax6gdgev6aahj6lw6dhjx90)#73n5f0uf",
+          "hex": "00144c0e90d48cfe5d7e6dfd3690d4659aef6f2d7dda",
+          "address": "bcrt1qfs8fp4yvlewhum0ax6gdgev6aahj6lw6dhjx90",
+          "type": "witness_v0_keyhash"
+        }
+      },
+      {
+        "value": 0.40000000,
+        "n": 1,
+        "scriptPubKey": {
+          "asm": "0 67cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+          "desc": "addr(bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps)#4mhk228l",
+          "hex": "001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c",
+          "address": "bcrt1qvlx7kyhqy2xlhhfmhcj2v8gzjyzsak6vcrpnps",
+          "type": "witness_v0_keyhash"
+        }
+      }
+    ],
+    "hex": "020000000001012d532fd81e62a3731e3dd9efdaf585b20784baa2344dcac640ece843cbd9ddf40100000000fdffffff02f8a0ad21010000001600144c0e90d48cfe5d7e6dfd3690d4659aef6f2d7dda005a62020000000016001467cdeb12e0228dfbdd3bbe24a61d0291050edb4c0247304402201b16b1584d8ec013d911595e6178030862559c9b0ab6e4422bb7b417cafa67f4022017e7147c4d881dca92fca7eecb0df437a9aa42a91da360a8b308078899e6d0c801210367afa04122c8eb531893764258be248b3e17ef680091e564b93eb102a308a8e36c000000",
+    "blockhash": "517b4e47bf8cd624fa05779bc127fecae5d5550d2f085028d0ef94f1478400ee",
+    "confirmations": 1,
+    "time": 1785500869,
+    "blocktime": 1785500869
+  }
+
+--- MultiUtxoAudit ---
+{
+  "funding_outpoints": [
+    {
+      "txid": "9dca7f96e6b26307adfd87c0dcbf175eb3b9c99e77b7cd9c525b54e5d140f6c3",
+      "vout": 1
+    },
+    {
+      "txid": "9f82aeee0e5754be331f61ab60c8672838250fbc69c30834dfc66ceebf2c0bc5",
+      "vout": 1
+    },
+    {
+      "txid": "0b25873cd463a702fa616f0b176229b3079294623726ac0b631161ea01e89514",
+      "vout": 1
+    }
+  ],
+  "spend_txid": "92c0eb2f218550091f6ca1c4b9769e83a8cf4f6e57a8f1d20d14d84994643113",
+  "spend_input_count": 3,
+  "payment_and_change": {
+    "payment": {
+      "vout": 1,
+      "value": 1.0,
+      "address": "bcrt1qkk8hsu3r2pxwkmkjp6gcplr9qurrzdp50nxzjc",
+      "script_pub_key_hex": "0014b58f787223504ceb6ed20e9180fc650706313434"
+    },
+    "change": {
+      "vout": 0,
+      "value": 0.1999448,
+      "address": "bcrt1qgnte49nmwppc9e3c8stepcam0xzmmw7yqnvksw",
+      "script_pub_key_hex": "001444d79a967b704382e6383c1790e3bb7985bdbbc4"
+    }
+  },
+  "fee": 0.0000552
+}
+
+inputs required: 3
+payment: 1 BTC
+change:  0.1999448 BTC
+fee:     0.0000552 BTC
+
+$ bitcoin-cli -conf=/dev/null -regtest -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=polaruser -rpcpassword=polarpass generatetoaddress 1 bcrt1qfsw0fvcdjruj7d746sxqy0nnnpptcvsyslhx0q
+  [
+    "4d3fbe42caa7f427858c9f2bd1aa71a4e3ae806efe198abd7ba75943ddb30056"
+  ]
+
+==============================================================================
+Labs 01-09 complete
+==============================================================================
+
+Run `cargo run -- lab10` with NODE_B_CLI_ARGS set for the reorg lab.
+
