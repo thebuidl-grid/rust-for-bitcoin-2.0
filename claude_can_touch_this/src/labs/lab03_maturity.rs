@@ -7,8 +7,6 @@ use crate::{LabError, LabResult};
 
 /// Mine `count` blocks to an address and return the generated block hashes.
 pub fn mine_blocks<C: RpcClient>(client: &C, address: &str, count: u64) -> LabResult<Vec<String>> {
-    // TODO: call generatetoaddress with count and address.
-    // todo!("Lab 03: mine blocks")
     let raw = client.call(
         None,
         "generatetoaddress",
@@ -19,8 +17,6 @@ pub fn mine_blocks<C: RpcClient>(client: &C, address: &str, count: u64) -> LabRe
 
 /// Read the wallet's trusted, untrusted-pending, and immature balances.
 pub fn get_balances<C: RpcClient>(client: &C, wallet_name: &str) -> LabResult<WalletBalances> {
-    // TODO: call getbalances in wallet context and decode the nested `mine` object.
-    // todo!("Lab 03: inspect wallet balances")
     let raw = client.call(Some(wallet_name), "getbalances", &[])?;
     let response = parse_cli_value(&raw)?;
 
@@ -40,19 +36,17 @@ pub fn attempt_payment<C: RpcClient>(
     address: &str,
     amount_btc: f64,
 ) -> LabResult<String> {
-    // TODO: call sendtoaddress. Do not hide an insufficient-funds RPC error.
-    // todo!("Lab 03: attempt a payment")
     let raw = client.call(
         Some(wallet_name),
         "sendtoaddress",
         &[address.to_owned(), amount_btc.to_string()],
     )?;
-
     let response = parse_cli_value(&raw)?;
+
     response
         .as_str()
         .map(ToOwned::to_owned)
-        .ok_or_else(|| LabError::Parse("Expected a txid string".to_owned()))
+        .ok_or_else(|| LabError::Parse("expected a txid string".to_owned()))
 }
 
 /// Mine one block, prove the reward is immature, then mine 100 more blocks.
@@ -62,28 +56,19 @@ pub fn demonstrate_coinbase_maturity<C: RpcClient>(
     miner_address: &str,
     receiver_address: &str,
 ) -> LabResult<CoinbaseMaturityReport> {
-    // TODO:
-    // 1. Mine one block.
-    // 2. Record height and balances.
-    // 3. Attempt a 1 BTC payment and capture its error text.
-    // 4. Mine 100 more blocks.
-    // 5. Record final height and balances.
-    // todo!("Lab 03: produce coinbase-maturity evidence")
     mine_blocks(client, miner_address, 1)?;
 
     let height_after_first_block = get_block_height(client)?;
     let balance_after_first_block = get_balances(client, miner_wallet)?;
 
-    /*
-    This payment must fail as the single coinbase reward is still immature.
-    The rejection text is the evidence the lab wants to see at this stage
-    */
+    // The single coinbase reward is still immature, so this payment must fail. The
+    // rejection text is the evidence the lab asks for.
     let premature_spend_error = match attempt_payment(client, miner_wallet, receiver_address, 1.0) {
         Err(LabError::Rpc(message)) => message,
         Err(other) => return Err(other),
         Ok(txid) => {
             return Err(LabError::Parse(format!(
-                "Premature spend succeeded unexpectedly as {txid}"
+                "premature spend unexpectedly succeeded as {txid}"
             )))
         }
     };

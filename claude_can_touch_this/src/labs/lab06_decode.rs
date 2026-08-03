@@ -18,17 +18,13 @@ pub fn decode_verbose_transaction<C: RpcClient>(
     client: &C,
     txid: &str,
 ) -> LabResult<DecodedTransaction> {
-    // TODO: call getrawtransaction with verbosity 2 and decode:
-    // - txid and vsize
-    // - each vin's txid, vout, and prevout.value
-    // - each vout's n, value, scriptPubKey.hex, and optional address
-    // todo!("Lab 06: decode a verbose raw transaction")
+    // Verbosity 2 is what attaches each input's `prevout`, without which the fee
+    // cannot be derived from the transaction alone.
     let raw = client.call(
         None,
         "getrawtransaction",
         &[txid.to_owned(), "2".to_owned()],
     )?;
-
     let response = parse_cli_value(&raw)?;
 
     let vin = response
@@ -89,8 +85,6 @@ pub fn decode_verbose_transaction<C: RpcClient>(
 
 /// Return every previous output consumed by the transaction.
 pub fn input_outpoints(transaction: &DecodedTransaction) -> Vec<OutPoint> {
-    // TODO: map decoded inputs to their outpoints.
-    // todo!("Lab 06: list consumed outpoints")
     transaction
         .inputs
         .iter()
@@ -103,8 +97,6 @@ pub fn identify_payment_and_change(
     transaction: &DecodedTransaction,
     receiver_address: &str,
 ) -> LabResult<PaymentAndChange> {
-    // TODO: match the receiver address; treat the remaining non-OP_RETURN output as change.
-    // todo!("Lab 06: identify payment and change")
     let payment = transaction
         .outputs
         .iter()
@@ -128,8 +120,6 @@ pub fn identify_payment_and_change(
 
 /// Calculate `sum(inputs) - sum(outputs)`.
 pub fn calculate_fee(transaction: &DecodedTransaction) -> LabResult<f64> {
-    // TODO: reject impossible negative fees and return the BTC fee.
-    // todo!("Lab 06: calculate the miner fee")
     let inputs: f64 = transaction
         .inputs
         .iter()

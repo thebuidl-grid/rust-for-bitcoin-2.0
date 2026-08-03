@@ -1,28 +1,13 @@
 //! Lab 04 — inspect UTXOs and outpoints.
 
-use serde_json::Value;
-
 use crate::model::{OutPoint, Utxo};
 use crate::rpc::{parse_cli_value, required_f64, required_string, required_u64, RpcClient};
 use crate::{LabError, LabResult};
+use serde_json::Value;
 
-/// Return all UTXOs tracked by the selected wallet.
-pub fn list_unspent<C: RpcClient>(client: &C, wallet_name: &str) -> LabResult<Vec<Utxo>> {
-    // Call the Bitcoin Core RPC in the wallet context.
-    let raw = client.call(Some(wallet_name), "listunspent", &[])?;
-
-    // Parse the JSON returned by the CLI.
-    let response = parse_cli_value(&raw)?;
-
-    // The response should be an array of UTXOs.
-    let entries = response
-        .as_array()
-        .ok_or_else(|| LabError::Parse("expected a JSON array of unspent outputs".to_owned()))?;
-
-    // Decode each JSON object into a Utxo and collect them into a Vec<Utxo>.
-    entries.iter().map(decode_utxo).collect()
-}
-
+/// Decode one entry of a `listunspent` response.
+///
+/// Shared with Lab 09, which filters the same wallet output list by address.
 pub fn decode_utxo(entry: &Value) -> LabResult<Utxo> {
     Ok(Utxo {
         txid: required_string(entry, "txid")?,
@@ -41,29 +26,35 @@ pub fn decode_utxo(entry: &Value) -> LabResult<Utxo> {
     })
 }
 
-/// Select one spendable UTXO, preferring the one with the most confirmations.selec
+/// Return all UTXOs tracked by the selected wallet.
+pub fn list_unspent<C: RpcClient>(client: &C, wallet_name: &str) -> LabResult<Vec<Utxo>> {
+    let raw = client.call(Some(wallet_name), "listunspent", &[])?;
+    let response = parse_cli_value(&raw)?;
+
+    let entries = response
+        .as_array()
+        .ok_or_else(|| LabError::Parse("expected a JSON array of unspent outputs".to_owned()))?;
+
+    entries.iter().map(decode_utxo).collect()
+}
+
+/// Select one spendable UTXO, preferring the one with the most confirmations.
 pub fn select_spendable_utxo(utxos: &[Utxo]) -> Option<Utxo> {
-    // pub fn select_spendable_utxo(utxos: &[Utxo]) -> Option<Utxo> {
-    // TODO: filter by spendable and select deterministically.
-    // todo!("Lab 04: select a spendable UTXO")
     utxos
         .iter()
         .filter(|utxo| utxo.spendable)
+        // txid and vout break confirmation ties so repeated runs select the same coin.
         .max_by_key(|utxo| (utxo.confirmations, utxo.txid.clone(), utxo.vout))
         .cloned()
 }
 
 /// Convert a UTXO into its unique `txid:vout` coordinate.
 pub fn outpoint(utxo: &Utxo) -> OutPoint {
-    // TODO: return the matching outpoint.
-    // todo!("Lab 04: construct an outpoint")
     utxo.outpoint()
 }
 
 /// Sum only the spendable UTXOs.
 pub fn sum_spendable_utxos(utxos: &[Utxo]) -> f64 {
-    // TODO: ignore non-spendable entries and sum BTC amounts.
-    // todo!("Lab 04: calculate spendable wallet balance")
     utxos
         .iter()
         .filter(|utxo| utxo.spendable)

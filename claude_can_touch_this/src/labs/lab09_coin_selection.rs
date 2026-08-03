@@ -19,15 +19,11 @@ pub fn create_three_funding_transactions<C: RpcClient>(
     miner_wallet: &str,
     alice_address: &str,
 ) -> LabResult<Vec<String>> {
-    // TODO: call sendtoaddress three times, each for 0.4 BTC.
-    // todo!("Lab 09: create three separate funding transactions")
-
-    // Three separate sends, not one send with three outputs, so Alice ends up with three independent UTXOs.
-
+    // Three separate sends, not one send with three outputs, so Alice ends up with
+    // three independent UTXOs.
     (0..3)
         .map(|_| attempt_payment(client, miner_wallet, alice_address, FUNDING_AMOUNT_BTC))
         .collect()
-
 }
 
 /// Return confirmed UTXOs belonging to the supplied address.
@@ -36,8 +32,6 @@ pub fn confirmed_utxos_for_address<C: RpcClient>(
     wallet_name: &str,
     address: &str,
 ) -> LabResult<Vec<Utxo>> {
-    // TODO: call listunspent and retain confirmed outputs for this address.
-    // todo!("Lab 09: locate Alice's confirmed UTXOs")
     let utxos = list_unspent(client, wallet_name)?;
 
     Ok(utxos
@@ -52,8 +46,6 @@ pub fn send_combined_payment<C: RpcClient>(
     alice_wallet: &str,
     receiver_address: &str,
 ) -> LabResult<String> {
-    // TODO: call sendtoaddress for 1 BTC.
-    // todo!("Lab 09: create a spend requiring multiple inputs")
     attempt_payment(
         client,
         alice_wallet,
@@ -69,13 +61,6 @@ pub fn audit_multi_utxo_spend<C: RpcClient>(
     receiver_address: &str,
     funding_utxos: &[Utxo],
 ) -> LabResult<MultiUtxoAudit> {
-    // TODO:
-    // 1. Send the 1 BTC payment.
-    // 2. Reuse Lab 06 to decode it.
-    // 3. Identify payment and change.
-    // 4. Calculate fee and input count.
-    // 5. Record the funding outpoints.
-    // todo!("Lab 09: audit multi-UTXO coin selection")
     let spend_txid = send_combined_payment(client, alice_wallet, receiver_address)?;
 
     let transaction = decode_verbose_transaction(client, &spend_txid)?;
