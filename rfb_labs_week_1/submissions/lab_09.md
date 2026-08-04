@@ -2,7 +2,6 @@
 
 ## Commands used
 
-TODO: Record funding, confirmation, spending, and decoding commands.
 
 # ==========================================
 # 1. FUNDING: Mine coins to the wallet
@@ -55,7 +54,6 @@ docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=p
 
 ## Terminal output
 
-TODO: Show Alice's three UTXOs and the combined transaction inputs and outputs.
 
 === 1. FUNDING ===
 [
@@ -303,14 +301,12 @@ Mempool contains TX:
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
 
 https://drive.google.com/drive/folders/1HvmkTC2bazkXgBELjgbLaaW8grJQgF9h?usp=sharing
 
 
 ## Explanation
 
-TODO: Explain input combination, change, fees, and the privacy implication.
 
 Every UTXO a wallet holds sits at its own address, and on its own, a UTXO reveals nothing about who else's coins belong to the same person. Before I spent anything, an outside observer watching the chain would only see three separate 0.4 BTC outputs sitting at three separate addresses — with no way to tell whether they belonged to one person or three different people.
 

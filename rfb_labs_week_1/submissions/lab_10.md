@@ -2,7 +2,6 @@
 
 ## Commands used
 
-TODO: Record peer, mining, chain-tip, and reconnection commands for both nodes.
 
 # ==========================================
 # 1. PEER: Inspect Network & Connections
@@ -64,7 +63,6 @@ docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=p
 
 ## Terminal output
 
-TODO: Show the common tip, competing tips, chainwork, and final convergence.
 
 === NODE 1: PEER INFO ===
 {
@@ -168,14 +166,12 @@ Final Best Block Hash:
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
 
 https://drive.google.com/drive/folders/1HvmkTC2bazkXgBELjgbLaaW8grJQgF9h?usp=sharing
 
 
 ## Explanation
 
-TODO: Explain the stale branch, reorganization, and most-work-chain rule.
 
 Node A's two-block branch didn't lose because anything was wrong with it — every block it mined followed the same consensus rules as Node B's blocks. It lost purely because it represented less accumulated proof-of-work than the alternative. My own evidence shows this precisely: at the moment of the split, Node A's competing tip had chainwork: "...ec" after 2 blocks, while Node B's had chainwork: "...f0" after 4 blocks — a strictly larger number. Once the two networks reconnected, that difference was the entire deciding factor.
 

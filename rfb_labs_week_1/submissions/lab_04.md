@@ -2,13 +2,11 @@
 
 ## Commands used
 
-TODO: Record the commands used to inspect and calculate wallet UTXOs.
 
 docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=mywallet1 listunspent   
 
 ## Terminal output
 
-TODO: Include txid, vout, amount, confirmations, script, and spendable state.
 
 miner UTXOs: [
     Utxo {
@@ -42,14 +40,12 @@ sum of spendable UTXOs: 50`
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
 
 https://drive.google.com/drive/folders/1HvmkTC2bazkXgBELjgbLaaW8grJQgF9h?usp=sharing
 
 
 ## Explanation
 
-TODO: Explain outpoints, UTXOs, and why a wallet balance is their sum.
 
 A traditional bank balance is a single mutable number stored in a database row — the bank decrements it directly when you spend. Bitcoin doesn't work that way: there's no stored "balance" field anywhere. What Bitcoin Core actually tracks is a set of discrete, individually-addressable coins — UTXOs (unspent transaction outputs) — each identified by its own unique txid:vout coordinate. A "balance" is something the wallet computes on demand by scanning every UTXO it controls, filtering to the ones it considers spendable, and summing their amounts.
 

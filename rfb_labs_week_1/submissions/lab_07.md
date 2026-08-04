@@ -2,7 +2,6 @@
 
 ## Commands used
 
-TODO: Record the mining, mempool, transaction, and block commands.
 
 # ==========================================
 # 1. SETUP: Get a destination address
@@ -56,7 +55,6 @@ docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=p
 
 ## Terminal output
 
-TODO: Show the empty mempool, confirmation count, block hash, and TXID in block.
 
 --- Mempool Contents (TXIDs) ---
 [
@@ -297,14 +295,12 @@ Try adding "-rpcwallet=<filename>" option to bitcoin-cli command line.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
 
 https://drive.google.com/drive/folders/1HvmkTC2bazkXgBELjgbLaaW8grJQgF9h?usp=sharing
 
 
 ## Explanation
 
-TODO: Explain exactly what changed when the transaction became confirmed.
 
 Mining did not change the transaction itself in any way. The TXID a9d0febd729cf46b33a44e7a2007266ac1332b554cfd6f98aae864036701aaa9 is identical across Lab 05 (when I broadcast it, unconfirmed), Lab 06 (when I decoded its exact inputs, outputs, and fee), and Lab 07 (this confirmation check) — same bytes, same signature, same value transfer. A transaction's identity is fixed the moment it's signed; nothing about mining rewrites or re-derives it.
 

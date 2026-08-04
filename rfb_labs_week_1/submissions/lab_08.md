@@ -2,7 +2,6 @@
 
 ## Commands used
 
-TODO: Record block-header inspection and additional mining commands.
 
 # --- 1. Block Header Inspection ---
 echo "=== BLOCK HEADER INSPECTION ==="
@@ -24,7 +23,6 @@ docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=p
 
 ## Terminal output
 
-TODO: Show header fields and confirmation count changing from one to six.
 
 === BLOCK HEADER INSPECTION ===
 Current Best Block Hash: 2116cb4ddde5b503d418595cfdb7dc03725b5776a68e4bf625fa00cf362e89c1
@@ -67,14 +65,12 @@ New Best Block Hash:
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
 
 https://drive.google.com/drive/folders/1HvmkTC2bazkXgBELjgbLaaW8grJQgF9h?usp=sharing
 
 
 ## Explanation
 
-TODO: Explain hash links, Merkle roots, proof of work, and confirmation depth.
 
 A block header ties three separate mechanisms together to make the blockchain tamper-evident. The hash link is previous_block_hash — my block at height 103 explicitly embeds the hash of the block before it (28a3aa19...). This means every header is cryptographically bound to its predecessor: if anyone altered a past block, that block's own hash would change, which would break the previous_block_hash reference stored in the next block, cascading forward through every block mined since. Rewriting history isn't just "editing a record" — it requires re-mining the altered block and every single block built on top of it.
 

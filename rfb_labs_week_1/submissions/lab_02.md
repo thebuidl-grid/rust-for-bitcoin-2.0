@@ -6,11 +6,9 @@ docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=p
 
 docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=mywallet1 getnewaddress   
 
-TODO: Record how you created and inspected both wallets and addresses.
 
 ## Terminal output
 
-TODO: Include loaded wallets, addresses, and ownership evidence.
 
 {
   "walletname": "mywallet1",
@@ -37,13 +35,11 @@ TODO: Include loaded wallets, addresses, and ownership evidence.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
 
 https://drive.google.com/drive/folders/1HvmkTC2bazkXgBELjgbLaaW8grJQgF9h?usp=sharing
 
 ## Explanation
 
-TODO: Explain wallet context and the purpose of `-rpcwallet`.
 
 A single running Bitcoin Core node can have multiple wallets loaded simultaneously.But many RPC methods are inherently wallet-scoped — they need to know which wallet's keys/UTXOs/history to operate on as the method name alone doesn't specify that so rpcwallet<name> is how we supply that missing piece.
 

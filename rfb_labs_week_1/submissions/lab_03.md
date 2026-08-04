@@ -6,7 +6,6 @@ ADDR=$(docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpas
 
 # Mine 101 blocks to that address
 docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=polarpass generatetoaddress 101 "$ADDR"   
-TODO: Record mining, balance inspection, and premature-spend commands.
 
 docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=polarpass -rpcwallet=mywallet1 getbalances   
 
@@ -23,18 +22,15 @@ docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=p
     "height": 303
   }
 }
-TODO: Show balances at heights 1 and 101 plus the failed premature spend.
 
 ## Evidence references
 
 https://drive.google.com/drive/folders/1HvmkTC2bazkXgBELjgbLaaW8grJQgF9h?usp=sharing
 
 
-TODO: Link screenshots or describe the attached evidence.
 
 ## Explanation
 
-TODO: Explain why the first coinbase reward becomes spendable at height 101.
 
 A coinbase transaction is special: it's not paid by anyone, it's created out of nothing as the block reward. That makes it uniquely vulnerable to chain reorganizations. If a node lets you spend a coinbase reward the instant it was mined, and that block later got orphaned by a longer competing chain , the coins you spent would never have existed on the chain that actually won — but anything you bought with them, or any further transactions built on top of that spend, would already be out in the world.
 Bitcoin Core prevents this by refusing to let a wallet spend a coinbase output until it's buried under COINBASE_MATURITY = 100 additional blocks. By that depth, reorganizing the chain deep enough to undo it would require an attacker to out-mine 100 blocks of accumulated proof-of-work — practically infeasible — so the reward can be treated as final.

@@ -2,7 +2,6 @@
 
 ## Commands used
 
-TODO: Record the payment, mempool, transaction, and balance commands.
 
 
 # 1. Payment
@@ -21,7 +20,6 @@ echo -e "\n=== BALANCE ===" && docker exec polar-bitcoin bitcoin-cli -regtest -r
 
 ## Terminal output
 
-TODO: Show the TXID, zero confirmations, mempool entry, and pending balance.
 
 === PAYMENT ===
 TXID: 1d518d80a327df7e5d6953cce81c87253635fb1ff379ef5f5d1c169c9c9ff8c7
@@ -53,14 +51,12 @@ Try adding "-rpcwallet=<filename>" option to bitcoin-cli command line.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
 
 https://drive.google.com/drive/folders/1HvmkTC2bazkXgBELjgbLaaW8grJQgF9h?usp=sharing
 
 
 ## Explanation
 
-TODO: Distinguish signed, broadcast, mempool, and confirmed states.
 
 `The four transaction states: built and signed, broadcast, mempool, confirmed
 

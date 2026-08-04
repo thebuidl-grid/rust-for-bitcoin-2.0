@@ -2,14 +2,12 @@
 
 ## Commands used
 
-TODO: List the Rust command and Bitcoin Core RPCs you ran.
 
 docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=polarpass getblockchaininfo
 
 
 ## Terminal output
 
-TODO: Record chain, block height, and best-block hash.
 {
   "height": 101,
   "hash": "7368ad4272240cf3f9bd35ea40ab623b6abdb52765a862170951e5e735a84180"
@@ -17,13 +15,11 @@ TODO: Record chain, block height, and best-block hash.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
 
 https://drive.google.com/drive/folders/1HvmkTC2bazkXgBELjgbLaaW8grJQgF9h?usp=sharing
 
 ## Explanation
 
-TODO: Explain Polar, Docker, Bitcoin Core, and regtest in your own words.
 
 Bitcoin Core is the actual software — a full implementation of the Bitcoin protocol. It maintains a copy of the blockchain, validates transactions and blocks against consensus rules, relays data to peers, and exposes an RPC interface (bitcoin-cli talks to this) so other programs — like the Rust code — can query and control it.
 

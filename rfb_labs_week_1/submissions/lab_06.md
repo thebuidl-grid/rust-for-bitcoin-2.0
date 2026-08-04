@@ -4,11 +4,9 @@
 
 docker exec polar-bitcoin bitcoin-cli -regtest -rpcuser=polaruser -rpcpassword=polarpass getrawtransaction 37deb68194cfbdf5d8c723264017a83901f15e09d912319b1efcd84b5a05fb36 2   
 
-TODO: Record the verbose transaction-decoding commands.
 
 ## Terminal output
 
-TODO: Include vin, vout, addresses, values, vsize, and calculated fee.
 
 {
   "txid": "37deb68194cfbdf5d8c723264017a83901f15e09d912319b1efcd84b5a05fb36",
@@ -104,14 +102,12 @@ TODO: Include vin, vout, addresses, values, vsize, and calculated fee.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
 
 https://drive.google.com/drive/folders/1HvmkTC2bazkXgBELjgbLaaW8grJQgF9h?usp=sharing
 
 
 ## Explanation
 
-TODO: Prove value conservation and explain why the fee has no dedicated output.
 
 Bitcoin's transaction format has no field anywhere for "fee." A transaction only declares two things: which previous outputs it consumes (inputs) and where the value goes (outputs). The fee isn't written down at all — it's an emergent quantity, computed as sum(inputs) - sum(outputs), and it only exists as an inference the node makes after the fact.
 
