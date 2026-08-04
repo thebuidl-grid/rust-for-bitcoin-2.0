@@ -2,16 +2,40 @@
 
 ## Commands used
 
-TODO: Record the payment, mempool, transaction, and balance commands.
+```bash
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest -rpcwallet=miner sendtoaddress bcrt1qduu2p93zkvp0v69uqglj0dlaam0rwplhk6gf3u 1
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest getrawmempool
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest -rpcwallet=miner gettransaction 7d962b2ffea59f7651f809900184954e2b9dd6c32f41f2c70594df0f1bdb8152
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest -rpcwallet=receiver getbalances
+```
 
 ## Terminal output
 
-TODO: Show the TXID, zero confirmations, mempool entry, and pending balance.
+```text
+TXID: 7d962b2ffea59f7651f809900184954e2b9dd6c32f41f2c70594df0f1bdb8152
+getrawmempool: ["7d962b2ffea59f7651f809900184954e2b9dd6c32f41f2c70594df0f1bdb8152"]
+
+sender gettransaction:
+{
+  "amount": -1.00000000,
+  "fee": -0.00002820,
+  "confirmations": 0,
+  "blockhash": null
+}
+
+receiver getbalances:
+mine: { trusted: 0.00000000, untrusted_pending: 1.00000000, immature: 0.00000000 }
+```
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
+Live transcript captured before mining any confirmation block. The same TXID appears in
+both the send result and the node's local mempool.
 
 ## Explanation
 
-TODO: Distinguish signed, broadcast, mempool, and confirmed states.
+The miner wallet selected inputs, created the outputs, signed the transaction, and sent it
+to the node. The node accepted it into its mempool, but it was not in a block yet. That is
+why it had zero confirmations, no block hash, and appeared as 1 BTC of
+`untrusted_pending` in the receiver wallet. It only became confirmed after a miner added
+the transaction to a valid block.

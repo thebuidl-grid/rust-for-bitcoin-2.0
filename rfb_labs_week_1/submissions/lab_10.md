@@ -2,16 +2,88 @@
 
 ## Commands used
 
-TODO: Record peer, mining, chain-tip, and reconnection commands for both nodes.
+```bash
+# Read the common tip and peer addresses on both nodes.
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest getblockchaininfo
+docker exec --user bitcoin polar-n2-backend2 bitcoin-cli -regtest getblockchaininfo
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest getpeerinfo
+docker exec --user bitcoin polar-n2-backend2 bitcoin-cli -regtest getpeerinfo
+
+# Disconnect the named peers, then keep automatic Polar peers offline during mining.
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest disconnectnode backend2
+docker exec --user bitcoin polar-n2-backend2 bitcoin-cli -regtest disconnectnode backend1
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest setnetworkactive false
+docker exec --user bitcoin polar-n2-backend2 bitcoin-cli -regtest setnetworkactive false
+
+# Mine unequal private branches from the same height-110 tip.
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest -rpcwallet=miner \
+  generatetoaddress 2 bcrt1q2gung50cdgh8ka6ptg4d9t7z2kv8fj09z5rqfh
+docker exec --user bitcoin polar-n2-backend2 bitcoin-cli -regtest \
+  generatetoaddress 4 bcrt1qsjzyxsrumtyj97yvpwd3p8k3qqjyucsgr9c0pw
+
+# Re-enable networking and request one-time synchronization.
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest setnetworkactive true
+docker exec --user bitcoin polar-n2-backend2 bitcoin-cli -regtest setnetworkactive true
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest addnode backend2 onetry
+
+# Inspect convergence and the stale short branch.
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest getblockchaininfo
+docker exec --user bitcoin polar-n2-backend2 bitcoin-cli -regtest getblockchaininfo
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest getchaintips
+docker exec --user bitcoin polar-n2-backend1 bitcoin-cli -regtest \
+  getblockheader 10896d299c51a06267bf408557f863ee4b0614428a80a3f667c03e188f8d1ae1
+```
 
 ## Terminal output
 
-TODO: Show the common tip, competing tips, chainwork, and final convergence.
+```text
+Common tip before split (both nodes):
+  height:    110
+  hash:      1f3f9ee7bd0af8bf1910b47b7bf7abaf5bcface9c79a7eb446983fede457d9f6
+  chainwork: 00000000000000000000000000000000000000000000000000000000000000de
+
+After disconnectnode + setnetworkactive false:
+  backend1 connections: 0
+  backend2 connections: 0
+
+backend1 private branch (2 blocks):
+  blocks:    112
+  tip:       10896d299c51a06267bf408557f863ee4b0614428a80a3f667c03e188f8d1ae1
+  chainwork: 00000000000000000000000000000000000000000000000000000000000000e2
+
+backend2 private branch (4 blocks):
+  blocks:    114
+  tip:       7f286941b14e1ef11f96f49cd0d3f29a3fa2a3b1baa51d5a6c4804c91300347a
+  chainwork: 00000000000000000000000000000000000000000000000000000000000000e6
+
+Final tip after reconnection (both nodes):
+  blocks:    114
+  tip:       7f286941b14e1ef11f96f49cd0d3f29a3fa2a3b1baa51d5a6c4804c91300347a
+  chainwork: 00000000000000000000000000000000000000000000000000000000000000e6
+
+getchaintips on backend1:
+  height 114, hash 7f286941...00347a, branchlen 0, status active
+  height 112, hash 10896d29...8d1ae1, branchlen 2, status valid-fork
+
+Former backend1 tip header:
+  height: 112
+  confirmations: -1
+  chainwork: 00000000000000000000000000000000000000000000000000000000000000e2
+```
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
+Live Polar v4.0.0 network `Week 1 Bitcoin Fundamentals`, containing connected Bitcoin
+Core v30.0 nodes `backend1` and `backend2`. Evidence consists of the Polar network view
+and the live `getblockchaininfo`, `getpeerinfo`, mining, `getchaintips`, and stale-block
+header transcripts recorded above. All commands ran only on the local regtest network.
 
 ## Explanation
 
-TODO: Explain the stale branch, reorganization, and most-work-chain rule.
+Both nodes started from the same block at height 110. While disconnected, backend1 mined
+two blocks and backend2 mined four, so they ended with different active tips. After they
+reconnected, backend1 switched to backend2's branch because it had more chainwork
+(`...00e6` instead of `...00e2`). Both nodes then agreed on the height-114 tip, while the
+old two-block branch remained visible as a `valid-fork` with `-1` confirmations. The choice
+was based on accumulated work among valid branches, not miner identity, arrival order, or
+outside claims.
