@@ -11,14 +11,28 @@ pub fn send_btc<C: RpcClient>(
     destination: &str,
     amount_btc: f64,
 ) -> LabResult<String> {
-    // TODO: call sendtoaddress in the sender's wallet context.
-    todo!("Lab 05: send bitcoin")
+    let amount_str = if amount_btc.fract() == 0.0 {
+        (amount_btc as u64).to_string()
+    } else {
+        amount_btc.to_string()
+    };
+    let raw = client.call(
+        Some(from_wallet),
+        "sendtoaddress",
+        &[destination.to_owned(), amount_str],
+    )?;
+    let value = crate::rpc::parse_cli_value(&raw)?;
+    value
+        .as_str()
+        .map(ToOwned::to_owned)
+        .ok_or_else(|| crate::LabError::Parse("expected txid string".to_owned()))
 }
 
 /// Return the node's local mempool as a list of TXIDs.
 pub fn get_raw_mempool<C: RpcClient>(client: &C) -> LabResult<Vec<String>> {
-    // TODO: call getrawmempool and decode its array.
-    todo!("Lab 05: inspect the local mempool")
+    let raw = client.call(None, "getrawmempool", &[])?;
+    let value = crate::rpc::parse_cli_value(&raw)?;
+    serde_json::from_value(value).map_err(Into::into)
 }
 
 /// Return the selected wallet's view of one transaction.
@@ -27,8 +41,29 @@ pub fn get_transaction_status<C: RpcClient>(
     wallet_name: &str,
     txid: &str,
 ) -> LabResult<WalletTransactionStatus> {
-    // TODO: call gettransaction and decode txid, amount, fee, confirmations, and blockhash.
-    todo!("Lab 05: inspect wallet transaction status")
+    let raw = client.call(Some(wallet_name), "gettransaction", &[txid.to_owned()])?;
+    let value = crate::rpc::parse_cli_value(&raw)?;
+
+    let txid = crate::rpc::required_string(&value, "txid")?;
+    let confirmations = value
+        .get("confirmations")
+        .and_then(serde_json::Value::as_i64)
+        .ok_or(crate::LabError::MissingField("confirmations"))?;
+    let amount = crate::rpc::required_f64(&value, "amount")?;
+    let fee = value.get("fee").and_then(serde_json::Value::as_f64);
+    let block_hash = value
+        .get("blockhash")
+        .or_else(|| value.get("block_hash"))
+        .and_then(serde_json::Value::as_str)
+        .map(ToOwned::to_owned);
+
+    Ok(WalletTransactionStatus {
+        txid,
+        confirmations,
+        amount,
+        fee,
+        block_hash,
+    })
 }
 
 /// Send a payment without mining and capture its mempool and receiver-wallet state.
@@ -39,6 +74,16 @@ pub fn observe_unconfirmed_payment<C: RpcClient>(
     receiver_address: &str,
     amount_btc: f64,
 ) -> LabResult<MempoolObservation> {
-    // TODO: send, inspect getrawmempool, inspect sender status, and read receiver balances.
-    todo!("Lab 05: prove a payment is broadcast but unconfirmed")
+    let txid = send_btc(client, sender_wallet, receiver_address, amount_btc)?;
+    let mempool = get_raw_mempool(client)?;
+    let mempool_contains_tx = mempool.contains(&txid);
+    let sender_status = get_transaction_status(client, sender_wallet, &txid)?;
+    let receiver_balance = crate::labs::lab03_maturity::get_balances(client, receiver_wallet)?;
+
+    Ok(MempoolObservation {
+        txid,
+        mempool_contains_tx,
+        sender_status,
+        receiver_balance,
+    })
 }
