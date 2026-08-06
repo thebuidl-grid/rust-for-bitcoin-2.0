@@ -82,7 +82,13 @@ jobs:
 
       - name: Publish score summary
         if: always()
-        run: cat rfb_labs_week_1/grading/score.md >> "$GITHUB_STEP_SUMMARY"
+        shell: bash
+        run: |
+          if [[ -f rfb_labs_week_1/grading/score.md ]]; then
+            cat rfb_labs_week_1/grading/score.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Grading report not generated; see the workflow logs or uploaded artifact." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload grading report
         if: always()
