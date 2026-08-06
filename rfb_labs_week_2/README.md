@@ -33,6 +33,23 @@ submission.
 Answer in your own words. Add the ownership compiler error from Part 7 as a fenced
 text block, then explain what caused it.
 
+### Part 7 ownership experiment
+
+```text
+error[E0382]: borrow of moved value: `output`
+  --> src/main.rs:...
+   |
+   | transaction.add_output(output);
+   |                        ------ value moved here
+   | println!("{}", output.recipient);
+   |                ^^^^^^^^^^^^^^^^ value borrowed here after move
+```
+
+`add_output` takes ownership of its `TxOutput` argument and moves it into the
+transaction's `outputs` vector. The original variable can therefore no longer be
+used. Borrowing it before the move, or reading it through the transaction after the
+move, is valid.
+
 1. What is a Bitcoin transaction input?
 2. What is a Bitcoin transaction output?
 3. What is a UTXO?
@@ -48,9 +65,20 @@ text block, then explain what caused it.
 
 ## Design notes
 
-Describe any choices you made, including your UTXO-selection trade-offs and (if
-attempted) the optional transaction-state extension.
+`select_utxos` deliberately chooses UTXOs in their supplied order. It is easy to
+understand, deterministic, and returns references instead of copying UTXOs, but it
+does not minimize change or the number of inputs. A more sophisticated wallet could
+use a branch-and-bound search to find an exact match or a smaller-change combination;
+that trades predictability and implementation simplicity for potentially better fees
+and privacy.
+
+For the optional state exercise, `TransactionLifecycle` owns a transaction and tracks
+the Created, Validated, Signed, Broadcast, Confirmed, and Rejected states. Its state
+field is private, so callers must use transition methods. Each transition consumes the
+lifecycle and returns it only when the current state permits that transition.
 
 ## Example output
 
-Paste the output of `cargo run` here once Part 8 is complete.
+```text
+Transaction v2 (locktime 0): 2 input(s), 2 output(s), inputs: 120000 sats, outputs: 118000 sats, fee: 2000 sats
+```
