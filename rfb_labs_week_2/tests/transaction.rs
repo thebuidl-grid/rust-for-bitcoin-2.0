@@ -23,7 +23,7 @@ fn output(value: u64, recipient: &str) -> TxOutput {
 // implement the TODOs. Remove `#[ignore]` from one test at a time while working.
 
 #[test]
-#[ignore = "enable after completing Parts 3 and 5"]
+// #[ignore = "enable after completing Parts 3 and 5"]
 fn valid_regular_transaction_passes_validation() {
     let mut transaction = Transaction::new(2, 0);
     transaction.add_input(regular_input(120_000));
@@ -37,7 +37,7 @@ fn valid_regular_transaction_passes_validation() {
 }
 
 #[test]
-#[ignore = "enable after completing Part 5"]
+// #[ignore = "enable after completing Part 5"]
 fn outputs_cannot_exceed_inputs() {
     let mut transaction = Transaction::new(2, 0);
     transaction.add_input(regular_input(50_000));
