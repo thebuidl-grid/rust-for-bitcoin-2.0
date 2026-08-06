@@ -1,4 +1,7 @@
-use rfb_labs_week_2::{InputKind, OutPoint, OutputType, Transaction, TxOutput};
+use rfb_labs_week_2::{
+    find_outputs_for_recipient, highest_value_output, InputKind, OutPoint, OutputType, Transaction,
+    TransactionError, TxOutput,
+};
 
 fn regular_input(value: u64) -> InputKind {
     InputKind::Regular {
@@ -19,13 +22,10 @@ fn output(value: u64, recipient: &str) -> TxOutput {
     }
 }
 
-// These tests are ignored so the starter repository builds before students
-// implement the TODOs. Remove `#[ignore]` from one test at a time while working.
-
 #[test]
-#[ignore = "enable after completing Parts 3 and 5"]
 fn valid_regular_transaction_passes_validation() {
     let mut transaction = Transaction::new(2, 0);
+
     transaction.add_input(regular_input(120_000));
     transaction.add_output(output(90_000, "bc1qreceiver"));
     transaction.add_output(output(28_000, "bc1qsender"));
@@ -37,17 +37,91 @@ fn valid_regular_transaction_passes_validation() {
 }
 
 #[test]
-#[ignore = "enable after completing Part 5"]
 fn outputs_cannot_exceed_inputs() {
     let mut transaction = Transaction::new(2, 0);
+
     transaction.add_input(regular_input(50_000));
     transaction.add_output(output(60_000, "bc1qreceiver"));
 
     assert_eq!(
         transaction.validate(),
-        Err(rfb_labs_week_2::TransactionError::OutputsExceedInputs {
+        Err(TransactionError::OutputsExceedInputs {
             total_inputs: 50_000,
             total_outputs: 60_000,
         })
     );
+}
+
+#[test]
+fn no_inputs_is_invalid() {
+    let mut transaction = Transaction::new(2, 0);
+
+    transaction.add_output(output(10_000, "bc1qreceiver"));
+
+    assert_eq!(transaction.validate(), Err(TransactionError::NoInputs));
+}
+
+#[test]
+fn no_outputs_is_invalid() {
+    let mut transaction = Transaction::new(2, 0);
+
+    transaction.add_input(regular_input(10_000));
+
+    assert_eq!(transaction.validate(), Err(TransactionError::NoOutputs));
+}
+
+#[test]
+fn totals_are_calculated_correctly() {
+    let mut transaction = Transaction::new(2, 0);
+
+    transaction.add_input(regular_input(100_000));
+    transaction.add_output(output(70_000, "bc1qreceiver"));
+    transaction.add_output(output(20_000, "bc1qsender"));
+
+    assert_eq!(transaction.total_input_value(), 100_000);
+    assert_eq!(transaction.total_output_value(), 90_000);
+    assert_eq!(transaction.fee(), Ok(10_000));
+}
+
+#[test]
+fn highest_output_is_found() {
+    let mut transaction = Transaction::new(2, 0);
+
+    transaction.add_output(output(10_000, "bc1qa"));
+    transaction.add_output(output(50_000, "bc1qb"));
+    transaction.add_output(output(20_000, "bc1qc"));
+
+    let highest = highest_value_output(&transaction).unwrap();
+
+    assert_eq!(highest.value, 50_000);
+    assert_eq!(highest.recipient, "bc1qb");
+}
+
+#[test]
+fn recipient_outputs_are_filtered() {
+    let mut transaction = Transaction::new(2, 0);
+
+    transaction.add_output(output(10_000, "bc1qreceiver"));
+    transaction.add_output(output(20_000, "bc1qsender"));
+    transaction.add_output(output(30_000, "bc1qreceiver"));
+
+    let outputs = find_outputs_for_recipient(&transaction, "bc1qreceiver");
+
+    assert_eq!(outputs.len(), 2);
+    assert_eq!(outputs[0].value, 10_000);
+    assert_eq!(outputs[1].value, 30_000);
+}
+
+#[test]
+fn valid_coinbase_transaction_passes_validation() {
+    let mut transaction = Transaction::new(2, 0);
+
+    transaction.add_input(InputKind::Coinbase {
+        block_height: 100,
+        reward: 50_000,
+    });
+
+    transaction.add_output(output(50_000, "bc1qminer"));
+
+    assert_eq!(transaction.validate(), Ok(()));
 }

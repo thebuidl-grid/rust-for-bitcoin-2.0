@@ -1,56 +1,102 @@
-# Rust for Bitcoin 2.0 — Week 2
+# Week 2 Assignment Answers
 
-Build a simplified Bitcoin transaction model while practising structs, enums,
-traits, ownership, borrowing, collections, and `Result`-based error handling.
+## Parts 1–2: Data Model
 
-The crate is intentionally incomplete. Search for `TODO` and implement each part;
-do not change the public type names or function signatures.
+`InputKind` is an enum because Bitcoin transactions have different input types
+with different data requirements. A regular input references a previous output,
+while a coinbase input contains block reward information.
 
-## Recommended workflow
+Using `match` on `InputKind` forces every variant to be handled. This prevents
+accidentally ignoring special cases such as coinbase transactions.
 
-1. Read [ASSIGNMENT.md](ASSIGNMENT.md).
-2. Complete Parts 3–5 in `transaction.rs` and `error.rs`.
-3. Remove `#[ignore]` from the relevant test and run it.
-4. Complete the traits and borrowing functions in Parts 6–7.
-5. Build the payment example in `main.rs`.
-6. Complete UTXO selection and its tests.
-7. Add the remaining required tests yourself.
+---
 
-```bash
-cargo test
-cargo test -- --ignored
-cargo run
-cargo fmt --check
-cargo clippy --all-targets --all-features -- -D warnings
-```
+## Part 3: Transaction Methods
 
-`cargo test` checks the starter project. Ignored tests intentionally exercise
-unfinished code; enable them progressively rather than leaving them ignored in the
-submission.
+`add_input` and `add_output` take ownership of their arguments and move them
+into the transaction vectors.
 
-## Written answers
+The fee calculation uses checked subtraction. If outputs exceed inputs, the
+code returns `TransactionError::OutputsExceedInputs` instead of causing an
+integer underflow.
 
-Answer in your own words. Add the ownership compiler error from Part 7 as a fenced
-text block, then explain what caused it.
+---
 
-1. What is a Bitcoin transaction input?
-2. What is a Bitcoin transaction output?
-3. What is a UTXO?
-4. What does an outpoint identify?
-5. How is a transaction fee calculated?
-6. Why use integers rather than floating-point numbers for bitcoin amounts?
-7. Why does `total_input_value()` borrow `self`?
-8. Why does `add_input()` take `&mut self`?
-9. What happens when an input is moved into a transaction?
-10. Why is `Result` preferable to `panic!` for validation failures?
-11. How do enums help model regular and coinbase inputs?
-12. How does the `BitcoinValue` trait reduce duplication?
+## Part 5: Validation Rules
 
-## Design notes
+The validator checks:
 
-Describe any choices you made, including your UTXO-selection trade-offs and (if
-attempted) the optional transaction-state extension.
+- Transactions must contain inputs.
+- Transactions must contain outputs.
+- Zero-value outputs are rejected except OP_RETURN outputs.
+- Outputs cannot exceed inputs.
+- Coinbase and regular inputs cannot be mixed.
+- Only one coinbase input is allowed.
+- Regular inputs require non-empty TXIDs.
 
-## Example output
+---
 
-Paste the output of `cargo run` here once Part 8 is complete.
+## Part 6: Traits
+
+`BitcoinValue` provides a common way to retrieve satoshi values from outputs
+and both input variants.
+
+Display implementations provide readable representations for:
+
+- OutPoint
+- TxOutput
+- InputKind
+- Transaction
+
+---
+
+## Part 7: Borrowing
+
+`highest_value_output` and `find_outputs_for_recipient` return references
+borrowed from the original transaction.
+
+No cloning is required because the returned data lives as long as the original
+transaction.
+
+Ownership experiment:
+
+Attempting to move values out of a borrowed reference causes a compiler error
+because Rust prevents moving ownership from borrowed data.
+
+Example error:
+
+cannot move out of borrowed content
+
+
+---
+
+## Part 8: Payment Example
+
+Example transaction:
+
+Version: 2
+Locktime: 0
+
+Inputs:
+70,000 sats
+50,000 sats
+
+Outputs:
+90,000 sats -> bc1qreceiver
+28,000 sats -> bc1qsender
+
+Fee:
+2,000 sats
+
+
+---
+
+## Part 9: UTXO Selection
+
+The implemented algorithm selects UTXOs in the order provided until the target
+amount is reached.
+
+A better production algorithm could choose UTXOs that minimize change,
+transaction size, or fees.
+
+
