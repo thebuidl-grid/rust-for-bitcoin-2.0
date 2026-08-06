@@ -1,7 +1,6 @@
 use std::fmt;
 
 /// Expected failures produced by transaction validation and coin selection.
-/// Expected failures produced by transaction validation and coin selections.
 #[derive(Debug, PartialEq, Eq)]
 pub enum TransactionError {
     NoInputs,
