@@ -30,6 +30,7 @@ pub fn list_unspent<C: RpcClient>(client: &C, wallet_name: &str) -> LabResult<Ve
                 .and_then(|h| h.as_str())
                 .unwrap_or_default()
                 .to_string(),
+                
             _ => String::new(),
         };
 

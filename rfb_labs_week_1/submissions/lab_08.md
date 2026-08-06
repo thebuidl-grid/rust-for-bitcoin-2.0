@@ -7,7 +7,7 @@
 # 1. Inspect the initial block header containing the transaction 
 bitcoin-cli -regtest getblockheader "268e5d2a2c347bae662de8db34f1f2fe49b89020620ea32ab1f37d1fbd4421c6"
 
-# 2. Check initial transaction confirmations
+# 2. Check initial transaction confirmations 
 bitcoin-cli -regtest -rpcwallet="miner" gettransaction "33812f0d3b58d8f6674895ee0636c841edbe565a971259dd4de78d927afc92cf"
 
 # 3. Mine 5 additional blocks to build chain depth 

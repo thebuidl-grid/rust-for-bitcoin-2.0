@@ -6,7 +6,7 @@ use crate::{LabError, LabResult};
 /// Create a wallet with the supplied name.
 pub fn create_wallet<C: RpcClient>(client: &C, wallet_name: &str) -> LabResult<()> {
     client.call(None, "createwallet", &[wallet_name.to_string()])?;
-    Ok(())
+    Ok(()) // Ignore the returned JSON, we just want to create the wallet
 }
 
 /// Return every wallet currently loaded by this node.

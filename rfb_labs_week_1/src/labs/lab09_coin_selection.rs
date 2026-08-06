@@ -90,7 +90,7 @@ pub fn send_combined_payment<C: RpcClient>(
     let raw = client.call(
         Some(alice_wallet),
         "sendtoaddress",
-        &[receiver_address.to_string(), "1".to_string()],
+        &[receiver                                 _address.to_string(), "1".to_string()],
     )?;
     let val = parse_cli_value(&raw)?;
 

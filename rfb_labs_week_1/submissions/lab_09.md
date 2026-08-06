@@ -10,6 +10,7 @@ bitcoin-cli -regtest -rpcwallet="miner" sendtoaddress $(bitcoin-cli -regtest -rp
 
 # 2. Mine a block to confirm miner2 funding UTXOs
 bitcoin-cli -regtest -rpcwallet="miner" generatetoaddress 1 $(bitcoin-cli -regtest -rpcwallet=miner getnewaddress)
+
 # 3. Query miner2 confirmed spendable UTXOs
 bitcoin-cli -regtest -rpcwallet="miner2" listunspent
 
