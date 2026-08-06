@@ -96,8 +96,8 @@ impl Transaction {
 
     pub fn fee(&self) -> Result<u64, TransactionError> {
         // TODO(Part 3): checked subtraction must return OutputsExceedInputs.
-        let total_inputs = (&self).total_input_value();
-        let total_outputs = (&self).total_output_value();
+        let total_inputs = self.total_input_value();
+        let total_outputs = self.total_output_value();
 
         if total_outputs > total_inputs {
             Err(TransactionError::OutputsExceedInputs {
@@ -203,7 +203,7 @@ pub fn find_outputs_for_recipient<'a>(
 impl fmt::Display for OutPoint {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO(Part 6): format as `<txid>:<vout>`.
-        write!(formatter, "{0}:{1}",self.txid, self.vout)
+        write!(formatter, "{0}:{1}", self.txid, self.vout)
     }
 }
 
@@ -254,7 +254,7 @@ impl fmt::Display for Transaction {
 
         let fee = match self.fee() {
             Ok(fee) => format!("{fee}"),
-            Err(_) => format!("Invalid fee"),
+            Err(e) => format!("Invalid fee: {e}"),
         };
         write!(
             formatter, "Transaction {{ version: {}, locktime: {}, inputs: {}, outputs: {}, total_input: {} sats, total_output: {} sats, fee: {} sats }}", self.version, self.locktime, self.inputs.len(), self.outputs.len(), self.total_input_value(), self.total_output_value(), fee
