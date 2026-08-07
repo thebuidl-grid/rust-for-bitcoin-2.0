@@ -115,6 +115,75 @@ text block, then explain what caused it.
 Describe any choices you made, including your UTXO-selection trade-offs and (if
 attempted) the optional transaction-state extension.
 
+## Design notes
+
+### UTXO-selection trade-offs
+
+`select_utxos` implements the simplest possible strategy: walk `available_utxos` in
+whatever order the caller passed in, accumulating value until the target is reached, and
+stop. This is deliberately minimal — O(n), no sorting, no backtracking — and it's enough to
+satisfy the assignment's borrowing requirements cleanly (no cloning, returns `Vec<&Utxo>`
+tied to the caller's slice). But it has real weaknesses if this were used for a genuine
+wallet rather than a teaching exercise:
+
+- **It doesn't minimize the number of inputs.** Every additional input adds real weight
+  (and therefore fee) to a serialized Bitcoin transaction. In-order selection might use
+  three small UTXOs where one large one would have sufficed, purely because of where they
+  happened to sit in the slice.
+- **It doesn't minimize change.** Leaving an awkward, arbitrary change amount behind is
+  both a fee inefficiency (an extra output costs weight too) and a privacy leak — an
+  observer can often infer which output was "change" simply because it's an odd,
+  non-round amount, which starts to reveal spending patterns over time.
+- **The whole notion of "strategy" is really just "whatever order the caller supplied."**
+  Since the function has no autonomy to reorder or choose among UTXOs, the actual selection
+  quality is entirely delegated to the caller — which isn't a real coin-selection policy at
+  all, just an accumulate-until-enough loop.
+
+Better alternatives, in rough order of sophistication:
+
+- **Largest-first** (sort descending, then apply the same accumulate loop): minimizes the
+  number of inputs used, which reduces transaction weight and fee for a given target. Trade-off:
+  it doesn't try to minimize leftover change, and repeatedly spending big UTXOs can leave a
+  wallet holding only small, awkward amounts over time.
+- **Smallest-first** (sort ascending): actively consolidates small "dust" UTXOs, which is
+  useful for wallet housekeeping (dust that's cheap to spend now becomes expensive to spend
+  later as fee rates rise). Trade-off: needs more inputs on average, so larger transactions
+  and higher fees for the same payment.
+- **Branch-and-bound / exact-match search** (closer to what Bitcoin Core actually does):
+  searches for a UTXO combination whose sum is exactly, or very close to, the target —
+  avoiding a change output entirely when possible. This is the strongest option for both
+  fee efficiency and privacy (no change output to fingerprint), but it's algorithmically
+  more involved — worst-case search space is exponential, so a real implementation needs
+  pruning heuristics and a time budget, not a simple loop.
+
+Given this assignment's actual purpose — practising ownership and borrowing, not building
+production-grade coin selection — the simple in-order approach is the right scope: it keeps
+the borrowing story (a borrowed slice in, borrowed references out) front and center without
+being obscured by sorting or search logic. A real wallet would likely default to something
+closer to branch-and-bound specifically because both money (fees) and privacy are at stake.
+
+### Optional state extension (Part 10)
+
+I modeled the lifecycle as a runtime state machine — a plain `TransactionState` enum
+(`Created`, `Validated`, `Signed`, `Broadcast`, `Confirmed`, `Rejected`) plus a
+`transition_to` method that checks a whitelist of allowed `(from, to)` pairs via
+`matches!` before mutating — rather than a compile-time typestate design (where each state
+would be a distinct generic type parameter on `Transaction` itself, making invalid
+transitions a compile error rather than a runtime one).
+
+I chose the runtime approach specifically because the assignment fixes `Transaction`'s
+public shape — the required tests and the Part 8 payment example all depend on it staying
+exactly as given, so wrapping it in a generic `Transaction<State>` would have risked
+breaking required, graded functionality for the sake of an optional bonus. A standalone
+`TransactionState` type, added purely alongside the existing `Transaction`, achieves the
+same goal ("prevent invalid transitions") without touching anything required.
+
+`transition_to` reuses the existing `TransactionError` enum (adding one variant,
+`InvalidStateTransition`) instead of introducing a second, separate error type — keeping
+one consistent error-handling approach across the whole crate rather than forcing callers
+to handle two unrelated error types depending on which part of the API they're using.
+
+
 ## Example output
 
 Paste the output of `cargo run` here once Part 8 is complete.
