@@ -2,7 +2,9 @@
 
 use crate::labs::lab03_maturity::attempt_payment;
 use crate::labs::lab04_utxos::list_unspent;
-use crate::labs::lab06_decode::{calculate_fee, decode_verbose_transaction, identify_payment_and_change};
+use crate::labs::lab06_decode::{
+    calculate_fee, decode_verbose_transaction, identify_payment_and_change,
+};
 use crate::model::{MultiUtxoAudit, Utxo};
 use crate::rpc::RpcClient;
 use crate::LabResult;
@@ -27,7 +29,6 @@ pub fn create_three_funding_transactions<C: RpcClient>(
     (0..3)
         .map(|_| attempt_payment(client, miner_wallet, alice_address, FUNDING_AMOUNT_BTC))
         .collect()
-
 }
 
 /// Return confirmed UTXOs belonging to the supplied address.
@@ -54,12 +55,7 @@ pub fn send_combined_payment<C: RpcClient>(
 ) -> LabResult<String> {
     // TODO: call sendtoaddress for 1 BTC.
     // todo!("Lab 09: create a spend requiring multiple inputs")
-    attempt_payment(
-        client,
-        alice_wallet,
-        receiver_address,
-        COMBINED_PAYMENT_BTC,
-    )
+    attempt_payment(client, alice_wallet, receiver_address, COMBINED_PAYMENT_BTC)
 }
 
 /// Decode Alice's spend and prove that multiple funding UTXOs were combined.

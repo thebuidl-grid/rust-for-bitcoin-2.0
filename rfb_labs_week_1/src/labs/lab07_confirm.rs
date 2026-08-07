@@ -5,7 +5,7 @@ use serde_json::Value;
 use crate::labs::lab03_maturity::mine_blocks;
 use crate::labs::lab05_mempool::get_raw_mempool;
 use crate::model::ConfirmationReport;
-use crate::rpc::{RpcClient, parse_cli_value, required_string};
+use crate::rpc::{parse_cli_value, required_string, RpcClient};
 use crate::{LabError, LabResult};
 
 /// Mine exactly one block and return its hash.
@@ -61,7 +61,6 @@ pub fn confirm_and_locate_transaction<C: RpcClient>(
 
     let mempool_empty = mempool_is_empty(client)?;
 
-    
     // One wallet lookup supplies both the depth and the containing block.
     let raw = client.call(Some(wallet_name), "gettransaction", &[txid.to_owned()])?;
     let wallet_view = parse_cli_value(&raw)?;
@@ -89,5 +88,4 @@ pub fn confirm_and_locate_transaction<C: RpcClient>(
         mempool_is_empty: mempool_empty,
         transaction_is_in_block,
     })
-
 }

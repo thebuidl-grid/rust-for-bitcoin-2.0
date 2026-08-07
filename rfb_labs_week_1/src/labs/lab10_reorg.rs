@@ -1,7 +1,7 @@
 //! Lab 10 — observe competing branches and most-work convergence.
 
 use crate::model::{ChainTip, ForkSnapshot, ReorgReport};
-use crate::rpc::{RpcClient, parse_cli_value, required_string, required_u64};
+use crate::rpc::{parse_cli_value, required_string, required_u64, RpcClient};
 use crate::LabResult;
 
 /// Read height, best-block hash, and accumulated chainwork from one node.
@@ -46,7 +46,7 @@ pub fn build_reorg_report(
 ) -> ReorgReport {
     // TODO: nodes converge when their final best hashes and heights match.
     // todo!("Lab 10: report most-work-chain convergence")
-    
+
     /*
      * Convergence means both nodes now name the same block as their tip at the same
      *height, which is what the most-work rule forces the shorter branch to accept.

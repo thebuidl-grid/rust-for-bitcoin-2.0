@@ -5,7 +5,7 @@ use serde_json::Value;
 use crate::labs::lab03_maturity::mine_blocks;
 use crate::labs::lab07_confirm::transaction_confirmations;
 use crate::model::{BlockHeaderEvidence, SecurityReport};
-use crate::rpc::{RpcClient, parse_cli_value, required_f64, required_string, required_u64};
+use crate::rpc::{parse_cli_value, required_f64, required_string, required_u64, RpcClient};
 use crate::{LabError, LabResult};
 
 /// Number of extra blocks the lab mines to take the payment to six confirmations.
@@ -87,5 +87,4 @@ pub fn build_security_report<C: RpcClient>(
         confirmations_before,
         confirmations_after,
     })
-    
 }
