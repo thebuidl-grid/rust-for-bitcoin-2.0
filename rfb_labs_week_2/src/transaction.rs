@@ -262,13 +262,14 @@ impl fmt::Display for Transaction {
         write!(
             _formatter,
             "Transaction v{} (locktime {}): {} input(s), {} output(s), total_in={} sats, total_out={} sats, fee=",
-            self.version, 
-            self.locktime, 
-            self.inputs.len(), 
-            self.outputs.len(), 
-            self.total_input_value(), 
+            self.version,
+            self.locktime,
+            self.inputs.len(),
+            self.outputs.len(),
+            self.total_input_value(),
             self.total_output_value()
         )?;
+
 
         match self.fee() {
             Ok(fee) => write!(_formatter, "{} sats", fee),
