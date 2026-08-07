@@ -28,6 +28,29 @@ cargo clippy --all-targets --all-features -- -D warnings
 unfinished code; enable them progressively rather than leaving them ignored in the
 submission.
 
+## Ownership and Borrowing Experiment
+
+### Part 7 Compiler Error Output
+
+```text
+error[E0382]: borrow of moved value: `output`
+  --> src/main.rs:13:34
+   |
+ 7 |     let output = rfb_labs_week_2::TxOutput {
+   |         ------ move occurs because `output` has type `TxOutput`, which does not implement the `Copy` trait
+...
+12 |     transaction.add_output(output);
+   |                            ------ value moved here
+13 |     println!("Output value: {}", output.value);
+   |                                  ^^^^^^^^^^^^ value borrowed here after move
+```
+
+### Explanation
+
+- **What value was moved:** The variable `output` of type `TxOutput` was moved when passed by value into `transaction.add_output(output)`.
+- **Why Rust rejected later use:** `TxOutput` contains a `String` (`recipient`) and does not implement the `Copy` trait. When `output` was passed by value to `add_output(self, output: TxOutput)`, ownership was transferred to `transaction.outputs`. Consequently, `output` in `main()` became invalid/uninitialized, making any subsequent attempt to read or borrow `output.value` a compile-time error.
+- **How borrowing changes the situation:** Borrowing (`&transaction` or `&output`) creates a reference pointing to the existing data without moving ownership. The underlying memory remains owned by its original container, enabling multiple components to inspect the data safely under Rust's borrowing rules.
+
 ## Written answers
 
 Answer in your own words. Add the ownership compiler error from Part 7 as a fenced
