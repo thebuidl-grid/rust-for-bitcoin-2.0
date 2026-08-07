@@ -23,7 +23,7 @@ fn output(value: u64, recipient: &str) -> TxOutput {
 // implement the TODOs. Remove `#[ignore]` from one test at a time while working.
 
 #[test]
-#[ignore = "enable after completing Parts 3 and 5"]
+
 fn valid_regular_transaction_passes_validation() {
     let mut transaction = Transaction::new(2, 0);
     transaction.add_input(regular_input(120_000));
@@ -37,7 +37,6 @@ fn valid_regular_transaction_passes_validation() {
 }
 
 #[test]
-#[ignore = "enable after completing Part 5"]
 fn outputs_cannot_exceed_inputs() {
     let mut transaction = Transaction::new(2, 0);
     transaction.add_input(regular_input(50_000));
@@ -50,4 +49,74 @@ fn outputs_cannot_exceed_inputs() {
             total_outputs: 60_000,
         })
     );
+}
+
+#[test]
+fn totals_and_fee_are_correct() {
+    let mut transaction = Transaction::new(2, 0);
+    transaction.add_input(regular_input(70_000));
+    transaction.add_input(regular_input(50_000));
+    transaction.add_output(output(90_000, "bc1qreceiver"));
+    transaction.add_output(output(28_000, "bc1qsender"));
+
+    assert_eq!(transaction.total_input_value(), 120_000);
+    assert_eq!(transaction.total_output_value(), 118_000);
+    assert_eq!(transaction.fee(), Ok(2_000));
+}
+
+#[test]
+fn highest_value_output_finds_the_max() {
+    let mut transaction = Transaction::new(2, 0);
+    transaction.add_output(output(10_000, "bc1qsmall"));
+    transaction.add_output(output(90_000, "bc1qbig"));
+
+    let highest = rfb_labs_week_2::highest_value_output(&transaction).unwrap();
+    assert_eq!(highest.value, 90_000);
+    assert_eq!(highest.recipient, "bc1qbig");
+}
+
+#[test]
+fn find_outputs_for_recipient_filters_correctly() {
+    let mut transaction = Transaction::new(2, 0);
+    transaction.add_output(output(10_000, "bc1qalice"));
+    transaction.add_output(output(20_000, "bc1qbob"));
+    transaction.add_output(output(30_000, "bc1qalice"));
+
+    let alice_outputs = rfb_labs_week_2::find_outputs_for_recipient(&transaction, "bc1qalice");
+    assert_eq!(alice_outputs.len(), 2);
+    assert_eq!(alice_outputs.iter().map(|o| o.value).sum::<u64>(), 40_000);
+}
+
+#[test]
+fn no_inputs_fails_validation() {
+    let mut transaction = Transaction::new(2, 0);
+    transaction.add_output(output(10_000, "bc1qreceiver"));
+
+    assert_eq!(
+        transaction.validate(),
+        Err(rfb_labs_week_2::TransactionError::NoInputs)
+    );
+}
+
+#[test]
+fn no_outputs_fails_validation() {
+    let mut transaction = Transaction::new(2, 0);
+    transaction.add_input(regular_input(10_000));
+
+    assert_eq!(
+        transaction.validate(),
+        Err(rfb_labs_week_2::TransactionError::NoOutputs)
+    );
+}
+
+#[test]
+fn coinbase_input_is_valid() {
+    let mut transaction = Transaction::new(2, 0);
+    transaction.add_input(InputKind::Coinbase {
+        block_height: 800_000,
+        reward: 625_000_000,
+    });
+    transaction.add_output(output(625_000_000, "bc1qminer"));
+
+    assert_eq!(transaction.validate(), Ok(()));
 }
