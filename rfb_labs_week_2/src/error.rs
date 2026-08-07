@@ -20,9 +20,56 @@ pub enum TransactionError {
 }
 
 impl fmt::Display for TransactionError {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 4): return a useful message for every error variant.
-        todo!("implement Display for TransactionError")
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TransactionError::NoInputs => {
+                write!(formatter, "Transaction must have at least one input")
+            }
+            TransactionError::NoOutputs => {
+                write!(formatter, "Transaction must have at least one output")
+            }
+            TransactionError::ZeroValueOutput => {
+                write!(formatter, "Non-OpReturn outputs cannot have zero value")
+            }
+            TransactionError::OutputsExceedInputs {
+                total_inputs,
+                total_outputs,
+            } => {
+                write!(
+                    formatter,
+                    "Total outputs ({} sats) exceed total inputs ({} sats)",
+                    total_outputs, total_inputs
+                )
+            }
+            TransactionError::CoinbaseMixedWithRegularInputs => {
+                write!(
+                    formatter,
+                    "Transaction cannot mix coinbase and regular inputs"
+                )
+            }
+            TransactionError::MultipleCoinbaseInputs => {
+                write!(
+                    formatter,
+                    "Transaction cannot have multiple coinbase inputs"
+                )
+            }
+            TransactionError::InvalidTxid => {
+                write!(
+                    formatter,
+                    "Regular input cannot have an empty transaction ID"
+                )
+            }
+            TransactionError::InsufficientFunds {
+                available,
+                required,
+            } => {
+                write!(
+                    formatter,
+                    "Insufficient funds: available {} sats, required {} sats",
+                    available, required
+                )
+            }
+        }
     }
 }
 
