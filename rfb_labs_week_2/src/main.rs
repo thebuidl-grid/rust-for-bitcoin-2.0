@@ -1,13 +1,11 @@
 //! Small executable for Part 8 of the assignment.
 
-use rfb_labs_week_2::transaction::{
-    InputKind, OutPoint, OutputType, Transaction, TxOutput,
-};
+use rfb_labs_week_2::transaction::{InputKind, OutPoint, OutputType, Transaction, TxOutput};
 
 fn main() {
     let mut transaction = Transaction::new(2, 0);
 
-   // Spend the first UTXO (70,000 sats)
+    // Spend the first UTXO (70,000 sats)
     transaction.add_input(InputKind::Regular {
         previous_output: OutPoint {
             txid: "utxo-1".to_string(),

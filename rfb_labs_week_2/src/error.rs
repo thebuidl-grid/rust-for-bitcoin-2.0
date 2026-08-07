@@ -38,15 +38,11 @@ impl fmt::Display for TransactionError {
                 write!(
                     formatter,
                     "outputs ({}) exceed inputs ({})",
-                    total_outputs,
-                    total_inputs
+                    total_outputs, total_inputs
                 )
             }
             TransactionError::CoinbaseMixedWithRegularInputs => {
-                write!(
-                    formatter,
-                    "coinbase and regular inputs cannot be mixed"
-                )
+                write!(formatter, "coinbase and regular inputs cannot be mixed")
             }
             TransactionError::MultipleCoinbaseInputs => {
                 write!(formatter, "only one coinbase input is allowed")
@@ -61,8 +57,7 @@ impl fmt::Display for TransactionError {
                 write!(
                     formatter,
                     "insufficient funds: available {}, required {}",
-                    available,
-                    required
+                    available, required
                 )
             }
         }
