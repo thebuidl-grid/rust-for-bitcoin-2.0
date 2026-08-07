@@ -180,28 +180,60 @@ pub fn find_outputs_for_recipient<'a>(
 
 impl fmt::Display for OutPoint {
     fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6): format as `<txid>:<vout>`.
-        todo!("display an outpoint")
+        write!(_formatter, "{}:{}", self.txid, self.vout)
     }
 }
 
 impl fmt::Display for TxOutput {
     fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6)
-        todo!("display an output")
+        write!(
+            _formatter,
+            "TxOutput(value: {}, recipient: {}, type: {:?})",
+            self.value, self.recipient, self.output_type
+        )
     }
 }
 
 impl fmt::Display for InputKind {
     fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6)
-        todo!("display an input")
+        match self {
+            InputKind::Regular {
+                previous_output,
+                value,
+                sequence,
+            } => write!(
+                _formatter,
+                "RegularInput(previous_output: {}, value: {}, sequence: {})",
+                previous_output, value, sequence
+            ),
+            InputKind::Coinbase { 
+                block_height, 
+                reward 
+            } => write!(
+                _formatter,
+                "CoinbaseInput(block_height: {}, reward: {})",
+                block_height, reward
+            ),
+        }
     }
 }
 
 impl fmt::Display for Transaction {
     fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6): print the readable summary described in the assignment.
-        todo!("display a transaction summary")
+        write!(
+            _formatter,
+            "Transaction v{} (locktime {}): {} input(s), {} output(s), total_in={} sats, total_out={} sats, fee=",
+            self.version, 
+            self.locktime, 
+            self.inputs.len(), 
+            self.outputs.len(), 
+            self.total_input_value(), 
+            self.total_output_value()
+        )?;
+
+        match self.fee() {
+            Ok(fee) => write!(_formatter, "{} sats", fee),
+            Err(e) => write!(_formatter, "Error calculating fee: {}", e),
+        }
     }
 }
