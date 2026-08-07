@@ -65,28 +65,42 @@ impl Transaction {
     pub fn add_input(&mut self, input: InputKind) {
         // TODO(Part 3): move `input` into the transaction.
         let _ = input;
-        todo!("add an input")
+        self.inputs.push(input);
     }
 
     pub fn add_output(&mut self, output: TxOutput) {
         // TODO(Part 3): move `output` into the transaction.
         let _ = output;
-        todo!("add an output")
+         self.outputs.push(output);
     }
 
     pub fn total_input_value(&self) -> u64 {
         // TODO(Part 3): match both InputKind variants and sum their values.
-        todo!("calculate the total input value")
+          self.inputs
+        .iter()
+        .map(|input| match input {
+            InputKind::Regular { value, .. } => *value,
+            InputKind::Coinbase { reward, .. } => *reward,
+        })
+        .sum()
     }
 
     pub fn total_output_value(&self) -> u64 {
         // TODO(Part 3): sum the value of every output.
-        todo!("calculate the total output value")
+       self.outputs.iter().map(|output| output.value).sum()
     }
 
     pub fn fee(&self) -> Result<u64, TransactionError> {
         // TODO(Part 3): checked subtraction must return OutputsExceedInputs.
-        todo!("calculate the fee")
+        let total_inputs = self.total_input_value();
+        let total_outputs = self.total_output_value();
+
+        total_inputs.checked_sub(total_outputs).ok_or(
+            TransactionError::OutputsExceedInputs {
+                total_inputs,
+                total_outputs,
+        },
+    )
     }
 
     pub fn validate(&self) -> Result<(), TransactionError> {
