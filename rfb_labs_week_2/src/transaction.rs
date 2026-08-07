@@ -63,49 +63,103 @@ impl Transaction {
     }
 
     pub fn add_input(&mut self, input: InputKind) {
-        // TODO(Part 3): move `input` into the transaction.
-        let _ = input;
-        todo!("add an input")
+        // move `input` into the transaction.
+        self.inputs.push(input);
     }
 
     pub fn add_output(&mut self, output: TxOutput) {
-        // TODO(Part 3): move `output` into the transaction.
-        let _ = output;
-        todo!("add an output")
+        self.outputs.push(output);
     }
 
     pub fn total_input_value(&self) -> u64 {
         // TODO(Part 3): match both InputKind variants and sum their values.
-        todo!("calculate the total input value")
+        self.inputs
+            .iter()
+            .map(|input| match input {
+                InputKind::Regular { value, .. } => *value,
+                InputKind::Coinbase { reward, .. } => *reward,
+            })
+            .sum()
     }
 
     pub fn total_output_value(&self) -> u64 {
         // TODO(Part 3): sum the value of every output.
-        todo!("calculate the total output value")
+        self.outputs
+            .iter()
+            .map(|output| output.value())
+            .sum()
     }
 
     pub fn fee(&self) -> Result<u64, TransactionError> {
-        // TODO(Part 3): checked subtraction must return OutputsExceedInputs.
-        todo!("calculate the fee")
+        let input_total = self.total_input_value();
+        let output_total = self.total_output_value();
+
+        input_total
+            .checked_sub(output_total)
+            .ok_or(TransactionError::OutputsExceedInputs {
+                total_inputs: input_total,
+                total_outputs: output_total,
+            })
     }
 
     pub fn validate(&self) -> Result<(), TransactionError> {
-        // TODO(Part 5): apply every validation rule in ASSIGNMENT.md.
-        todo!("validate the transaction")
+        if self.inputs.is_empty() {
+            return Err(TransactionError::NoInputs);
+        }
+
+        if self.outputs.is_empty() {
+            return Err(TransactionError::NoOutputs);
+        }
+
+        let mut coinbase_count = 0;
+        let mut regular_count = 0;
+
+        for input in &self.inputs {
+            match input {
+                InputKind::Regular { previous_output, .. } => {
+                    regular_count += 1;
+                    if previous_output.txid.is_empty() {
+                        return Err(TransactionError::InvalidTxid);
+                    }
+                }
+                InputKind::Coinbase { .. } => {
+                    coinbase_count += 1;
+                }
+            }
+        }
+
+        if coinbase_count > 1 {
+            return Err(TransactionError::MultipleCoinbaseInputs);
+        }
+
+        if coinbase_count > 0 && regular_count > 0 {
+            return Err(TransactionError::CoinbaseMixedWithRegularInputs);
+        }
+
+        for output in &self.outputs {
+            if output.value == 0 && output.output_type != OutputType::OpReturn {
+                return Err(TransactionError::ZeroValueOutput);
+            }
+        }
+
+        self.fee()?; // Check if outputs exceed inputs.
+        Ok(())
+
     }
 }
 
 impl BitcoinValue for TxOutput {
     fn value(&self) -> u64 {
-        // TODO(Part 6)
-        todo!("return the output value")
+        self.value
     }
 }
 
 impl BitcoinValue for InputKind {
     fn value(&self) -> u64 {
-        // TODO(Part 6): both variants carry a value under different names.
-        todo!("return the input value")
+        match self {
+            InputKind::Regular { value, .. } => *value,
+            InputKind::Coinbase { reward, .. } => *reward,
+        }
     }
 }
 
