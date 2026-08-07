@@ -44,11 +44,50 @@ pub struct Transaction {
     pub locktime: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransactionState {
+    Created,
+    Validated,
+    Signed,
+    Broadcast,
+    Confirmed,
+    Rejected,
+}
+
 pub trait BitcoinValue {
     fn value(&self) -> u64;
 
     fn value_in_btc(&self) -> f64 {
         self.value() as f64 / 100_000_000.0
+    }
+}
+
+impl TransactionState {
+    pub fn can_transition_to(self, next: TransactionState) -> bool {
+        use TransactionState::*;
+        matches!(
+            (self, next),
+            (Created, Validated)
+                | (Created, Rejected)
+                | (Validated, Signed)
+                | (Validated, Rejected)
+                | (Signed, Broadcast)
+                | (Signed, Rejected)
+                | (Broadcast, Confirmed)
+                | (Broadcast, Rejected)
+        )
+    }
+
+    pub fn transition_to(&mut self, next: TransactionState) -> Result<(), TransactionError> {
+        if self.can_transition_to(next) {
+            *self = next;
+            Ok(())
+        } else {
+            Err(TransactionError::InvalidStateTransition {
+                from: *self,
+                to: next,
+            })
+        }
     }
 }
 

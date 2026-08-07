@@ -10,6 +10,6 @@ pub mod utxo;
 pub use error::TransactionError;
 pub use transaction::{
     find_outputs_for_recipient, highest_value_output, BitcoinValue, InputKind, OutPoint,
-    OutputType, Transaction, TxOutput,
+    OutputType, Transaction, TxOutput,TransactionState,
 };
 pub use utxo::{select_utxos, Utxo};

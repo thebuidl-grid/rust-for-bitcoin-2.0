@@ -1,4 +1,5 @@
 use std::fmt;
+use crate::transaction::TransactionState;
 
 /// Expected failures produced by transaction validation and coin selection.
 #[derive(Debug, PartialEq, Eq)]
@@ -17,7 +18,13 @@ pub enum TransactionError {
         available: u64,
         required: u64,
     },
+    InvalidStateTransition {
+        from: TransactionState,
+        to: TransactionState,
+    },
 }
+
+
 
 impl fmt::Display for TransactionError {
     fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -47,6 +54,12 @@ impl fmt::Display for TransactionError {
                 "insufficient funds: available {}, required {}",
                 available, required
             ),
+            TransactionError::InvalidStateTransition { from, to } => {
+                write!(_formatter, "cannot transition from {from:?} to {to:?}")
+            }
+
+
+
         }
     }
 }

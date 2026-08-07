@@ -1,4 +1,4 @@
-use rfb_labs_week_2::{InputKind, OutPoint, OutputType, Transaction, TxOutput};
+use rfb_labs_week_2::{InputKind, OutPoint, OutputType, TransactionState, Transaction, TxOutput, TransactionError};
 
 fn regular_input(value: u64) -> InputKind {
     InputKind::Regular {
@@ -51,3 +51,26 @@ fn outputs_cannot_exceed_inputs() {
         })
     );
 }
+
+#[test]
+fn valid_state_transition_succeeds() {
+    let mut state = TransactionState::Created;
+
+    assert_eq!(state.transition_to(TransactionState::Validated), Ok(()));
+    assert_eq!(state, TransactionState::Validated);
+}
+
+#[test]
+fn invalid_state_transition_is_rejected() {
+    let mut state = TransactionState::Created;
+
+    assert_eq!(
+        state.transition_to(TransactionState::Signed),
+        Err(TransactionError::InvalidStateTransition {
+            from: TransactionState::Created,
+            to: TransactionState::Signed,
+        })
+    );
+    assert_eq!(state, TransactionState::Created);
+}
+
