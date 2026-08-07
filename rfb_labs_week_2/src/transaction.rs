@@ -63,91 +63,173 @@ impl Transaction {
     }
 
     pub fn add_input(&mut self, input: InputKind) {
-        // TODO(Part 3): move `input` into the transaction.
-        let _ = input;
-        todo!("add an input")
+
+        self.inputs.push(input);
     }
 
     pub fn add_output(&mut self, output: TxOutput) {
-        // TODO(Part 3): move `output` into the transaction.
-        let _ = output;
-        todo!("add an output")
+        self.outputs.push(output);
     }
 
     pub fn total_input_value(&self) -> u64 {
-        // TODO(Part 3): match both InputKind variants and sum their values.
-        todo!("calculate the total input value")
+        self.inputs
+            .iter()
+            .map(|input| match input {
+                InputKind::Regular { value, .. } => *value,
+                InputKind::Coinbase { reward, .. } => *reward,
+            })
+            .sum()
     }
 
     pub fn total_output_value(&self) -> u64 {
-        // TODO(Part 3): sum the value of every output.
-        todo!("calculate the total output value")
+        self.outputs.iter().map(|output| output.value).sum()
     }
 
     pub fn fee(&self) -> Result<u64, TransactionError> {
-        // TODO(Part 3): checked subtraction must return OutputsExceedInputs.
-        todo!("calculate the fee")
+        let total_inputs = self.total_input_value();
+        let total_outputs = self.total_output_value();
+
+        total_inputs
+            .checked_sub(total_outputs)
+            .ok_or(TransactionError::OutputsExceedInputs {
+                total_inputs,
+                total_outputs,
+            })
     }
 
     pub fn validate(&self) -> Result<(), TransactionError> {
-        // TODO(Part 5): apply every validation rule in ASSIGNMENT.md.
-        todo!("validate the transaction")
+        if self.inputs.is_empty() {
+            return Err(TransactionError::NoInputs);
+        }
+
+        if self.outputs.is_empty() {
+            return Err(TransactionError::NoOutputs);
+        }
+
+        for output in &self.outputs {
+            if output.value == 0 && output.output_type != OutputType::OpReturn {
+                return Err(TransactionError::ZeroValueOutput);
+            }
+        }
+
+        let coinbase_count = self
+            .inputs
+            .iter()
+            .filter(|input| matches!(input, InputKind::Coinbase { .. }))
+            .count();
+
+        if coinbase_count > 1 {
+            return Err(TransactionError::MultipleCoinbaseInputs);
+        }
+        if coinbase_count > 0 && coinbase_count < self.inputs.len() {
+            return Err(TransactionError::CoinbaseMixedWithRegularInputs);
+        }
+
+        for input in &self.inputs {
+            if let InputKind::Regular {
+                previous_output, ..
+            } = input
+            {
+                if previous_output.txid.is_empty() {
+                    return Err(TransactionError::InvalidTxid);
+                }
+            }
+        }
+        self.fee()?;
+        Ok(())
     }
 }
 
 impl BitcoinValue for TxOutput {
     fn value(&self) -> u64 {
-        // TODO(Part 6)
-        todo!("return the output value")
+        self.value
     }
 }
 
 impl BitcoinValue for InputKind {
     fn value(&self) -> u64 {
-        // TODO(Part 6): both variants carry a value under different names.
-        todo!("return the input value")
+        match self {
+            InputKind::Coinbase { reward, .. } => *reward,
+            InputKind::Regular { value, .. } => *value,
+        }
     }
 }
 
 pub fn highest_value_output(transaction: &Transaction) -> Option<&TxOutput> {
-    // TODO(Part 7): borrow from `transaction`; do not clone.
-    let _ = transaction;
-    todo!("find the highest-value output")
+  
+    transaction.outputs.iter().max_by_key(|output| output.value)
 }
 
 pub fn find_outputs_for_recipient<'a>(
     transaction: &'a Transaction,
     recipient: &str,
 ) -> Vec<&'a TxOutput> {
-    // TODO(Part 7): return references to all matching outputs.
-    let _ = (transaction, recipient);
-    todo!("find outputs for a recipient")
+    transaction
+        .outputs
+        .iter()
+        .filter(|output| output.recipient == recipient)
+        .collect()
 }
 
 impl fmt::Display for OutPoint {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6): format as `<txid>:<vout>`.
-        todo!("display an outpoint")
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}:{}", self.txid, self.vout)
     }
 }
 
 impl fmt::Display for TxOutput {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6)
-        todo!("display an output")
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "{} sats -> {} ({:?})",
+            self.value, self.recipient, self.output_type
+        )
     }
 }
 
 impl fmt::Display for InputKind {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6)
-        todo!("display an input")
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InputKind::Regular {
+                previous_output,
+                value,
+                sequence,
+            } => {
+                write!(
+                    formatter,
+                    "Regular Input: {previous_output}, {value} sats, sequence {sequence} "
+                )
+            }
+            InputKind::Coinbase {
+                block_height,
+                reward,
+            } => {
+                write!(
+                    formatter,
+                    "Coinbase Input: block {block_height}, reward {reward} sats"
+                )
+            }
+        }
     }
 }
-
 impl fmt::Display for Transaction {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6): print the readable summary described in the assignment.
-        todo!("display a transaction summary")
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let total_input = self.total_input_value();
+        let total_output = self.total_output_value();
+
+        write!(
+            formatter,
+            "Transaction v{} (locktime {})\n  {} input(s), {} output(s)\n  total input: {} sats\n  total output: {} sats\n  fee: {}",
+            self.version,
+            self.locktime,
+            self.inputs.len(),
+            self.outputs.len(),
+            total_input,
+            total_output,
+            match self.fee() {
+                Ok(fee) => format!("{fee} sats"),
+                Err(err) => format!("invalid ({err})"),
+            }
+        )
     }
 }
