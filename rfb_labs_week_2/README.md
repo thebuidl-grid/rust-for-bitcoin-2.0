@@ -28,6 +28,40 @@ cargo clippy --all-targets --all-features -- -D warnings
 unfinished code; enable them progressively rather than leaving them ignored in the
 submission.
 
+
+### Ownership experiment (Part 7)
+
+Attempting to use a value after moving it into `add_input` produces:
+
+​```text
+error[E0382]: borrow of moved value: `utxo1`
+  --> src/main.rs:18:16
+   |
+ 8 |     let utxo1 = InputKind::Regular {
+   |         ----- move occurs because `utxo1` has type `InputKind`, which does not implement the `Copy` trait
+...
+17 |     transaction.add_input(utxo1);
+   |                           ----- value moved here
+18 |     println!("{utxo1:?}");
+   |                ^^^^^ value borrowed here after move
+​```
+
+`add_input` takes its parameter as `input: InputKind` — by value, not by reference — so calling
+`transaction.add_input(utxo1)` moves `utxo1` into the function, and from there into
+`transaction.inputs`. After that line, the local binding `utxo1` no longer owns anything: the
+value it used to refer to now belongs to the `Transaction`. The next line tries to read `utxo1`
+again via `println!`, but Rust's ownership rules only allow a value to have one owner at a time,
+so the compiler rejects the second use at compile time rather than letting it silently reference
+already-relocated memory.
+
+The root cause is that `InputKind` doesn't implement `Copy`: one of its variants (`Regular`)
+contains an `OutPoint`, which contains a `String` (`txid`). `String` owns a heap allocation, which
+can't be implicitly duplicated by a cheap bit-copy — so Rust must treat assignment/passing of an
+`InputKind` as a move, never an automatic copy. This is precisely the mechanism `add_input`'s
+signature (Part 3) relies on to "transfer ownership": the compiler enforces it, not just a comment
+or convention.
+
+
 ## Written answers
 
 Answer in your own words. Add the ownership compiler error from Part 7 as a fenced

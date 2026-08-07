@@ -164,18 +164,18 @@ impl BitcoinValue for InputKind {
 }
 
 pub fn highest_value_output(transaction: &Transaction) -> Option<&TxOutput> {
-    // TODO(Part 7): borrow from `transaction`; do not clone.
-    let _ = transaction;
-    todo!("find the highest-value output")
+    transaction.outputs.iter().max_by_key(|output| output.value)
 }
 
 pub fn find_outputs_for_recipient<'a>(
     transaction: &'a Transaction,
     recipient: &str,
 ) -> Vec<&'a TxOutput> {
-    // TODO(Part 7): return references to all matching outputs.
-    let _ = (transaction, recipient);
-    todo!("find outputs for a recipient")
+    transaction
+        .outputs
+        .iter()
+        .filter(|output| output.recipient == recipient)
+        .collect()
 }
 
 impl fmt::Display for OutPoint {
