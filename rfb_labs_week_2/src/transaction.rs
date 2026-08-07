@@ -105,7 +105,22 @@ impl Transaction {
 
     pub fn validate(&self) -> Result<(), TransactionError> {
         // TODO(Part 5): apply every validation rule in ASSIGNMENT.md.
-        todo!("validate the transaction")
+       if self.inputs.is_empty() {
+        return Err(TransactionError::NoInputs);
+    }
+
+    if self.outputs.is_empty() {
+        return Err(TransactionError::NoOutputs);
+    }
+
+    if self.total_output_value() > self.total_input_value() {
+        return Err(TransactionError::OutputsExceedInputs {
+            total_inputs: self.total_input_value(),
+            total_outputs: self.total_output_value(),
+        });
+    }
+
+    Ok(())
     }
 }
 
