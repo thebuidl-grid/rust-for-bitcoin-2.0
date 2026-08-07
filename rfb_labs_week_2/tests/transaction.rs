@@ -1,4 +1,7 @@
-use rfb_labs_week_2::{InputKind, OutPoint, OutputType, TransactionState, Transaction, TxOutput, TransactionError, find_outputs_for_recipient, highest_value_output};
+use rfb_labs_week_2::{
+    find_outputs_for_recipient, highest_value_output, InputKind, OutPoint, OutputType, Transaction,
+    TransactionError, TransactionState, TxOutput,
+};
 
 fn regular_input(value: u64) -> InputKind {
     InputKind::Regular {
@@ -36,7 +39,6 @@ fn regular_input_with_empty_txid(value: u64) -> InputKind {
         sequence: u32::MAX,
     }
 }
-
 
 // These tests are ignored so the starter repository builds before students
 // implement the TODOs. Remove `#[ignore]` from one test at a time while working.
@@ -79,7 +81,6 @@ fn valid_state_transition_succeeds() {
     assert_eq!(state, TransactionState::Validated);
 }
 
-
 #[test]
 fn invalid_state_transition_is_rejected() {
     let mut state = TransactionState::Created;
@@ -101,7 +102,10 @@ fn finds_highest_value_output() {
     transaction.add_output(output(90_000, "bc1qbig"));
     transaction.add_output(output(50_000, "bc1qmedium"));
 
-    assert_eq!(highest_value_output(&transaction), Some(&output(90_000, "bc1qbig")));
+    assert_eq!(
+        highest_value_output(&transaction),
+        Some(&output(90_000, "bc1qbig"))
+    );
 }
 
 #[test]
@@ -149,7 +153,10 @@ fn rejects_non_op_return_zero_value_output() {
     transaction.add_input(regular_input(10_000));
     transaction.add_output(output(0, "bc1qreceiver"));
 
-    assert_eq!(transaction.validate(), Err(TransactionError::ZeroValueOutput));
+    assert_eq!(
+        transaction.validate(),
+        Err(TransactionError::ZeroValueOutput)
+    );
 }
 
 #[test]

@@ -1,5 +1,5 @@
-use std::fmt;
 use crate::transaction::TransactionState;
+use std::fmt;
 
 /// Expected failures produced by transaction validation and coin selection.
 #[derive(Debug, PartialEq, Eq)]
@@ -24,8 +24,6 @@ pub enum TransactionError {
     },
 }
 
-
-
 impl fmt::Display for TransactionError {
     fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -48,8 +46,13 @@ impl fmt::Display for TransactionError {
             TransactionError::MultipleCoinbaseInputs => {
                 write!(_formatter, "multiple coinbase inputs in transaction")
             }
-            TransactionError::InvalidTxid => write!(_formatter, "A regular input has an empty txid"),
-            TransactionError::InsufficientFunds { available, required } => write!(
+            TransactionError::InvalidTxid => {
+                write!(_formatter, "A regular input has an empty txid")
+            }
+            TransactionError::InsufficientFunds {
+                available,
+                required,
+            } => write!(
                 _formatter,
                 "insufficient funds: available {}, required {}",
                 available, required
@@ -57,9 +60,6 @@ impl fmt::Display for TransactionError {
             TransactionError::InvalidStateTransition { from, to } => {
                 write!(_formatter, "cannot transition from {from:?} to {to:?}")
             }
-
-
-
         }
     }
 }

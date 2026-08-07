@@ -67,55 +67,53 @@ or convention.
 Answer in your own words. Add the ownership compiler error from Part 7 as a fenced
 text block, then explain what caused it.
 
-1. What is a Bitcoin transaction input?
+1. **What is a Bitcoin transaction input?** 
    A reference to value being consumed by this transaction. `InputKind` models it as one of two mutually exclusive shapes: a `Regular` input, which points at a specific previous output (via `OutPoint`) and carries that output's value and a sequence number or a `Coinbase` input, the one special input per block that creates new coins from nothing, carrying a block height and reward instead of a previous output.
 
-2. What is a Bitcoin transaction output?
+2. **What is a Bitcoin transaction output?**
    A destination for value being created by this transaction. Modeled by `TxOutput`: an amount (`value`, in satoshis), a `recipient`, and an `output_type` describing what kind of script locks it. An output only becomes spendable — turns into a UTXO — once the transaction containing it is accepted onto the chain.
 
-3. What is a UTXO?
+3. **What is a UTXO?**
    An Unspent Transaction Output — an output from some previous transaction that hasn't yet been consumed as an input anywhere. It's the fundamental "coin" unit in Bitcoin's accounting model. Modeled here by `Utxo` (`outpoint` + `value`);
    `select_utxos` treats a slice of them as the pool of spendable money available to build a new transaction from.
 
-4. What does an outpoint identify?
+4. **What does an outpoint identify?**
    One specific, unique previous output: which transaction it came from (`txid`) and which output index within that transaction(`vout`). 
    `txid:vout` is a coordinate system — a single `txid` can have many outputs, so `vout` disambiguates exactly one of them.
 
-5. How is a transaction fee calculated?
+5. **How is a transaction fee calculated?**
    `fee = sum(inputs) - sum(outputs)`. 
    It is never a value written directly into the transaction. `fee()` computes it as `total_input_value() - total_output_value()` using `checked_sub`, so an impossible negative result (outputs worth more than inputs) produces a typed `OutputsExceedInputs`error instead of an integer-underflow panic.
 
-6. Why use integers rather than floating-point numbers for bitcoin amounts?
+6. **Why use integers rather than floating-point numbers for bitcoin amounts?**
     Floating-point numbers can't represent every decimal value exactly in binary, so repeated arithmetic on `f64` amounts accumulates rounding error — unacceptable when the numbers represent real money and totals must balance exactly. Satoshis are the smallest indivisible unit (1 BTC = 100,000,000 sats), so representing amounts as `u64` satoshi counts means every value is an exact integer: addition and subtraction never drift, and equality checks are always reliable.
 
-7. Why does `total_input_value()` borrow `self`?
+7. **Why does `total_input_value()` borrow `self`?**
    It only needs to read the transaction's existing data (iterate `inputs`, sum their values) — it never changes anything. 
    An immutable borrow (`&self`) is the minimum access the function actually needs, and it lets the caller keep using the `Transaction` afterward instead of losing access to it.
 
-8. Why does `add_input()` take `&mut self`?
+8. **Why does `add_input()` take `&mut self`?**
    It is because it genuinely mutates the transaction , it pushes a new element onto `self.inputs`, growing the vector, which
    requires exclusive mutable access (`Vec::push` needs `&mut Vec`). An immutable `&self`wouldn't compile, and taking `self` by value would consume the whole transaction just to add one input.
 
-9. What happens when an input is moved into a transaction?
+9. **What happens when an input is moved into a transaction?**
    `add_input(&mut self, input: InputKind)` takes `input` by value, and
    `self.inputs.push(input)` moves it out of the local parameter and into the `Vec`. After that call, the caller's original binding no longer owns anything — the `InputKind` now lives solely inside `transaction.inputs`, and attempting to use the original variable
    again is a compile-time "use of moved value" error (exactly what the Part 7 ownership experiment demonstrated directly).
 
-10. Why is `Result` preferable to `panic!` for validation failures?
+10. **Why is `Result` preferable to `panic!` for validation failures?**
     A validation failure (empty inputs, a malformed txid, outputs exceeding inputs) is an *expected*,recoverable condition, not a bug in the program. `panic!` immediately unwinds the whole program with no way for the caller to respond; `Result` lets the caller inspect exactly what went wrong via a specific `TransactionError` variant, decide how to handle it, and keep running. Because `TransactionError` also implements `Display`, an `Err` can be shown to a user as a clear message instead of crashing with a stack trace.
 
-11. How do enums help model regular and coinbase inputs?
+11. **How do enums help model regular and coinbase inputs?**
     `InputKind` expresses "exactly one of these two mutually exclusive shapes, and nothing else is representable" at the type level. A regular input and a coinbase input share no fields and are never a hybrid of both, so the enum makes invalid combinations structurally impossible rather than merely discouraged by convention. Combined with Rust's exhaustive `match`, every function that needs an input's value, or needs to validate or display it, is forced by the compiler to explicitly handle both variants — forgetting the coinbase case is a compile error, not a silent bug.
 
-12. How does the `BitcoinValue` trait reduce duplication?
+12. **How does the `BitcoinValue` trait reduce duplication?**
     Without it, every function needing "how much is this worth" would have to repeat the `match` distinguishing `InputKind::Regular`'s `value` field from `InputKind::Coinbase`'s `reward` field. By implementing `BitcoinValue::value()` once per type, that distinction lives in exactly one place; `total_input_value`, `fee`, and anything else needing a value just calls `.value()` (or passes the method itself as a function, e.g. `.map(InputKind::value)`) without knowing which variant it's looking at. It also gives `TxOutput` and `InputKind` a shared interface for free — the trait's default method `value_in_btc()` works identically on either type without either one writing its own conversion logic.
 
 ## Design notes
 
 Describe any choices you made, including your UTXO-selection trade-offs and (if
 attempted) the optional transaction-state extension.
-
-## Design notes
 
 ### UTXO-selection trade-offs
 
@@ -187,3 +185,9 @@ to handle two unrelated error types depending on which part of the API they're u
 ## Example output
 
 Paste the output of `cargo run` here once Part 8 is complete.
+
+​```text
+Transaction is valid!
+Transaction v2 (locktime 0): 2 input(s), 2 output(s), total_in=120000 sats, total_out=118000 sats, fee=2000 sats
+​```
+

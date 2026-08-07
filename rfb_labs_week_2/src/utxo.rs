@@ -11,7 +11,7 @@ pub fn select_utxos(available_utxos: &[Utxo], target: u64) -> Result<Vec<&Utxo>,
     // borrowed UTXOs and InsufficientFunds when their total is too small.
     let mut selected = Vec::new();
     let mut total = 0;
-    
+
     for utxo in available_utxos {
         if total >= target {
             break;

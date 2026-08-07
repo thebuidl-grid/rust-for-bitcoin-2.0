@@ -123,10 +123,7 @@ impl Transaction {
 
     pub fn total_output_value(&self) -> u64 {
         // TODO(Part 3): sum the value of every output.
-        self.outputs
-            .iter()
-            .map(|output| output.value())
-            .sum()
+        self.outputs.iter().map(|output| output.value()).sum()
     }
 
     pub fn fee(&self) -> Result<u64, TransactionError> {
@@ -155,7 +152,9 @@ impl Transaction {
 
         for input in &self.inputs {
             match input {
-                InputKind::Regular { previous_output, .. } => {
+                InputKind::Regular {
+                    previous_output, ..
+                } => {
                     regular_count += 1;
                     if previous_output.txid.is_empty() {
                         return Err(TransactionError::InvalidTxid);
@@ -183,7 +182,6 @@ impl Transaction {
 
         self.fee()?; // Check if outputs exceed inputs.
         Ok(())
-
     }
 }
 
@@ -245,9 +243,9 @@ impl fmt::Display for InputKind {
                 "RegularInput(previous_output: {}, value: {}, sequence: {})",
                 previous_output, value, sequence
             ),
-            InputKind::Coinbase { 
-                block_height, 
-                reward 
+            InputKind::Coinbase {
+                block_height,
+                reward,
             } => write!(
                 _formatter,
                 "CoinbaseInput(block_height: {}, reward: {})",
@@ -269,7 +267,6 @@ impl fmt::Display for Transaction {
             self.total_input_value(),
             self.total_output_value()
         )?;
-
 
         match self.fee() {
             Ok(fee) => write!(_formatter, "{} sats", fee),

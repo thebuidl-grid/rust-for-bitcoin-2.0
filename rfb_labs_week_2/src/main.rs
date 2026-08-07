@@ -1,6 +1,6 @@
 //! Small executable for Part 8 of the assignment.
 
-use rfb_labs_week_2::transaction::{Transaction, InputKind, OutPoint, OutputType, TxOutput};
+use rfb_labs_week_2::transaction::{InputKind, OutPoint, OutputType, Transaction, TxOutput};
 
 const UTXO_ONE_VALUE: u64 = 70_000;
 const UTXO_TWO_VALUE: u64 = 50_000;
@@ -21,9 +21,9 @@ fn main() {
         },
         value: UTXO_ONE_VALUE,
         sequence: u32::MAX,
-    }); 
+    });
 
-    transaction.add_input(InputKind::Regular{
+    transaction.add_input(InputKind::Regular {
         previous_output: OutPoint {
             txid: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".into(),
             vout: 1,
@@ -36,7 +36,7 @@ fn main() {
         value: PAYMENT_VALUE,
         recipient: "bc1qreceiver".into(),
         output_type: OutputType::P2wpkh,
-   });
+    });
 
     transaction.add_output(TxOutput {
         value: CHANGE_VALUE,
