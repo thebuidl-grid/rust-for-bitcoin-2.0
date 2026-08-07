@@ -145,15 +145,16 @@ impl Transaction {
 
 impl BitcoinValue for TxOutput {
     fn value(&self) -> u64 {
-        // TODO(Part 6)
-        todo!("return the output value")
+        self.value
     }
 }
 
 impl BitcoinValue for InputKind {
     fn value(&self) -> u64 {
-        // TODO(Part 6): both variants carry a value under different names.
-        todo!("return the input value")
+        match self {
+            InputKind::Regular { value, .. } => *value,
+            InputKind::Coinbase { reward, .. } => *reward,
+        }
     }
 }
 
@@ -173,29 +174,73 @@ pub fn find_outputs_for_recipient<'a>(
 }
 
 impl fmt::Display for OutPoint {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6): format as `<txid>:<vout>`.
-        todo!("display an outpoint")
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.txid, self.vout)
     }
 }
 
 impl fmt::Display for TxOutput {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6)
-        todo!("display an output")
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} sats -> {} ({:?})",
+            self.value, self.recipient, self.output_type
+        )
     }
 }
 
 impl fmt::Display for InputKind {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6)
-        todo!("display an input")
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InputKind::Regular {
+                previous_output,
+                value,
+                sequence,
+            } => {
+                write!(
+                    f,
+                    "Regular({previous_output}, {value} sats, seq: {sequence:#x})"
+                )
+            }
+            InputKind::Coinbase {
+                block_height,
+                reward,
+            } => {
+                write!(f, "Coinbase(height: {block_height}, reward: {reward} sats)")
+            }
+        }
     }
 }
 
 impl fmt::Display for Transaction {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 6): print the readable summary described in the assignment.
-        todo!("display a transaction summary")
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let fee_display = match self.fee() {
+            Ok(fee) => format!("{fee} sats"),
+            Err(err) => format!("Invalid ({err})"),
+        };
+        writeln!(
+            f,
+            "Transaction v{} (locktime: {})",
+            self.version, self.locktime
+        )?;
+        writeln!(
+            f,
+            "  Inputs ({}): total {} sats",
+            self.inputs.len(),
+            self.total_input_value()
+        )?;
+        for (idx, input) in self.inputs.iter().enumerate() {
+            writeln!(f, "    [{idx}] {input}")?;
+        }
+        writeln!(
+            f,
+            "  Outputs ({}): total {} sats",
+            self.outputs.len(),
+            self.total_output_value()
+        )?;
+        for (idx, output) in self.outputs.iter().enumerate() {
+            writeln!(f, "    [{idx}] {output}")?;
+        }
+        write!(f, "  Fee: {fee_display}")
     }
 }
