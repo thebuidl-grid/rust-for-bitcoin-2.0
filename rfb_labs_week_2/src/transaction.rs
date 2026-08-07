@@ -96,8 +96,50 @@ impl Transaction {
     }
 
     pub fn validate(&self) -> Result<(), TransactionError> {
-        // TODO(Part 5): apply every validation rule in ASSIGNMENT.md.
-        todo!("validate the transaction")
+        if self.inputs.is_empty() {
+            return Err(TransactionError::NoInputs);
+        }
+
+        if self.outputs.is_empty() {
+            return Err(TransactionError::NoOutputs);
+        }
+
+        let mut coinbase_count = 0;
+        let mut regular_count = 0;
+
+        for input in &self.inputs {
+            match input {
+                InputKind::Coinbase { .. } => {
+                    coinbase_count += 1;
+                }
+                InputKind::Regular {
+                    previous_output, ..
+                } => {
+                    if previous_output.txid.is_empty() {
+                        return Err(TransactionError::InvalidTxid);
+                    }
+                    regular_count += 1;
+                }
+            }
+        }
+
+        if coinbase_count > 1 {
+            return Err(TransactionError::MultipleCoinbaseInputs);
+        }
+
+        if coinbase_count > 0 && regular_count > 0 {
+            return Err(TransactionError::CoinbaseMixedWithRegularInputs);
+        }
+
+        for output in &self.outputs {
+            if output.value == 0 && output.output_type != OutputType::OpReturn {
+                return Err(TransactionError::ZeroValueOutput);
+            }
+        }
+
+        self.fee()?;
+
+        Ok(())
     }
 }
 
