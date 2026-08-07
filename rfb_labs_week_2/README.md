@@ -54,3 +54,22 @@ attempted) the optional transaction-state extension.
 ## Example output
 
 Paste the output of `cargo run` here once Part 8 is complete.
+
+## written Solutions: 
+1. A transaction input is a reference to an existing unspent output that is being spent. It proves ownership of that previous output and authorizes moving its value into a new transaction.
+2. A transaction output is a new piece of bitcoin value created by a transaction. It specifies an amount and the conditions under which it can be spent by a future transaction.
+3. A UTXO (Unspent Transaction Output) is an output that has been created by a transaction but has not yet been spent. Wallet balances are the sum of the `UTXOs` the wallet controls.
+4. An outpoint uniquely identifies a specific UTXO using the pair `(txid, vout)`, where `txid` is the transaction hash and `vout` is the output index.
+5. The fee is calculated as:
+
+   `fee = total inputs − total outputs`
+
+   Any value not assigned to an output becomes the `miner fee`.
+6. Integers represent satoshis exactly, while floating-point numbers can introduce rounding errors. Financial software needs exact arithmetic, so satoshis are stored as integers.
+7. It only reads the transaction to compute a sum. Borrowing with &self allows the method to inspect the transaction without taking ownership or modifying it.
+8. Adding an input changes the transaction’s internal state by pushing a new value into the inputs vector, so a mutable reference is required.
+9. `Ownership` of the input transfers to the transaction. The caller can no longer use that value unless it was cloned beforehand.
+10. Result lets the caller handle errors gracefully(on their own terms), such as `insufficient funds or invalid fees`, without crashing the program. `panic!` is usually reserved for unrecoverable bugs.
+11. The enum represents two distinct kinds of inputs with different data requirements. Exhaustive pattern matching forces the code to handle both regular and coinbase cases explicitly.
+12. The trait provides a common way to obtain a value from different types. Generic code can work with any type implementing the trait instead of writing separate summation logic for inputs and outputs.
+
