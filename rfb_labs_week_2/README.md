@@ -58,6 +58,18 @@ ans: `InputKind` captures structural differences (`OutPoint` vs `block_height`).
 12. How does the `BitcoinValue` trait reduce duplication?
 ans: It unifies value extraction logic across different types (`TxOutput`, `InputKind`) and provides shared default methods like `value_in_btc()`.
 
+## Part 7 Ownership Experiment
+
+Attempting to return a reference while taking ownership of an input value or trying to clone without implementing `Clone`:
+
+error[E0515]: cannot return reference to local variable temp_output
+--> src/transaction.rs:112:5
+|
+112|     &temp_output
+|     ^^^^^^^^^^^^ returns a reference to data owned by the current function
+
+
+
 ## Design notes
 
 We implemented sequential coin selection for `select_utxos` iterating over a borrowed slice `&[Utxo]`. This satisfies target requirements while avoiding vector allocations or cloning.
