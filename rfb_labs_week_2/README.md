@@ -76,4 +76,13 @@ attempted) the optional transaction-state extension.
 
 ## Example output
 
-Paste the output of `cargo run` here once Part 8 is complete.
+```text
+Transaction v2 (locktime: 0)
+  Inputs (2): total 120000 sats
+    [0] Regular(1111111111111111111111111111111111111111111111111111111111111111:0, 70000 sats, seq: 0xffffffff)
+    [1] Regular(2222222222222222222222222222222222222222222222222222222222222222:1, 50000 sats, seq: 0xffffffff)
+  Outputs (2): total 118000 sats
+    [0] 90000 sats -> bc1qreceiver (P2wpkh)
+    [1] 28000 sats -> bc1qsender (P2wpkh)
+  Fee: 2000 sats
+```
