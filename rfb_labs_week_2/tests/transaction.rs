@@ -36,7 +36,6 @@ fn valid_regular_transaction_passes_validation() {
 }
 
 #[test]
-#[ignore = "enable after completing Part 5"]
 fn outputs_cannot_exceed_inputs() {
     let mut transaction = Transaction::new(2, 0);
     transaction.add_input(regular_input(50_000));

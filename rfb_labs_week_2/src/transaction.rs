@@ -105,14 +105,50 @@ impl Transaction {
 
     pub fn validate(&self) -> Result<(), TransactionError> {
         // TODO(Part 5): apply every validation rule in ASSIGNMENT.md.
-       if self.inputs.is_empty() {
+       //have at least one input.
+    if self.inputs.is_empty() {
         return Err(TransactionError::NoInputs);
     }
 
+    // at least one output.
     if self.outputs.is_empty() {
         return Err(TransactionError::NoOutputs);
     }
 
+    // Zero-value outputs are only allowed for OP_RETURN.
+    for output in &self.outputs {
+        if output.value == 0 && output.output_type != OutputType::OpReturn {
+            return Err(TransactionError::ZeroValueOutput);
+        }
+    }
+
+    let mut coinbase_count = 0;
+
+    for input in &self.inputs {
+        match input {
+            InputKind::Coinbase { .. } => {
+                coinbase_count += 1;
+            }
+
+            InputKind::Regular { previous_output, .. } => {
+                if previous_output.txid.is_empty() {
+                    return Err(TransactionError::InvalidTxid);
+                }
+            }
+        }
+    }
+
+    // Only one coinbase input is allowed.
+    if coinbase_count > 1 {
+        return Err(TransactionError::MultipleCoinbaseInputs);
+    }
+
+    // Coinbase transactions cannot contain regular inputs.
+    if coinbase_count == 1 && self.inputs.len() > 1 {
+        return Err(TransactionError::CoinbaseMixedWithRegularInputs);
+    }
+
+    // Outputs cannot exceed inputs.
     if self.total_output_value() > self.total_input_value() {
         return Err(TransactionError::OutputsExceedInputs {
             total_inputs: self.total_input_value(),
