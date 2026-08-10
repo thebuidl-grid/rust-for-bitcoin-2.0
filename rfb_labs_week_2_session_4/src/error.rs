@@ -1,10 +1,6 @@
 use std::fmt;
 
 /// Every expected failure in the lending library.
-///
-/// This is the only file whose types are written for you. Nothing here should
-/// ever be produced by a `panic!`, an `unwrap`, or an `expect` — these are
-/// ordinary outcomes a caller is expected to handle.
 #[derive(Debug, PartialEq, Eq)]
 pub enum LibraryError {
     EmptyTitle,
@@ -41,10 +37,41 @@ pub enum LibraryError {
 }
 
 impl fmt::Display for LibraryError {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 2): return a useful, human-readable message for every
-        // variant. Include the ids and numbers the variant carries.
-        todo!("implement Display for LibraryError")
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::EmptyTitle => write!(formatter, "item title cannot be empty"),
+            Self::DuplicateItemId { id } => {
+                write!(formatter, "an item with id {id} already exists")
+            }
+            Self::DuplicateMemberId { id } => {
+                write!(formatter, "a member with id {id} is already registered")
+            }
+            Self::ItemNotFound { id } => write!(formatter, "item {id} was not found"),
+            Self::MemberNotFound { id } => write!(formatter, "member {id} was not found"),
+            Self::ItemAlreadyOnLoan { id, member_id } => {
+                write!(
+                    formatter,
+                    "item {id} is already on loan to member {member_id}"
+                )
+            }
+            Self::ItemNotOnLoan { id } => {
+                write!(formatter, "item {id} is not currently on loan")
+            }
+            Self::ItemIsLost { id } => write!(formatter, "item {id} is lost"),
+            Self::BorrowLimitReached { member_id, limit } => {
+                write!(
+                    formatter,
+                    "member {member_id} has reached the borrow limit of {limit}"
+                )
+            }
+            Self::InvalidReturnDay {
+                day_borrowed,
+                day_returned,
+            } => write!(
+                formatter,
+                "return day {day_returned} is earlier than borrow day {day_borrowed}"
+            ),
+        }
     }
 }
 
