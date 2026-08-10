@@ -33,8 +33,7 @@ pub trait LoanTerms {
     fn late_fee_cents(&self, days_held: u32) -> u32 {
         // TODO(Part 4): the shared fee formula lives here so neither impl
         // repeats it. A loan returned on time owes nothing.
-        let _ = days_held;
-        todo!("calculate the late fee")
+        self.daily_late_fee_cents() * days_held
     }
 }
 
@@ -53,44 +52,86 @@ impl Item {
 impl LoanTerms for MediaKind {
     fn loan_days(&self) -> u32 {
         // TODO(Part 4): books 21, audiobooks 14, ebooks 7.
-        todo!("return the loan length")
+        match self {
+            MediaKind::Book{..} => {
+                21
+            },
+            MediaKind::Audiobook{..} => {
+                14
+            },
+            MediaKind::Ebook{..} => {
+                7
+            }
+        }
     }
 
     fn daily_late_fee_cents(&self) -> u32 {
         // TODO(Part 4): 25 cents a day, except ebooks, which are never late.
-        todo!("return the daily late fee")
+        match self {
+            MediaKind::Book{..} => {
+                25
+            },
+            MediaKind::Audiobook{..} => {
+                25
+            },
+            MediaKind::Ebook{..} => {
+                0
+            }
+        }
     }
 }
 
 impl LoanTerms for Item {
     fn loan_days(&self) -> u32 {
         // TODO(Part 4): an item's terms come from its kind.
-        todo!("return the loan length")
+        self.kind.loan_days()
     }
 
     fn daily_late_fee_cents(&self) -> u32 {
         // TODO(Part 4)
-        todo!("return the daily late fee")
+        self.kind.daily_late_fee_cents()
     }
 }
 
 impl fmt::Display for MediaKind {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO(Part 4): mention the data the variant carries.
-        todo!("display a media kind")
+        match self {
+            MediaKind::Book{pages} => {
+                write!(formatter, "The media is a book of {pages} pages")
+            },
+            MediaKind::Audiobook{minutes} => {
+                write!(formatter, "The media is an audiobook of {minutes} minutes")
+            },
+            MediaKind::Ebook{size_kb} => {
+                write!(formatter, "The media is a {size_kb} kb ebook ")
+            }
+        }
     }
 }
 
 impl fmt::Display for LoanStatus {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO(Part 4): an on-loan item should name its borrower.
-        todo!("display a loan status")
+        match self {
+            LoanStatus::Available => {
+                write!(formatter, "The Item is available for loan.")
+            },
+            LoanStatus::Lost => {
+                write!(formatter, "The item is lost.")
+            },
+            LoanStatus::OnLoan{member_id, day_borrowed} => {
+                write!(formatter, "The item has be loaned to Member id: {member_id} on {day_borrowed}")
+            }
+        }
     }
 }
 
 impl fmt::Display for Item {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO(Part 4)
-        todo!("display an item")
+        write!(
+            formatter, "The item has an id: {0}, title: {1}, author: {2}, kind: {3}, status: {4}", self.id, self.title, self.author, self.kind, self.status
+        )
     }
 }
