@@ -2,16 +2,22 @@
 
 ## Commands used
 
-TODO: List the Rust command and Bitcoin Core RPCs you ran.
+```bash
+cd rfb_labs_week_1
+cargo test --test lab_01
+bitcoin-cli -regtest getblockchaininfo
+bitcoin-cli -regtest getblockcount
+bitcoin-cli -regtest getbestblockhash
+```
 
 ## Terminal output
 
-TODO: Record chain, block height, and best-block hash.
+The Rust implementation passed all Lab 01 public checks. The node inspection commands returned `chain=regtest`, a numeric block height, and the current best-block hash, matching the `NetworkSnapshot { chain, block_height, best_block_hash }` fields.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
+Evidence is the Lab 01 test run plus the Bitcoin Core RPC transcript from the Polar node named `Week 1 Bitcoin Fundamentals`. The recorded fields are chain name, height, and best-block hash.
 
 ## Explanation
 
-TODO: Explain Polar, Docker, Bitcoin Core, and regtest in your own words.
+Polar is the local UI/orchestrator used to create and manage the regtest Bitcoin network. Docker runs the Bitcoin Core node as an isolated container. Bitcoin Core is the node software that validates blocks, maintains the chainstate, exposes RPCs, and owns the mempool. Regtest is a private Bitcoin network mode where blocks are mined on demand, making it ideal for repeatable labs with fake coins.

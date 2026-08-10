@@ -2,16 +2,22 @@
 
 ## Commands used
 
-TODO: Record block-header inspection and additional mining commands.
+```bash
+cargo test --test lab_08
+bitcoin-cli -regtest getblockheader <confirming-block-hash>
+bitcoin-cli -regtest -rpcwallet=receiver gettransaction <payment-txid>
+bitcoin-cli -regtest generatetoaddress 5 <miner-address>
+bitcoin-cli -regtest -rpcwallet=receiver gettransaction <payment-txid>
+```
 
 ## Terminal output
 
-TODO: Show header fields and confirmation count changing from one to six.
+The header evidence included block hash, height, previous block hash, Merkle root, nonce, bits/difficulty, confirmations, and chainwork. Before mining more blocks the transaction had one confirmation; after five more blocks it had six confirmations.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
+Evidence is the Lab 08 test run and the block-header transcript for the confirming block, plus the before/after receiver transaction confirmation counts.
 
 ## Explanation
 
-TODO: Explain hash links, Merkle roots, proof of work, and confirmation depth.
+Each block header links to the previous block hash, committing to chain order. The Merkle root commits to the transactions in the block. Proof of work is the search for a nonce/header hash meeting the target encoded by `bits`. More confirmations add more accumulated work above a transaction, increasing reorganization cost, but confirmations never make an invalid transaction valid.
