@@ -1,0 +1,25 @@
+=== Community Lending Library Demo ===
+
+Library catalog stocked successfully:
+ - "Dune" by Frank Herbert [Book (320 pages)] - Available
+ - "Project Hail Mary" by Andy Weir [Audiobook (540 mins)] - Available
+ - "The Rust Programming Language" by Steve Klabnik [Ebook (1200 KB)] - Available
+
+Members registered: Alice (ID: 100), Bob (ID: 101)
+
+Longest allowable loan item: "Dune"
+
+Checking out item 1 (Dune) to member 100 on day 5...
+Checkout successful! Item status: "Dune" by Frank Herbert [Book (320 pages)] - On loan to member 100 (borrowed day 5)
+
+Returning item 1 on day 35 (overdue by 9 days)...
+Return successful! Late fee owed: 225 cents ($2.25)
+Item status after return: "Dune" by Frank Herbert [Book (320 pages)] - Available
+
+Attempting invalid operation: returning an item not on loan (item 2)...
+Handled expected error using Display: "item 2 is not currently on loan"
+
+Attempting invalid operation: registering duplicate member ID 100...
+Handled expected error using Display: "member with id 100 is already registered"
+
+=== Demo completed successfully ===
