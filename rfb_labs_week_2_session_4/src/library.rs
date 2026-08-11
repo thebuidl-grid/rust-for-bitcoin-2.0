@@ -106,7 +106,7 @@ impl Library {
             LoanStatus::Lost => {
                 return Err(LibraryError::ItemIsLost{id: item_id });
             },
-            LoanStatus::OnLoan{..} => {
+            LoanStatus::OnLoan{member_id, ..} => {
                 return Err(LibraryError::ItemAlreadyOnLoan{id: item_id, member_id});
             }
         }
@@ -134,7 +134,8 @@ impl Library {
 
                 item.status = LoanStatus::Available;
 
-                let member = self.members.iter_mut().find(|member_| member_.id == member_id).unwrap();                                                                                                     member.borrowed_item_ids.retain(|ids| *ids != item_id);                                                                                                                          
+                let member = self.members.iter_mut().find(|member_| member_.id == member_id).unwrap();    
+                member.borrowed_item_ids.retain(|id| *id != item_id);                                                                                                 member.borrowed_item_ids.retain(|ids| *ids != item_id);                                                                                                                          
                 Ok(late_fee)
             },
             LoanStatus::Available | LoanStatus::Lost => Err(LibraryError::ItemNotOnLoan{id: item_id}),
