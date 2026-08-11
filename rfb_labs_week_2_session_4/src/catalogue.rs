@@ -53,30 +53,18 @@ impl LoanTerms for MediaKind {
     fn loan_days(&self) -> u32 {
         // TODO(Part 4): books 21, audiobooks 14, ebooks 7.
         match self {
-            MediaKind::Book{..} => {
-                21
-            },
-            MediaKind::Audiobook{..} => {
-                14
-            },
-            MediaKind::Ebook{..} => {
-                7
-            }
+            MediaKind::Book { .. } => 21,
+            MediaKind::Audiobook { .. } => 14,
+            MediaKind::Ebook { .. } => 7,
         }
     }
 
     fn daily_late_fee_cents(&self) -> u32 {
         // TODO(Part 4): 25 cents a day, except ebooks, which are never late.
         match self {
-            MediaKind::Book{..} => {
-                25
-            },
-            MediaKind::Audiobook{..} => {
-                25
-            },
-            MediaKind::Ebook{..} => {
-                0
-            }
+            MediaKind::Book { .. } => 25,
+            MediaKind::Audiobook { .. } => 25,
+            MediaKind::Ebook { .. } => 0,
         }
     }
 }
@@ -97,13 +85,13 @@ impl fmt::Display for MediaKind {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO(Part 4): mention the data the variant carries.
         match self {
-            MediaKind::Book{pages} => {
+            MediaKind::Book { pages } => {
                 write!(formatter, "The media is a book of {pages} pages")
-            },
-            MediaKind::Audiobook{minutes} => {
+            }
+            MediaKind::Audiobook { minutes } => {
                 write!(formatter, "The media is an audiobook of {minutes} minutes")
-            },
-            MediaKind::Ebook{size_kb} => {
+            }
+            MediaKind::Ebook { size_kb } => {
                 write!(formatter, "The media is a {size_kb} kb ebook ")
             }
         }
@@ -116,12 +104,18 @@ impl fmt::Display for LoanStatus {
         match self {
             LoanStatus::Available => {
                 write!(formatter, "The Item is available for loan.")
-            },
+            }
             LoanStatus::Lost => {
                 write!(formatter, "The item is lost.")
-            },
-            LoanStatus::OnLoan{member_id, day_borrowed} => {
-                write!(formatter, "The item has be loaned to Member id: {member_id} on {day_borrowed}")
+            }
+            LoanStatus::OnLoan {
+                member_id,
+                day_borrowed,
+            } => {
+                write!(
+                    formatter,
+                    "The item has be loaned to Member id: {member_id} on {day_borrowed}"
+                )
             }
         }
     }
@@ -131,7 +125,9 @@ impl fmt::Display for Item {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO(Part 4)
         write!(
-            formatter, "The item has an id: {0}, title: {1}, author: {2}, kind: {3}, status: {4}", self.id, self.title, self.author, self.kind, self.status
+            formatter,
+            "The item has an id: {0}, title: {1}, author: {2}, kind: {3}, status: {4}",
+            self.id, self.title, self.author, self.kind, self.status
         )
     }
 }

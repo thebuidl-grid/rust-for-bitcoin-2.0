@@ -24,12 +24,10 @@ fn library_with_items() -> Library {
             MediaKind::Ebook { size_kb: 1_200 },
         ),
     ] {
-        library
-            .add_item(Item::new(id, title.into(), author.into(), kind));
+        let _ = library.add_item(Item::new(id, title.into(), author.into(), kind));
     }
 
-    library
-        .register_member(Member::new(100, "Ada".into()));
+    let _ = library.register_member(Member::new(100, "Ada".into()));
 
     library
 }
@@ -42,7 +40,7 @@ fn library_with_items() -> Library {
 fn checkout_updates_both_the_item_and_the_member() {
     let mut library = library_with_items();
 
-    library.checkout(1, 100, 5);
+    let _ = library.checkout(1, 100, 5);
 
     assert_eq!(
         library.find_item(1).unwrap().status,
@@ -59,9 +57,9 @@ fn checkout_updates_both_the_item_and_the_member() {
 fn a_member_cannot_exceed_the_borrow_limit() {
     let mut library = library_with_items();
 
-    library.checkout(1, 100, 0);
-    library.checkout(2, 100, 0);
-    library.checkout(3, 100, 0);
+    let _ = library.checkout(1, 100, 0);
+    let _ = library.checkout(2, 100, 0);
+    let _ = library.checkout(3, 100, 0);
 
     assert_eq!(
         library.checkout(4, 100, 0),
@@ -78,7 +76,7 @@ fn returning_a_book_late_charges_a_daily_fee() {
     let mut library = library_with_items();
 
     // A book may be kept 21 days. Held for 30, so 9 days are overdue.
-    library.checkout(1, 100, 10);
+    let _ = library.checkout(1, 100, 10);
 
     assert_eq!(library.return_item(1, 40), Ok(9 * 25));
     assert_eq!(library.find_item(1).unwrap().status, LoanStatus::Available);
@@ -112,7 +110,10 @@ fn an_item_cannot_be_lent_twice() {
 
     assert_eq!(
         library.checkout(1, 100, 6),
-        Err(LibraryError::ItemAlreadyOnLoan { id: 1, member_id: 100 })
+        Err(LibraryError::ItemAlreadyOnLoan {
+            id: 1,
+            member_id: 100
+        })
     );
 }
 
@@ -147,7 +148,9 @@ fn author_search_returns_borrowed_items() {
     let borrowed = found.iter().find(|item| item.id == 1).unwrap();
     assert_eq!(
         borrowed.status,
-        LoanStatus::OnLoan { member_id: 100, day_borrowed: 5 }
+        LoanStatus::OnLoan {
+            member_id: 100,
+            day_borrowed: 5
+        }
     );
 }
-

@@ -31,6 +31,11 @@ the submission.
 
 ## Written answers
 
+## Ownership Expermient
+
+I already fixed the errors after implementing part 6 before seeing part 7 was about it, so i have no error message.
+
+
 Answer in your own words. Add both ownership compiler errors from Part 7 as
 fenced text blocks, then explain what caused each.
 
@@ -107,6 +112,23 @@ Describe any choices you made, including how you kept an item's status and its
 borrower's list from drifting apart, and (if attempted) the optional generic
 search.
 
+
+Ans: Private fields on Library — items/members can only change through checkout/return_item, which always update both sides in the same call, so status and borrowed-list can't go out of sync. Also attempted the optional generic search: filter_items takes a Fn(&Item) -> bool predicate, and items_by_author/available_items are both re-expressed as one-line calls to it.
+
 ## Example output
 
 Paste the output of `cargo run` here once Part 8 is complete.
+```bash
+Item 1: Item {
+    id: 1,
+    title: "Things Fall Apart",
+    author: "Chinua Achebe",
+    kind: Book {
+        pages: 1000,
+    },
+    status: Available,
+}
+On-time return fee: 0 cents
+Late return fee: 225 cents
+Handled error: ItemAlreadyOnLoan: The item id: 2 has being loaned to member id: 7
+```
