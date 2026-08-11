@@ -28,7 +28,6 @@ fn main() -> Result<(), LibraryError> {
     );
 
     library.add_item(book)?;
-    // Experiment A: reading `item.title` after `add_item(book)?` fails because `book` was moved.
 
     library.add_item(audiobook)?;
     library.add_item(ebook)?;

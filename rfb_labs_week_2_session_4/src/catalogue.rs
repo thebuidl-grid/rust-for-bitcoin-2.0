@@ -23,7 +23,6 @@ pub struct Item {
     pub status: LoanStatus,
 }
 
-/// How long each kind of media may be kept, and what it costs to keep it too
 /// long. Loan lengths are in whole days; fees are in whole cents.
 pub trait LoanTerms {
     fn loan_days(&self) -> u32;
