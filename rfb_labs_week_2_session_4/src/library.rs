@@ -61,14 +61,21 @@ impl Library {
         self.members.iter().find(|member_| member_.id == id  )
     }
 
+    pub fn filter_items<F>(&self, predicate: F) -> Vec<&Item>
+    where
+        F: Fn(&Item) -> bool,
+    {
+        self.items.iter().filter(|item| predicate(item)).collect()
+    }  
+
     pub fn items_by_author<'a>(&'a self, author: &str) -> Vec<&'a Item> {
         // TODO(Part 3): return references to all matching items.
-        self.items.iter().filter(|item_| item_.author.as_str() == author ).collect()       
+        self.filter_items(|item| item.author == author)     
     }
 
     pub fn available_items(&self) -> Vec<&Item> {
         // TODO(Part 3)
-        self.items.iter().filter(|item_| item_.status == LoanStatus::Available ).collect()   
+        self.filter_items(|item| item.status == LoanStatus::Available)
     }
 
     pub fn longest_loan_item(&self) -> Option<&Item> {
@@ -92,6 +99,12 @@ impl Library {
         }
 
         match item.as_ref().unwrap().status {
+            LoanStatus::Lost => {
+                return Err(LibraryError::ItemIsLost{id: item_id });
+            },
+            LoanStatus::OnLoan{member_id, ..} => {
+                return Err(LibraryError::ItemAlreadyOnLoan{id: item_id, member_id});
+            },
             LoanStatus::Available => {
                 if member.as_ref().unwrap().borrowed_item_ids.len() >= 3 {
                     return Err(LibraryError::BorrowLimitReached{member_id, limit: MAX_ITEMS_PER_MEMBER});
@@ -102,24 +115,24 @@ impl Library {
                     Ok(())
                 }
                 
-            },
-            LoanStatus::Lost => {
-                return Err(LibraryError::ItemIsLost{id: item_id });
-            },
-            LoanStatus::OnLoan{member_id, ..} => {
-                return Err(LibraryError::ItemAlreadyOnLoan{id: item_id, member_id});
-            }
+            }        
         }
     }
 
     /// Returns the late fee owed, in cents.
     pub fn return_item(&mut self, item_id: u32, day: u32) -> Result<u32, LibraryError> {
         // TODO(Part 6): checked subtraction must return InvalidReturnDay.
-        let item = self.items.iter_mut().find(|item_| item_.id == item_id ).unwrap();
+        let item = self.items.iter_mut().find(|item_| item_.id == item_id );
 
-        let item_ref = &item;
+        let item_ref = &item.as_ref().unwrap();
+
+        if item.is_none() {
+            return Err(LibraryError::ItemNotFound{id: item_id});
+        }
 
         match item_ref.status {
+            LoanStatus::Lost => Err(LibraryError::ItemIsLost{id: item_id}),
+            LoanStatus::Available => Err(LibraryError::ItemNotOnLoan{id: item_id}),
             LoanStatus::OnLoan { day_borrowed, member_id } => {
                 if day < day_borrowed {
                     return Err(LibraryError::InvalidReturnDay { day_borrowed, day_returned: day });
@@ -132,13 +145,12 @@ impl Library {
                     0
                 };
 
-                item.status = LoanStatus::Available;
+                item.unwrap().status = LoanStatus::Available;
 
                 let member = self.members.iter_mut().find(|member_| member_.id == member_id).unwrap();    
                 member.borrowed_item_ids.retain(|id| *id != item_id);                                                                                                 member.borrowed_item_ids.retain(|ids| *ids != item_id);                                                                                                                          
                 Ok(late_fee)
-            },
-            LoanStatus::Available | LoanStatus::Lost => Err(LibraryError::ItemNotOnLoan{id: item_id}),
+            }
         }
 
 
