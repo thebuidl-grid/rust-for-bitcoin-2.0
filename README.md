@@ -27,6 +27,33 @@
 │   ├── Cargo.lock    # Dependency lock file
 │   ├── LABS.md       # Lab documentation
 │   └── README.md     # Week 1 specific README
+├── rfb_labs_week_2/  # Week 2 Bitcoin transaction modelling assignment
+│   ├── src/          # Student implementation files
+│   │   ├── lib.rs    # Library entry point and public exports
+│   │   ├── transaction.rs # Transaction types, methods, traits, and borrowing
+│   │   ├── error.rs  # Custom transaction errors
+│   │   ├── utxo.rs   # UTXO model and coin selection
+│   │   └── main.rs   # Payment transaction example
+│   ├── tests/        # Starter integration tests
+│   │   ├── transaction.rs # Transaction and validation tests
+│   │   └── utxo.rs   # UTXO selection tests
+│   ├── Cargo.toml    # Rust package configuration
+│   ├── Cargo.lock    # Locked dependency versions
+│   ├── ASSIGNMENT.md # Ordered requirements and progress checklist
+│   └── README.md     # Week 2 workflow and written-answer template
+├── rfb_labs_week_2_session_4/ # Session 4 lending-library assignment (pure Rust)
+│   ├── src/          # Student implementation files
+│   │   ├── lib.rs    # Library entry point and public exports
+│   │   ├── catalogue.rs # Media kinds, loan status, items, and the LoanTerms trait
+│   │   ├── member.rs # Library members
+│   │   ├── library.rs # Owning collection, lookups, checkout, and return
+│   │   ├── error.rs  # Custom library errors
+│   │   └── main.rs   # Lending example
+│   ├── tests/        # Starter integration tests
+│   │   └── library.rs # Checkout, borrow limit, late fee, and search tests
+│   ├── Cargo.toml    # Rust package configuration
+│   ├── ASSIGNMENT.md # Ordered requirements and progress checklist
+│   └── README.md     # Session 4 workflow and written-answer template
 ├── .gitignore        # Git ignore patterns
 ├── README.md         # This file
 └── x.sh              # Setup/utility script
@@ -40,6 +67,16 @@
   - **`src/`** - Source code including lab implementations and supporting modules
   - **`submissions/`** - Templates for participants to submit their lab evidence
   - **`tests/`** - Unit tests for each lab to verify implementation correctness
+- **`rfb_labs_week_2/`** - Week 2 assignment for modelling a Bitcoin transaction in Rust
+  - **`src/`** - Starter implementation, organized by transaction, error, and UTXO concerns
+  - **`tests/`** - Staged integration tests that students enable as they progress
+  - **`ASSIGNMENT.md`** - Requirements in implementation order
+  - **`README.md`** - Student workflow, commands, and written questions
+- **`rfb_labs_week_2_session_4/`** - Session 4 assignment on enums, structs, traits, ownership, borrowing, and error handling, deliberately not Bitcoin-themed so the Rust concepts stand alone
+  - **`src/`** - Starter implementation, organized by catalogue, member, library, and error concerns
+  - **`tests/`** - Staged integration tests that students enable as they progress
+  - **`ASSIGNMENT.md`** - Requirements in implementation order
+  - **`README.md`** - Student workflow, commands, and written questions
 
 ---
 
@@ -139,6 +176,9 @@ cargo test
 
 See [`rfb_labs_week_1/README.md`](rfb_labs_week_1/README.md) for detailed environment setup instructions.
 
+For the transaction modelling assignment, see
+[`rfb_labs_week_2/README.md`](rfb_labs_week_2/README.md).
+
 ---
 
 ## 🤝 Contributing
@@ -166,4 +206,3 @@ We welcome contributions! Follow these steps:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-
