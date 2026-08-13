@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NetworkSnapshot {
@@ -29,14 +29,16 @@ pub struct OutPoint {
     pub vout: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Utxo {
     pub txid: String,
     pub vout: u32,
     pub address: Option<String>,
+    #[serde(rename = "scriptPubKey")]
     pub script_pub_key: String,
     pub amount: f64,
     pub confirmations: u64,
+    #[serde(default)] // 👈 Defaults to false if missing
     pub spendable: bool,
 }
 
@@ -51,11 +53,13 @@ impl Utxo {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WalletTransactionStatus {
-    pub txid: String,
+    #[serde(default)]
+    pub txid: String, // 👈 `serde(default)` defaults missing `txid` to an empty String "" instead of failing!
     pub confirmations: i64,
-    pub amount: f64,
     pub fee: Option<f64>,
+    #[serde(rename = "blockhash")]
     pub block_hash: Option<String>,
+    pub amount: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -66,13 +70,41 @@ pub struct MempoolObservation {
     pub receiver_balance: WalletBalances,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct DecodedInput {
     pub previous_output: OutPoint,
     pub previous_value: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+impl<'de> Deserialize<'de> for DecodedInput {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct PrevOut {
+            value: f64,
+        }
+
+        #[derive(Deserialize)]
+        struct RawVin {
+            txid: String,
+            vout: u32,
+            prevout: PrevOut,
+        }
+
+        let raw = RawVin::deserialize(deserializer)?;
+        Ok(DecodedInput {
+            previous_output: OutPoint {
+                txid: raw.txid,
+                vout: raw.vout,
+            },
+            previous_value: raw.prevout.value,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct DecodedOutput {
     pub vout: u32,
     pub value: f64,
@@ -80,10 +112,41 @@ pub struct DecodedOutput {
     pub script_pub_key_hex: String,
 }
 
+impl<'de> Deserialize<'de> for DecodedOutput {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct ScriptPubKey {
+            hex: String,
+            address: Option<String>,
+        }
+
+        #[derive(Deserialize)]
+        struct RawVout {
+            n: u32,
+            value: f64,
+            #[serde(rename = "scriptPubKey")]
+            script_pub_key: ScriptPubKey,
+        }
+
+        let raw = RawVout::deserialize(deserializer)?;
+        Ok(DecodedOutput {
+            vout: raw.n,
+            value: raw.value,
+            address: raw.script_pub_key.address,
+            script_pub_key_hex: raw.script_pub_key.hex,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DecodedTransaction {
     pub txid: String,
+    #[serde(rename = "vin")]
     pub inputs: Vec<DecodedInput>,
+    #[serde(rename = "vout")]
     pub outputs: Vec<DecodedOutput>,
     pub vsize: u64,
 }
@@ -107,7 +170,9 @@ pub struct ConfirmationReport {
 pub struct BlockHeaderEvidence {
     pub hash: String,
     pub height: u64,
+    #[serde(rename = "previousblockhash")]
     pub previous_block_hash: Option<String>,
+    #[serde(rename = "merkleroot")]
     pub merkle_root: String,
     pub nonce: u64,
     pub difficulty: f64,
