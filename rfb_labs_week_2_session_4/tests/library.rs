@@ -40,7 +40,6 @@ fn library_with_items() -> Library {
 // implement the TODOs. Remove `#[ignore]` from one test at a time while working.
 
 #[test]
-#[ignore = "enable after completing Parts 3 and 5"]
 fn checkout_updates_both_the_item_and_the_member() {
     let mut library = library_with_items();
 
@@ -57,7 +56,7 @@ fn checkout_updates_both_the_item_and_the_member() {
 }
 
 #[test]
-#[ignore = "enable after completing Part 5"]
+
 fn a_member_cannot_exceed_the_borrow_limit() {
     let mut library = library_with_items();
 
@@ -75,7 +74,6 @@ fn a_member_cannot_exceed_the_borrow_limit() {
 }
 
 #[test]
-#[ignore = "enable after completing Parts 4 and 6"]
 fn returning_a_book_late_charges_a_daily_fee() {
     let mut library = library_with_items();
 
@@ -84,17 +82,132 @@ fn returning_a_book_late_charges_a_daily_fee() {
 
     assert_eq!(library.return_item(1, 40), Ok(9 * 25));
     assert_eq!(library.find_item(1).unwrap().status, LoanStatus::Available);
-    assert!(
-        library
-            .find_member(100)
-            .unwrap()
-            .borrowed_item_ids
-            .is_empty()
+    assert!(library
+        .find_member(100)
+        .unwrap()
+        .borrowed_item_ids
+        .is_empty());
+}
+
+#[test]
+fn add_item_rejects_an_empty_title() {
+    let mut library = Library::new();
+
+    assert_eq!(
+        library.add_item(Item::new(
+            1,
+            "".into(),
+            "Hibino Kafka".into(),
+            MediaKind::Book { pages: 320 },
+        )),
+        Err(LibraryError::EmptyTitle)
     );
 }
 
 #[test]
-#[ignore = "enable after completing Part 3"]
+fn add_item_rejects_a_duplicate_id() {
+    let mut library = library_with_items();
+
+    assert_eq!(
+        library.add_item(Item::new(
+            1,
+            "Dune Messiah".into(),
+            "Frank Herbert".into(),
+            MediaKind::Book { pages: 256 },
+        )),
+        Err(LibraryError::DuplicateItemId { id: 1 })
+    );
+}
+
+#[test]
+fn register_member_rejects_a_duplicate_id() {
+    let mut library = library_with_items();
+
+    assert_eq!(
+        library.register_member(Member::new(100, "Grace".into())),
+        Err(LibraryError::DuplicateMemberId { id: 100 })
+    );
+}
+
+#[test]
+fn checkout_rejects_an_item_already_on_loan() {
+    let mut library = library_with_items();
+    library.checkout(1, 100, 0).unwrap();
+
+    assert_eq!(
+        library.checkout(1, 100, 1),
+        Err(LibraryError::ItemAlreadyOnLoan {
+            id: 1,
+            member_id: 100,
+        })
+    );
+}
+
+#[test]
+fn checkout_rejects_an_unknown_item() {
+    let mut library = library_with_items();
+
+    assert_eq!(
+        library.checkout(999, 100, 0),
+        Err(LibraryError::ItemNotFound { id: 999 })
+    );
+}
+
+#[test]
+fn checkout_rejects_an_unknown_member() {
+    let mut library = library_with_items();
+
+    assert_eq!(
+        library.checkout(1, 999, 0),
+        Err(LibraryError::MemberNotFound { id: 999 })
+    );
+}
+
+#[test]
+fn return_item_rejects_an_item_not_on_loan() {
+    let mut library = library_with_items();
+
+    assert_eq!(
+        library.return_item(1, 5),
+        Err(LibraryError::ItemNotOnLoan { id: 1 })
+    );
+}
+
+#[test]
+fn return_item_rejects_a_return_day_before_the_borrow_day() {
+    let mut library = library_with_items();
+    library.checkout(1, 100, 10).unwrap();
+
+    assert_eq!(
+        library.return_item(1, 5),
+        Err(LibraryError::InvalidReturnDay {
+            day_borrowed: 10,
+            day_returned: 5,
+        })
+    );
+}
+
+#[test]
+fn an_on_time_return_owes_nothing() {
+    let mut library = library_with_items();
+    // A book may be kept 21 days; this one is returned right on the deadline.
+    library.checkout(1, 100, 0).unwrap();
+
+    assert_eq!(library.return_item(1, 21), Ok(0));
+    assert_eq!(library.find_item(1).unwrap().status, LoanStatus::Available);
+}
+
+#[test]
+fn an_ebook_returned_late_still_owes_nothing() {
+    let mut library = library_with_items();
+    // Item 4 is an ebook; ebooks are never late regardless of days held.
+    library.checkout(4, 100, 0).unwrap();
+
+    assert_eq!(library.return_item(4, 30), Ok(0));
+}
+
+#[test]
+
 fn searching_by_author_borrows_rather_than_clones() {
     let library = library_with_items();
 
