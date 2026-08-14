@@ -1,8 +1,7 @@
-use crate::catalogue::Item;
 use crate::error::LibraryError;
 use crate::member::Member;
 
-use crate::catalogue::LoanTerms;
+use crate::catalogue::{Item, LoanStatus, LoanTerms};
 
 pub const MAX_ITEMS_PER_MEMBER: usize = 3;
 
@@ -136,8 +135,42 @@ impl Library {
 
     /// Returns the late fee owed, in cents.
     pub fn return_item(&mut self, item_id: u32, day: u32) -> Result<u32, LibraryError> {
-        // TODO(Part 6): checked subtraction must return InvalidReturnDay.
-        let _ = (item_id, day);
-        todo!("return an item")
+    let item_index = self
+        .items
+        .iter()
+        .position(|item| item.id == item_id)
+        .ok_or(LibraryError::ItemNotFound { id: item_id })?;
+
+    let (member_id, day_borrowed) = match self.items[item_index].status {
+        LoanStatus::Lost => {
+            return Err(LibraryError::ItemIsLost { id: item_id });
+        }
+
+        LoanStatus::Available => {
+            return Err(LibraryError::ItemNotOnLoan { id: item_id });
+        }
+
+        LoanStatus::OnLoan {
+            member_id,
+            day_borrowed,
+        } => (member_id, day_borrowed),
+    };
+
+    let days_held = day.checked_sub(day_borrowed).ok_or(
+        LibraryError::InvalidReturnDay {
+            day_borrowed,
+            day_returned: day,
+        },
+    )?;
+
+    let fee = self.items[item_index].late_fee_cents(days_held);
+
+    self.items[item_index].status = LoanStatus::Available;
+
+    if let Some(member) = self.members.iter_mut().find(|member| member.id == member_id) {
+        member.borrowed_item_ids.retain(|id| *id != item_id);
     }
+
+    Ok(fee)
+}
 }
