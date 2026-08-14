@@ -2,6 +2,8 @@ use crate::catalogue::Item;
 use crate::error::LibraryError;
 use crate::member::Member;
 
+use crate::catalogue::LoanTerms;
+
 pub const MAX_ITEMS_PER_MEMBER: usize = 3;
 
 /// Owns every item and every member.
@@ -24,57 +26,51 @@ impl Library {
     }
 
     pub fn add_item(&mut self, item: Item) -> Result<(), LibraryError> {
-    if item.title.is_empty() {
-        return Err(LibraryError::EmptyTitle);
+        if item.title.is_empty() {
+            return Err(LibraryError::EmptyTitle);
+        }
+
+        if self.items.iter().any(|existing| existing.id == item.id) {
+            return Err(LibraryError::DuplicateItemId { id: item.id });
+        }
+
+        self.items.push(item);
+        Ok(())
     }
 
-    if self.items.iter().any(|existing| existing.id == item.id) {
-        return Err(LibraryError::DuplicateItemId { id: item.id });
+    pub fn register_member(&mut self, member: Member) -> Result<(), LibraryError> {
+        if self.members.iter().any(|existing| existing.id == member.id) {
+            return Err(LibraryError::DuplicateMemberId { id: member.id });
+        }
+
+        self.members.push(member);
+        Ok(())
     }
 
-    self.items.push(item);
-    Ok(())
-}
-
-pub fn register_member(&mut self, member: Member) -> Result<(), LibraryError> {
-    if self
-        .members
-        .iter()
-        .any(|existing| existing.id == member.id)
-    {
-        return Err(LibraryError::DuplicateMemberId { id: member.id });
+    pub fn find_item(&self, id: u32) -> Option<&Item> {
+        self.items.iter().find(|item| item.id == id)
     }
 
-    self.members.push(member);
-    Ok(())
-}
+    pub fn find_member(&self, id: u32) -> Option<&Member> {
+        self.members.iter().find(|member| member.id == id)
+    }
 
-pub fn find_item(&self, id: u32) -> Option<&Item> {
-    self.items.iter().find(|item| item.id == id)
-}
+    pub fn items_by_author<'a>(&'a self, author: &str) -> Vec<&'a Item> {
+        self.items
+            .iter()
+            .filter(|item| item.author == author)
+            .collect()
+    }
 
-pub fn find_member(&self, id: u32) -> Option<&Member> {
-    self.members.iter().find(|member| member.id == id)
-}
-
-pub fn items_by_author<'a>(&'a self, author: &str) -> Vec<&'a Item> {
-    self.items
-        .iter()
-        .filter(|item| item.author == author)
-        .collect()
-}
-
-pub fn available_items(&self) -> Vec<&Item> {
-    self.items
-        .iter()
-        .filter(|item| matches!(item.status, crate::catalogue::LoanStatus::Available))
-        .collect()
-}
-
+    pub fn available_items(&self) -> Vec<&Item> {
+        self.items
+            .iter()
+            .filter(|item| matches!(item.status, crate::catalogue::LoanStatus::Available))
+            .collect()
+    }
 
     pub fn longest_loan_item(&self) -> Option<&Item> {
-        // TODO(Part 4): the item that may be kept longest, via `LoanTerms`.
-        todo!("find the longest-loan item")
+        self.items.iter().max_by_key(|item| item.loan_days())
     }
 
     pub fn checkout(&mut self, item_id: u32, member_id: u32, day: u32) -> Result<(), LibraryError> {
