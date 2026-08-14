@@ -73,12 +73,66 @@ impl Library {
         self.items.iter().max_by_key(|item| item.loan_days())
     }
 
-    pub fn checkout(&mut self, item_id: u32, member_id: u32, day: u32) -> Result<(), LibraryError> {
-        // TODO(Part 5): validate in the order given in ASSIGNMENT.md, then
-        // update the item's status and the member's list together.
-        let _ = (item_id, member_id, day);
-        todo!("check an item out")
+   pub fn checkout(
+    &mut self,
+    item_id: u32,
+    member_id: u32,
+    day: u32,
+) -> Result<(), LibraryError> {
+    // 1. Check that the item exists.
+    let item_index = self
+        .items
+        .iter()
+        .position(|item| item.id == item_id)
+        .ok_or(LibraryError::ItemNotFound { id: item_id })?;
+
+    // 2. Check that the member exists.
+    let member_index = self
+        .members
+        .iter()
+        .position(|member| member.id == member_id)
+        .ok_or(LibraryError::MemberNotFound { id: member_id })?;
+
+    // 3. Check the item's status.
+    match self.items[item_index].status {
+        crate::catalogue::LoanStatus::Lost => {
+            return Err(LibraryError::ItemIsLost { id: item_id });
+        }
+
+        crate::catalogue::LoanStatus::OnLoan {
+            member_id: current_member,
+            ..
+        } => {
+            return Err(LibraryError::ItemAlreadyOnLoan {
+                id: item_id,
+                member_id: current_member,
+            });
+        }
+
+        crate::catalogue::LoanStatus::Available => {}
     }
+
+    // 4. Check the member's borrowing limit.
+    if self.members[member_index].borrowed_item_ids.len() >= MAX_ITEMS_PER_MEMBER {
+    return Err(LibraryError::BorrowLimitReached {
+        member_id,
+        limit: MAX_ITEMS_PER_MEMBER,
+    });
+}
+
+    // 5. All validation passed — now mutate both.
+    self.items[item_index].status =
+        crate::catalogue::LoanStatus::OnLoan {
+            member_id,
+            day_borrowed: day,
+        };
+
+    self.members[member_index]
+    .borrowed_item_ids
+    .push(item_id);
+
+    Ok(())
+}
 
     /// Returns the late fee owed, in cents.
     pub fn return_item(&mut self, item_id: u32, day: u32) -> Result<u32, LibraryError> {
