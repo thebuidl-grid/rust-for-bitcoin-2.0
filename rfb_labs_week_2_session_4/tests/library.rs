@@ -104,3 +104,46 @@ fn searching_by_author_borrows_rather_than_clones() {
     // `found` holds references into `library`, so these are the same item.
     assert!(std::ptr::eq(found[0], library.find_item(1).unwrap()));
 }
+
+///part 7
+#[test]
+fn ownership_experiment_a() -> Result<(), LibraryError> {
+    let mut library = Library::new();
+
+    let item = Item::new(
+        1,
+        "Bitcoin Book".to_string(),
+        "Author".to_string(),
+        MediaKind::Book { pages: 200 },
+    );
+
+    library.add_item(item)?;
+
+    // println!("{}", item.title);
+
+    Ok(())
+}
+
+#[test]
+fn ownership_experiment_b() -> Result<(), LibraryError> {
+    let mut library = Library::new();
+
+    let item = Item::new(
+        1,
+        "Bitcoin Book".to_string(),
+        "Author".to_string(),
+        MediaKind::Book { pages: 200 },
+    );
+
+    library.add_item(item)?;
+
+    library.register_member(Member::new(1, "Rose".to_string()))?;
+
+    let held_item = library.find_item(1);
+
+    // library.checkout(1, 1, 10)?;
+
+    println!("{:?}", held_item);
+
+    Ok(())
+}
