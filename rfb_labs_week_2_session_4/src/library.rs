@@ -24,40 +24,53 @@ impl Library {
     }
 
     pub fn add_item(&mut self, item: Item) -> Result<(), LibraryError> {
-        // TODO(Part 3): move `item` into the library. Reject an empty title
-        // and an id that is already stocked.
-        let _ = item;
-        todo!("add an item")
+    if item.title.is_empty() {
+        return Err(LibraryError::EmptyTitle);
     }
 
-    pub fn register_member(&mut self, member: Member) -> Result<(), LibraryError> {
-        // TODO(Part 3): move `member` in. Reject an id already registered.
-        let _ = member;
-        todo!("register a member")
+    if self.items.iter().any(|existing| existing.id == item.id) {
+        return Err(LibraryError::DuplicateItemId { id: item.id });
     }
 
-    pub fn find_item(&self, id: u32) -> Option<&Item> {
-        // TODO(Part 3): borrow from `self`; do not clone.
-        let _ = id;
-        todo!("find an item")
+    self.items.push(item);
+    Ok(())
+}
+
+pub fn register_member(&mut self, member: Member) -> Result<(), LibraryError> {
+    if self
+        .members
+        .iter()
+        .any(|existing| existing.id == member.id)
+    {
+        return Err(LibraryError::DuplicateMemberId { id: member.id });
     }
 
-    pub fn find_member(&self, id: u32) -> Option<&Member> {
-        // TODO(Part 3)
-        let _ = id;
-        todo!("find a member")
-    }
+    self.members.push(member);
+    Ok(())
+}
 
-    pub fn items_by_author<'a>(&'a self, author: &str) -> Vec<&'a Item> {
-        // TODO(Part 3): return references to all matching items.
-        let _ = author;
-        todo!("find items by author")
-    }
+pub fn find_item(&self, id: u32) -> Option<&Item> {
+    self.items.iter().find(|item| item.id == id)
+}
 
-    pub fn available_items(&self) -> Vec<&Item> {
-        // TODO(Part 3)
-        todo!("find the available items")
-    }
+pub fn find_member(&self, id: u32) -> Option<&Member> {
+    self.members.iter().find(|member| member.id == id)
+}
+
+pub fn items_by_author<'a>(&'a self, author: &str) -> Vec<&'a Item> {
+    self.items
+        .iter()
+        .filter(|item| item.author == author)
+        .collect()
+}
+
+pub fn available_items(&self) -> Vec<&Item> {
+    self.items
+        .iter()
+        .filter(|item| matches!(item.status, crate::catalogue::LoanStatus::Available))
+        .collect()
+}
+
 
     pub fn longest_loan_item(&self) -> Option<&Item> {
         // TODO(Part 4): the item that may be kept longest, via `LoanTerms`.
