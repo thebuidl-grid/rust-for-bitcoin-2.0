@@ -5,6 +5,7 @@
 
 pub mod catalogue;
 pub mod error;
+pub mod experiments;
 pub mod library;
 pub mod member;
 
