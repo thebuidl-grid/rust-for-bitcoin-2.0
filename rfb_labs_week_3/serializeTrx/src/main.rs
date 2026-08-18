@@ -1,274 +1,275 @@
-use std::error::Error;
+mod transaction;
 
-#[derive(Debug)]
-struct TxInput {
-    prev_txid: Vec<u8>,
-    vout: u32,
-    script_sig: Vec<u8>,
-    sequence: u32,
-    witness: Vec<Vec<u8>>,
-}
+use std::env;
+use transaction::{
+    bytes_to_hex, hex_to_bytes, serialize_transaction, validate_txid, Transaction, TxInput,
+    TxOutput,
+};
 
+const USAGE: &str = "\
+serializeTrx - build and serialize a raw Bitcoin transaction from CLI flags
 
-#[derive(Debug)]
-struct TxOutput {
-    value: u64,
-    script_pubkey: Vec<u8>,
-}
+USAGE:
+    serializeTrx --version <i32> [--segwit] --input <spec> [--input <spec>]... \\
+                 --output <spec> [--output <spec>]... [--witness <spec>]... \\
+                 --locktime <u32>
 
+FLAGS:
+    -h, --help              Print this help message and exit
 
-#[derive(Debug)]
-struct Transaction {
-    version: i32,
+OPTIONS:
+    --version <i32>         Transaction version (required)
+    --segwit                Mark transaction as segwit; enables witness serialization
+    --input <spec>           txid_hex:vout[:sequence[:scriptsig_hex]]  (repeatable, >=1 required)
+    --output <spec>          value_sats:scriptpubkey_hex               (repeatable, >=1 required)
+    --witness <spec>         input_index:item_hex                      (repeatable, requires --segwit)
+    --locktime <u32>         Locktime (required)
+
+NOTES:
+    - All hex fields accept upper or lower case and must have an even
+      number of characters.
+    - --input's optional trailing fields (sequence, scriptsig_hex) default
+      to 0xffffffff and an empty script respectively. A field may be left
+      blank to skip it while still supplying a later one, e.g.
+      'txid:1::deadbeef' skips sequence but sets scriptsig_hex.
+    - --witness <input_index>:<item_hex> attaches a witness item to the
+      input at that 0-based index (in the order --input flags were given).
+      Multiple --witness flags for the same index are appended in order.
+      Using --witness requires --segwit to also be set.
+
+EXAMPLES:
+    cargo run -- \
+    --version 2 \
+    --segwit \
+    --input ce243bc6c7bdfd8ce98161fd8e51515c5310480e3431ea415becf900609d0f31:0 \
+    --witness 0:304402203c4bbaf5ddf40d332ce1c98950e8f15ea073f549817a08abcf33fdf8586e527902200a4e99d28894213c0feb4eb78808b1942ff8dceba9fc3836f0f20b40483b624201 \
+    --witness 0:03d343042aeebc549ecc8b594d647261cb976b3ccc3faa23027785e66547507b9d \
+    --output 6120:00147d146a2f5a1db27c9b7288350fe804b258f6c6b0 \
+    --locktime 0
+";
+
+struct ParsedArgs {
+    version: Option<i32>,
+    segwit: bool,
     inputs: Vec<TxInput>,
     outputs: Vec<TxOutput>,
-    locktime: u32,
-    segwit: bool,
+    witness_entries: Vec<(usize, Vec<u8>)>,
+    locktime: Option<u32>,
 }
 
+fn main() {
+    let raw_args: Vec<String> = env::args().collect();
 
-fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn Error>> {
-    if hex.len() % 2 != 0 {
-        return Err("Hex string must have even length".into());
+    if raw_args.iter().skip(1).any(|a| a == "-h" || a == "--help") {
+        print!("{}", USAGE);
+        return;
     }
 
-    // create vector with enough bytes capacity
-    let mut bytes = Vec::with_capacity(hex.len() / 2);
-
-    for i in (0..hex.len()).step_by(2) {
-        // Give me the next two hexadecimal characters.
-        // Convert the two hex characters into a byte
-        let byte = u8::from_str_radix(&hex[i..i + 2], 16)?;
-        // from_str_radix - Parse a string as a number using a particular base i.e 16
-        bytes.push(byte);
+    if let Err(e) = run(&raw_args[1..]) {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
     }
-
-    Ok(bytes)
 }
 
-
-fn main() -> Result<(), Box<dyn Error>> { 
-
-    let input = TxInput {
-        prev_txid: hex_to_bytes(
-            "8fb0d07bb3766421bff2d908b70e5de818e4d85a436ea3606310c1052b0dc821"
-        )?,
-        vout: 1,
-        script_sig: vec![],
-        sequence: 0xffffffff,
-        witness: vec![
-            hex_to_bytes("3045022100f8704a3e7d55d4b5ee448cc6365caeffa42c2b00f74a37726d4fa3c11982e3e502203591c4a4bde9200281755ae5a8759116ce6e0cc7f5d30cf0eeb5b2b74f74bab301")?,
-            hex_to_bytes("029cbb1e568de08f469a8751aa2000331f130ca92ad49012d9cececaf6f8eb2358")?   
-        ]
-    };
-
-    let output_0 = TxOutput {
-        value: 69886,
-        script_pubkey: hex_to_bytes("0014a632c1fff47af29f8c81dc4c6e91eb49a116c12b")?,
-    };
-
-    let output_1 = TxOutput {
-        value: 29442,
-        script_pubkey: hex_to_bytes("00149831122b93d21715c70db626ccc844d3c21f9687")?,
-    };
-    
-    let trx = Transaction {
-        version : 2,
-        inputs: vec![input],
-        outputs: vec![output_0, output_1],
-        locktime: 0,
-        segwit: true
-    };
-
-       // Serialize
+fn run(args: &[String]) -> Result<(), String> {
+    let parsed = parse_args(args)?;
+    let trx = build_transaction(parsed)?;
     let serialized = serialize_transaction(&trx);
 
-    println!("Serialized transaction:");
-    println!("{:?}", &serialized);
-    println!("Serialized Hex transaction:");
+    println!("Serialized transaction (hex):");
     println!("{}", bytes_to_hex(&serialized));
-
     println!("\nTransaction size: {} bytes", serialized.len());
 
     Ok(())
-
-}   
-
-fn bytes_to_hex(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect()
 }
 
+fn parse_args(args: &[String]) -> Result<ParsedArgs, String> {
+    let mut parsed = ParsedArgs {
+        version: None,
+        segwit: false,
+        inputs: Vec::new(),
+        outputs: Vec::new(),
+        witness_entries: Vec::new(),
+        locktime: None,
+    };
 
-
-// ┌──────────────────────────────┐
-// │ Version          4 bytes     │
-// ├──────────────────────────────┤
-// │ Marker           1 byte      │
-// │ Flag             1 byte      │
-// ├──────────────────────────────┤
-// │ Input count      VarInt      │
-// │ Inputs           Variable    │
-// ├──────────────────────────────┤
-// │ Output count     VarInt      │
-// │ Outputs          Variable    │
-// ├──────────────────────────────┤
-// │ Witness          Variable    │
-// ├──────────────────────────────┤
-// │ Locktime         4 bytes  ←  │
-// └──────────────────────────────┘
-
-
-fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
-
-     let mut result = Vec::new();
-
-        // add version number
-          // to_le_bytes: converts the integer into its little-endian byte representation.
-    //  extend_from_slice: Take these bytes and append them to result.
-        result.extend_from_slice(&trx.version.to_le_bytes());
-
-     if trx.segwit {
-        result.push(0x00); // marker
-        result.push(0x01); // flag
-     };
-
-     // INPUTT COUNT
-      // script_sig: vec![] is empty because this particular transaction is a SegWit P2WPKH transaction.
-        // scriptSig belongs to the traditional input structure.
-        // witness contains the signature and public key for a native SegWit input.
-     result.extend_from_slice(&encode_varint(trx.inputs.len()));
-
-     // input data 
-        for input in &trx.inputs {
-        // Previous transaction ID
-        result.extend_from_slice(&input.prev_txid);
-
-        // Previous output index
-        result.extend_from_slice(&input.vout.to_le_bytes());
-
-        // ScriptSig length
-        result.extend_from_slice(&encode_varint(input.script_sig.len()));
-
-        // ScriptSig
-        result.extend_from_slice(&input.script_sig);
-
-        // Sequence
-        result.extend_from_slice(&input.sequence.to_le_bytes());
-    }
-    // OUTPUT COUNT
-    result.extend_from_slice(&encode_varint(trx.outputs.len()));
-
-    // OUTPUT DATA 
-        for output in &trx.outputs {
-        // Value in satoshis
-        result.extend_from_slice(&output.value.to_le_bytes());
-
-        // ScriptPubKey length
-        result.extend_from_slice(&encode_varint(output.script_pubkey.len()));
-
-        // ScriptPubKey
-        result.extend_from_slice(&output.script_pubkey);
-    }
-
-    // witness data
-       if trx.segwit {
-        for input in &trx.inputs {
-            // Number of witness items
-            result.extend_from_slice(&encode_varint(input.witness.len()));
-
-            for item in &input.witness {
-                // Witness item length
-                result.extend_from_slice(&encode_varint(item.len()));
-
-                // Witness item
-                result.extend_from_slice(item);
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--version" => {
+                let val = next_value(args, &mut i, "--version")?;
+                parsed.version = Some(
+                    val.parse::<i32>()
+                        .map_err(|_| format!("invalid --version value '{}': must be a valid i32 integer", val))?,
+                );
+            }
+            "--segwit" => {
+                parsed.segwit = true;
+                i += 1;
+            }
+            "--input" => {
+                let val = next_value(args, &mut i, "--input")?;
+                parsed.inputs.push(parse_input_spec(val)?);
+            }
+            "--output" => {
+                let val = next_value(args, &mut i, "--output")?;
+                parsed.outputs.push(parse_output_spec(val)?);
+            }
+            "--witness" => {
+                let val = next_value(args, &mut i, "--witness")?;
+                parsed.witness_entries.push(parse_witness_spec(val)?);
+            }
+            "--locktime" => {
+                let val = next_value(args, &mut i, "--locktime")?;
+                parsed.locktime = Some(
+                    val.parse::<u32>()
+                        .map_err(|_| format!("invalid --locktime value '{}': must be a valid u32 integer", val))?,
+                );
+            }
+            other => {
+                return Err(format!("unknown argument '{}'; run with --help for usage", other));
             }
         }
     }
 
-    // add locktime 
-    result.extend_from_slice(&trx.locktime.to_le_bytes());
-
-    result 
-
+    Ok(parsed)
 }
 
-// Bitcoin uses VarInts (encode_varint) when it needs to store things like:
+fn next_value<'a>(args: &'a [String], i: &mut usize, flag: &str) -> Result<&'a str, String> {
+    let value = args
+        .get(*i + 1)
+        .ok_or_else(|| format!("{} requires a value", flag))?;
+    *i += 2;
+    Ok(value.as_str())
+}
 
-// number of inputs
-// number of outputs
-// script length
-// number of witness items
-// witness item length
-
-
-fn encode_varint(value: usize) -> Vec<u8> {
-    match value {
-        0..=0xfc => vec![value as u8],
-
-        0xfd..=0xffff => {
-            let mut result = vec![0xfd];
-            result.extend_from_slice(&(value as u16).to_le_bytes());
-            result
-        }
-
-        0x10000..=0xffff_ffff => {
-            let mut result = vec![0xfe];
-            result.extend_from_slice(&(value as u32).to_le_bytes());
-            result
-        }
-
-        _ => {
-            let mut result = vec![0xff];
-            result.extend_from_slice(&(value as u64).to_le_bytes());
-            result
-        }
+fn parse_input_spec(spec: &str) -> Result<TxInput, String> {
+    let parts: Vec<&str> = spec.split(':').collect();
+    if parts.len() < 2 || parts.len() > 4 {
+        return Err(format!(
+            "invalid --input '{}': expected format txid_hex:vout[:sequence[:scriptsig_hex]]",
+            spec
+        ));
     }
+
+    let txid_hex = parts[0];
+    let prev_txid = hex_to_bytes(txid_hex)
+        .map_err(|e| format!("invalid hex in --input txid: '{}' ({})", txid_hex, e))?;
+    validate_txid(&prev_txid)
+        .map_err(|e| format!("invalid --input txid '{}': {}", txid_hex, e))?;
+
+    let vout: u32 = parts[1]
+        .parse()
+        .map_err(|_| format!("invalid --input vout '{}': must be a valid u32 integer", parts[1]))?;
+
+    let sequence: u32 = match parts.get(2) {
+        Some(s) if !s.is_empty() => s
+            .parse()
+            .map_err(|_| format!("invalid --input sequence '{}': must be a valid u32 integer", s))?,
+        _ => 0xffffffff,
+    };
+
+    let script_sig = match parts.get(3) {
+        Some(s) if !s.is_empty() => hex_to_bytes(s)
+            .map_err(|e| format!("invalid hex in --input scriptsig: '{}' ({})", s, e))?,
+        _ => Vec::new(),
+    };
+
+    Ok(TxInput {
+        prev_txid,
+        vout,
+        script_sig,
+        sequence,
+        witness: Vec::new(),
+    })
 }
 
-// Bitcoin CompactSize follows this structure:
-// Value range          Encoding
+fn parse_output_spec(spec: &str) -> Result<TxOutput, String> {
+    let parts: Vec<&str> = spec.split(':').collect();
+    if parts.len() != 2 {
+        return Err(format!(
+            "invalid --output '{}': expected format value_sats:scriptpubkey_hex",
+            spec
+        ));
+    }
 
-// 0 - 252              1 byte
+    let value: u64 = parts[0].parse().map_err(|_| {
+        format!(
+            "invalid --output value '{}': must be a valid u64 integer (satoshis)",
+            parts[0]
+        )
+    })?;
 
-// 253 - 65,535         FD + 2 bytes
+    let script_pubkey = hex_to_bytes(parts[1])
+        .map_err(|e| format!("invalid hex in --output scriptpubkey: '{}' ({})", parts[1], e))?;
 
-// 65,536 - 4,294,967,295
-//                      FE + 4 bytes
+    Ok(TxOutput {
+        value,
+        script_pubkey,
+    })
+}
 
-// larger values        FF + 8 bytes
+fn parse_witness_spec(spec: &str) -> Result<(usize, Vec<u8>), String> {
+    let parts: Vec<&str> = spec.split(':').collect();
+    if parts.len() != 2 {
+        return Err(format!(
+            "invalid --witness '{}': expected format input_index:item_hex",
+            spec
+        ));
+    }
 
+    let input_index: usize = parts[0].parse().map_err(|_| {
+        format!(
+            "invalid --witness input_index '{}': must be a non-negative integer",
+            parts[0]
+        )
+    })?;
 
-// A simpler way to visualize CompactSize
-//               ┌── small value?
-//               │
-//               ↓
-//            0 - 252 (0xfc)
-//               │
-//               └── store directly
-//                     ↓
-//                    [XX]
+    let item = hex_to_bytes(parts[1])
+        .map_err(|e| format!("invalid hex in --witness item: '{}' ({})", parts[1], e))?;
 
+    Ok((input_index, item))
+}
 
-//            253 - 65535
-//               │
-//               └── FD + 2 bytes
-//                     ↓
-//                  [FD][XX XX]
+fn build_transaction(mut parsed: ParsedArgs) -> Result<Transaction, String> {
+    let version = parsed
+        .version
+        .ok_or_else(|| "missing required argument: --version".to_string())?;
+    let locktime = parsed
+        .locktime
+        .ok_or_else(|| "missing required argument: --locktime".to_string())?;
 
+    if parsed.inputs.is_empty() {
+        return Err("at least one --input is required".to_string());
+    }
+    if parsed.outputs.is_empty() {
+        return Err("at least one --output is required".to_string());
+    }
+    if !parsed.witness_entries.is_empty() && !parsed.segwit {
+        return Err(
+            "--witness was given but --segwit was not set; add --segwit or remove the --witness flags"
+                .to_string(),
+        );
+    }
 
-//            65536 - 4294967295
-//               │
-//               └── FE + 4 bytes
-//                     ↓
-//               [FE][XX XX XX XX]
+    let input_count = parsed.inputs.len();
+    for (idx, item) in parsed.witness_entries {
+        let input = parsed.inputs.get_mut(idx).ok_or_else(|| {
+            format!(
+                "--witness refers to input index {} but only {} input(s) were provided (valid range: 0..={})",
+                idx,
+                input_count,
+                input_count.saturating_sub(1)
+            )
+        })?;
+        input.witness.push(item);
+    }
 
-
-//            larger
-//               │
-//               └── FF + 8 bytes
-//                     ↓
-//           [FF][XX XX XX XX XX XX XX XX]
+    Ok(Transaction {
+        version,
+        inputs: parsed.inputs,
+        outputs: parsed.outputs,
+        locktime,
+        segwit: parsed.segwit,
+    })
+}
