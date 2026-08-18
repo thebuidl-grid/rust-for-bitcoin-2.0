@@ -17,19 +17,21 @@ pub struct Transaction {
 pub struct Input {
     pub txid: Txid, // [u8; 32],
     pub output_index: u32,
-    pub script_sig: Vec<u8>,
-    pub sequence: u32
+    pub script_sig: String,
+    pub sequence: u32,
+    pub witness: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct Output {
     #[serde(serialize_with = "as_btc")]
     pub amount: Amount,
-    pub script_pubkey: Vec<u8>,
+    pub script_pubkey: String,
 }
 
 fn as_btc<S: Serializer, T: BitcoinValue>(t: &T, s: S) -> Result<S::Ok, S::Error> {
-
+    let btc = t.to_btc();
+    s.serialize_f64(btc)
 }
 
 #[derive(Debug)]
@@ -55,7 +57,9 @@ impl Txid {
 
 impl Serialize for Txid {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-       
+       let mut bytes = self.0.clone();
+       bytes.reverse();
+       s.serialize_str(&hex::encode(&bytes))
     }
 }
 
@@ -66,7 +70,7 @@ trait BitcoinValue {
 
 impl BitcoinValue for Amount {
     fn to_btc(&self) -> f64 {
-       
+       self.0 as f64 / 100_000_000.0
     }
 }
 
