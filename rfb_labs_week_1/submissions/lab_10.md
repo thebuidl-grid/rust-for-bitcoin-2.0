@@ -4,6 +4,8 @@
 
 TODO: Record peer, mining, chain-tip, and reconnection commands for both nodes.
 
+`cargo test --test lab_01`
+
 ## Terminal output
 
 TODO: Show the common tip, competing tips, chainwork, and final convergence.

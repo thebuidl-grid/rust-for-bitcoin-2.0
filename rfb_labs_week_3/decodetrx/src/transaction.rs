@@ -1,4 +1,6 @@
 
+use std::fmt::format;
+
 use serde::{Serialize, Serializer};
 
 
@@ -29,6 +31,7 @@ pub struct Output {
 }
 
 fn as_btc<S: Serializer, T: BitcoinValue>(t: &T, s: S) -> Result<S::Ok, S::Error> {
+    s.serialize_f64(t.to_btc())
 
 }
 
@@ -55,7 +58,10 @@ impl Txid {
 
 impl Serialize for Txid {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-       
+         // Bitcoin txids are conventionally displayed byte-reversed (big-endian)
+        // relative to their internal little-endian wire representation.
+        let hex_string: String = self.0.iter().rev().map(|byte| format!("{:02x}", byte)).collect();
+        s.serialize_str(&hex_string)
     }
 }
 
@@ -66,7 +72,7 @@ trait BitcoinValue {
 
 impl BitcoinValue for Amount {
     fn to_btc(&self) -> f64 {
-       
+       self.0 as f64 / 100_000_000.0
     }
 }
 
