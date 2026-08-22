@@ -119,7 +119,7 @@ fn bytes_to_hex(bytes: &[u8]) -> String {
 // ├──────────────────────────────┤
 // │ Locktime         4 bytes  ←  │
 // └──────────────────────────────┘
-
+////////
 
 fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
 
