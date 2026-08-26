@@ -1,9 +1,0 @@
-[package]
-name = "rfb-labs-week-3"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.74.0"
-
-[dependencies]
-# No external Bitcoin library; the goal is to practise contributing to rust-bitcoin.
-# Students will work in a forked clone of rust-bitcoin/rust-bitcoin.

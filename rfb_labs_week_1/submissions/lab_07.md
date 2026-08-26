@@ -2,22 +2,16 @@
 
 ## Commands used
 
-```bash
-cargo test --test lab_07
-bitcoin-cli -regtest generatetoaddress 1 <miner-address>
-bitcoin-cli -regtest getrawmempool
-bitcoin-cli -regtest -rpcwallet=receiver gettransaction <payment-txid>
-bitcoin-cli -regtest getblock <confirming-block-hash> 1
-```
+TODO: Record the mining, mempool, transaction, and block commands.
 
 ## Terminal output
 
-After mining one block, the mempool was empty. The receiver wallet reported the payment with `confirmations=1` and a `blockhash`. The verbose block transaction list contained the payment TXID.
+TODO: Show the empty mempool, confirmation count, block hash, and TXID in block.
 
 ## Evidence references
 
-Evidence is the Lab 07 test run and the confirmation transcript showing empty mempool, receiver transaction status, confirming block hash, and TXID membership in the block.
+TODO: Link screenshots or describe the attached evidence.
 
 ## Explanation
 
-Mining did not change the serialized transaction. It changed the transaction's status by committing it into a block in the active chain. The transaction moved from a local mempool candidate into agreed block history with one confirmation.
+TODO: Explain exactly what changed when the transaction became confirmed.
