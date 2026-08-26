@@ -123,6 +123,21 @@ confirmed the root cause:
   assignment repo — matching the fork-and-PR-within-your-own-fork pattern the
   top-level README's "Contributing" section describes and that weeks 1–2 already used.
 
+### 8. Pushed the branch and opened the pull request
+
+- `git push origin rust-for-bitcoin-5.0` (branch was already up to date on the remote).
+- Re-verified cleanliness right before opening the PR: `git merge --no-commit --no-ff
+  origin/main` reported `Already up to date` — `origin/main` is fully contained in this
+  branch, so the PR is a pure, conflict-free addition.
+- Opened with `gh pr create --repo nzubepolycap-hub/rust-for-bitcoin-2.0 --base main
+  --head rust-for-bitcoin-5.0`, explicitly setting the base to this fork's own `main`
+  rather than relying on GitHub's default (which points at upstream `thebuidl-grid` and
+  is what caused the conflicts in step 7).
+- **PR**: https://github.com/nzubepolycap-hub/rust-for-bitcoin-2.0/pull/1
+- Confirmed via `gh pr view 1 --json mergeable`: **`"mergeable": "MERGEABLE"`** — no
+  conflicts. (`mergeStateStatus: "UNSTABLE"` at open time just meant the
+  `grade-week-5.yml` CI check hadn't finished running yet, not a conflict.)
+
 ## Files created
 
 ```
@@ -164,8 +179,8 @@ rfb_labs_week_5/
 
 ## Next steps
 
-- Push `rust-for-bitcoin-5.0`.
-- Open the pull request with base = `nzubepolycap-hub/rust-for-bitcoin-2.0 : main`
-  (this fork's own default branch, **not** the upstream `thebuidl-grid` repo) — verified
-  conflict-free.
+- **Done**: PR opened at https://github.com/nzubepolycap-hub/rust-for-bitcoin-2.0/pull/1,
+  confirmed mergeable.
+- Watch the PR's `grade-week-5.yml` Actions run to completion and confirm it reports
+  the same 70/70 automated result the local `grader/grade.sh` run showed.
 - Await the instructor's manual review of the `## Explanation` sections (0–30 points).
