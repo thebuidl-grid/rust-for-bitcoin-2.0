@@ -91,6 +91,37 @@ for the instructor's 0–30 explanation review.
 - Continued the same commit on branch `rust-for-bitcoin-5.0` (this fork's per-week
   branch naming convention), which now contains that work.
 - Commit: `feat(week-5): implement Bitcoin address format and HD wallet labs`.
+- Fixed a small IDE-introduced accidental duplicate/garbled doc-comment line in
+  `lab01_addresses.rs` (caught via `git diff`, confirmed it wasn't intentional, and
+  restored the clean comment); reverified `cargo fmt --check` and `tests/lab_01.rs`
+  after the fix.
+
+### 7. Diagnosed the GitHub "branch has conflicts" PR warning
+
+When opening the PR, GitHub reported add/add conflicts on 22 files (all 10 `src/labs/*.rs`
+implementations, all 10 `submissions/lab_XX.md` write-ups, and `grader/check_evidence.sh`
++ `grader/grade.sh`). Investigated with a local trial merge (`git merge --no-commit
+--no-ff upstream/main`, then `git merge --abort` — nothing was committed or pushed) and
+confirmed the root cause:
+
+- GitHub's PR base was pointed at **upstream** (`thebuidl-grid/rust-for-bitcoin-2.0:main`),
+  which still holds the original `todo!()` stub versions of these files. Because this
+  fork's branch history never shared a commit that already contained
+  `rfb_labs_week_5/`, git treats the finished implementation and the upstream stub as
+  two independent, unrelated additions at the same paths — a real add/add conflict,
+  not a merge that can be auto-resolved.
+- Confirmed the fix is **not** to merge upstream in — doing so also drags in unrelated
+  content (a different `rfb_labs_week_2_session_4/` assignment, a second conflicting
+  `rfb_labs_week_3/`, a rewritten root `README.md`, and a `.DS_Store` deletion) that has
+  nothing to do with this submission.
+- Verified instead that this fork's **own** `main`
+  (`nzubepolycap-hub/rust-for-bitcoin-2.0:main`) has no `rfb_labs_week_5/` at all, so a
+  PR from `rust-for-bitcoin-5.0` into the fork's own `main` merges with **zero
+  conflicts** (checked via `git merge-tree`).
+- **Recommendation given**: open the PR with base repository/branch set to
+  `nzubepolycap-hub/rust-for-bitcoin-2.0 : main` (this fork), not the upstream
+  assignment repo — matching the fork-and-PR-within-your-own-fork pattern the
+  top-level README's "Contributing" section describes and that weeks 1–2 already used.
 
 ## Files created
 
@@ -133,6 +164,8 @@ rfb_labs_week_5/
 
 ## Next steps
 
-- Push `rust-for-bitcoin-5.0` and open the pull request per the top-level README's
-  contribution workflow (fork → branch → commit → push → PR).
+- Push `rust-for-bitcoin-5.0`.
+- Open the pull request with base = `nzubepolycap-hub/rust-for-bitcoin-2.0 : main`
+  (this fork's own default branch, **not** the upstream `thebuidl-grid` repo) — verified
+  conflict-free.
 - Await the instructor's manual review of the `## Explanation` sections (0–30 points).
