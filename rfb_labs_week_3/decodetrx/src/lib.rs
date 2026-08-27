@@ -21,7 +21,7 @@ fn read_version(transaction_hex: &str) -> u32 {
 }
 
 fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Error> {
-    if hex.len() % 2 != 0 {
+    if !hex.len().is_multiple_of(2) {
         return Err(Error::new(
             ErrorKind::InvalidInput,
             "transaction hex must have an even number of characters",
@@ -53,8 +53,7 @@ fn read_u64(transaction_bytes: &mut &[u8]) -> u64 {
     *transaction_bytes = rest;
 
     u64::from_le_bytes([
-        value[0], value[1], value[2], value[3],
-        value[4], value[5], value[6], value[7],
+        value[0], value[1], value[2], value[3], value[4], value[5], value[6], value[7],
     ])
 }
 
@@ -80,12 +79,7 @@ fn read_u32(bytes_slice: &mut &[u8]) -> Result<u32, Error> {
     let (value, rest) = bytes_slice.split_at(4);
     *bytes_slice = rest;
 
-    Ok(u32::from_le_bytes([
-        value[0],
-        value[1],
-        value[2],
-        value[3],
-    ]))
+    Ok(u32::from_le_bytes([value[0], value[1], value[2], value[3]]))
 }
 
 fn read_compact_size(transaction_bytes: &mut &[u8]) -> Result<u64, Error> {
@@ -110,10 +104,7 @@ fn read_compact_size(transaction_bytes: &mut &[u8]) -> Result<u64, Error> {
                 ));
             }
 
-            let value = u16::from_le_bytes([
-                transaction_bytes[0],
-                transaction_bytes[1],
-            ]);
+            let value = u16::from_le_bytes([transaction_bytes[0], transaction_bytes[1]]);
 
             *transaction_bytes = &transaction_bytes[2..];
 
@@ -204,18 +195,12 @@ fn hash_row_transaction(row_transaction_bytes: &[u8]) -> Result<Txid, Error> {
     Ok(Txid::from_bytes(txid_bytes))
 }
 
-pub fn decode_transaction(
-    transaction_hex: String,
-) -> Result<String, Box<dyn std::error::Error>> {
+pub fn decode_transaction(transaction_hex: String) -> Result<String, Box<dyn std::error::Error>> {
     let raw_transaction = hex_to_bytes(&transaction_hex)?;
     let mut transaction_bytes: &[u8] = &raw_transaction;
 
     if transaction_bytes.len() < 4 {
-        return Err(Error::new(
-            ErrorKind::UnexpectedEof,
-            "transaction is too short",
-        )
-        .into());
+        return Err(Error::new(ErrorKind::UnexpectedEof, "transaction is too short").into());
     }
 
     let version = read_version_byte(&mut transaction_bytes)?;
@@ -239,29 +224,21 @@ pub fn decode_transaction(
 
         let output_index = read_u32(&mut transaction_bytes)?;
 
-        let script_size =
-            read_script_size(&mut transaction_bytes)?;
+        let script_size = read_script_size(&mut transaction_bytes)?;
 
-        let script_size: usize = script_size.parse().map_err(|_| {
-            Error::new(
-                ErrorKind::InvalidData,
-                "invalid script size",
-            )
-        })?;
+        let script_size: usize = script_size
+            .parse()
+            .map_err(|_| Error::new(ErrorKind::InvalidData, "invalid script size"))?;
 
         if transaction_bytes.len() < script_size {
-            return Err(Error::new(
-                ErrorKind::UnexpectedEof,
-                "not enough bytes for scriptSig",
-            )
-            .into());
+            return Err(
+                Error::new(ErrorKind::UnexpectedEof, "not enough bytes for scriptSig").into(),
+            );
         }
 
-        let script_sig =
-            transaction_bytes[..script_size].to_vec();
+        let script_sig = transaction_bytes[..script_size].to_vec();
 
-        transaction_bytes =
-            &transaction_bytes[script_size..];
+        transaction_bytes = &transaction_bytes[script_size..];
 
         let sequence = read_u32(&mut transaction_bytes)?;
 
@@ -281,15 +258,11 @@ pub fn decode_transaction(
     for _ in 0..output_count {
         let amount = read_amount(&mut transaction_bytes)?;
 
-        let script_size =
-            read_script_size(&mut transaction_bytes)?;
+        let script_size = read_script_size(&mut transaction_bytes)?;
 
-        let script_size: usize = script_size.parse().map_err(|_| {
-            Error::new(
-                ErrorKind::InvalidData,
-                "invalid output script size",
-            )
-        })?;
+        let script_size: usize = script_size
+            .parse()
+            .map_err(|_| Error::new(ErrorKind::InvalidData, "invalid output script size"))?;
 
         if transaction_bytes.len() < script_size {
             return Err(Error::new(
@@ -299,11 +272,9 @@ pub fn decode_transaction(
             .into());
         }
 
-        let script_pubkey =
-            transaction_bytes[..script_size].to_vec();
+        let script_pubkey = transaction_bytes[..script_size].to_vec();
 
-        transaction_bytes =
-            &transaction_bytes[script_size..];
+        transaction_bytes = &transaction_bytes[script_size..];
 
         outputs.push(Output {
             amount,
@@ -316,20 +287,13 @@ pub fn decode_transaction(
     // so we parse it to advance the byte slice correctly.
     if segwit {
         for _ in 0..input_count {
-            let witness_count =
-                read_compact_size(&mut transaction_bytes)?;
+            let witness_count = read_compact_size(&mut transaction_bytes)?;
 
             for _ in 0..witness_count {
-                let witness_size =
-                    read_compact_size(&mut transaction_bytes)?;
+                let witness_size = read_compact_size(&mut transaction_bytes)?;
 
                 let witness_size = usize::try_from(witness_size)
-                    .map_err(|_| {
-                        Error::new(
-                            ErrorKind::InvalidData,
-                            "witness size is too large",
-                        )
-                    })?;
+                    .map_err(|_| Error::new(ErrorKind::InvalidData, "witness size is too large"))?;
 
                 if transaction_bytes.len() < witness_size {
                     return Err(Error::new(
@@ -339,8 +303,7 @@ pub fn decode_transaction(
                     .into());
                 }
 
-                transaction_bytes =
-                    &transaction_bytes[witness_size..];
+                transaction_bytes = &transaction_bytes[witness_size..];
             }
         }
     }
@@ -348,15 +311,10 @@ pub fn decode_transaction(
     let lock_time = read_u32(&mut transaction_bytes)?;
 
     if !transaction_bytes.is_empty() {
-        return Err(Error::new(
-            ErrorKind::InvalidData,
-            "unexpected bytes after locktime",
-        )
-        .into());
+        return Err(Error::new(ErrorKind::InvalidData, "unexpected bytes after locktime").into());
     }
 
-    let transaction_id =
-        hash_row_transaction(&raw_transaction)?;
+    let transaction_id = hash_row_transaction(&raw_transaction)?;
 
     let transaction = Transaction {
         transaction_id,

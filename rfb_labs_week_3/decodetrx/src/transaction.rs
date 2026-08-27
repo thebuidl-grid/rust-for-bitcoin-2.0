@@ -24,10 +24,7 @@ pub struct Output {
     pub script_pubkey: Vec<u8>,
 }
 
-fn as_btc<S: Serializer, T: BitcoinValue>(
-    t: &T,
-    s: S,
-) -> Result<S::Ok, S::Error> {
+fn as_btc<S: Serializer, T: BitcoinValue>(t: &T, s: S) -> Result<S::Ok, S::Error> {
     s.serialize_f64(t.to_btc())
 }
 
