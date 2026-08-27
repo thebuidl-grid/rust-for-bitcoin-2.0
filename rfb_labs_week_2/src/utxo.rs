@@ -7,8 +7,26 @@ pub struct Utxo {
 }
 
 pub fn select_utxos(available_utxos: &[Utxo], target: u64) -> Result<Vec<&Utxo>, TransactionError> {
-    // TODO(Part 9): select in slice order until the target is reached. Return
-    // borrowed UTXOs and InsufficientFunds when their total is too small.
-    let _ = (available_utxos, target);
-    todo!("select UTXOs")
+    let available_total: u64 = available_utxos.iter().map(|utxo| utxo.value).sum();
+
+    if available_total < target {
+        return Err(TransactionError::InsufficientFunds {
+            available: available_total,
+            required: target,
+        });
+    }
+
+    let mut selected = Vec::new();
+    let mut accumulated = 0;
+
+    for utxo in available_utxos {
+        selected.push(utxo);
+        accumulated += utxo.value;
+
+        if accumulated >= target {
+            break;
+        }
+    }
+
+    Ok(selected)
 }
