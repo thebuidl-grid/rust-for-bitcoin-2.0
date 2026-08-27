@@ -28,29 +28,166 @@ cargo clippy --all-targets --all-features -- -D warnings
 unfinished code; enable them progressively rather than leaving them ignored in the
 submission.
 
+
+### Ownership experiment (Part 7)
+
+Attempting to use a value after moving it into `add_input` produces:
+
+​```text
+error[E0382]: borrow of moved value: `utxo1`
+  --> src/main.rs:18:16
+   |
+ 8 |     let utxo1 = InputKind::Regular {
+   |         ----- move occurs because `utxo1` has type `InputKind`, which does not implement the `Copy` trait
+...
+17 |     transaction.add_input(utxo1);
+   |                           ----- value moved here
+18 |     println!("{utxo1:?}");
+   |                ^^^^^ value borrowed here after move
+​```
+
+`add_input` takes its parameter as `input: InputKind` — by value, not by reference — so calling
+`transaction.add_input(utxo1)` moves `utxo1` into the function, and from there into
+`transaction.inputs`. After that line, the local binding `utxo1` no longer owns anything: the
+value it used to refer to now belongs to the `Transaction`. The next line tries to read `utxo1`
+again via `println!`, but Rust's ownership rules only allow a value to have one owner at a time,
+so the compiler rejects the second use at compile time rather than letting it silently reference
+already-relocated memory.
+
+The root cause is that `InputKind` doesn't implement `Copy`: one of its variants (`Regular`)
+contains an `OutPoint`, which contains a `String` (`txid`). `String` owns a heap allocation, which
+can't be implicitly duplicated by a cheap bit-copy — so Rust must treat assignment/passing of an
+`InputKind` as a move, never an automatic copy. This is precisely the mechanism `add_input`'s
+signature (Part 3) relies on to "transfer ownership": the compiler enforces it, not just a comment
+or convention.
+
+
 ## Written answers
 
 Answer in your own words. Add the ownership compiler error from Part 7 as a fenced
 text block, then explain what caused it.
 
-1. What is a Bitcoin transaction input?
-2. What is a Bitcoin transaction output?
-3. What is a UTXO?
-4. What does an outpoint identify?
-5. How is a transaction fee calculated?
-6. Why use integers rather than floating-point numbers for bitcoin amounts?
-7. Why does `total_input_value()` borrow `self`?
-8. Why does `add_input()` take `&mut self`?
-9. What happens when an input is moved into a transaction?
-10. Why is `Result` preferable to `panic!` for validation failures?
-11. How do enums help model regular and coinbase inputs?
-12. How does the `BitcoinValue` trait reduce duplication?
+1. **What is a Bitcoin transaction input?** 
+   A reference to value being consumed by this transaction. `InputKind` models it as one of two mutually exclusive shapes: a `Regular` input, which points at a specific previous output (via `OutPoint`) and carries that output's value and a sequence number or a `Coinbase` input, the one special input per block that creates new coins from nothing, carrying a block height and reward instead of a previous output.
+
+2. **What is a Bitcoin transaction output?**
+   A destination for value being created by this transaction. Modeled by `TxOutput`: an amount (`value`, in satoshis), a `recipient`, and an `output_type` describing what kind of script locks it. An output only becomes spendable — turns into a UTXO — once the transaction containing it is accepted onto the chain.
+
+3. **What is a UTXO?**
+   An Unspent Transaction Output — an output from some previous transaction that hasn't yet been consumed as an input anywhere. It's the fundamental "coin" unit in Bitcoin's accounting model. Modeled here by `Utxo` (`outpoint` + `value`);
+   `select_utxos` treats a slice of them as the pool of spendable money available to build a new transaction from.
+
+4. **What does an outpoint identify?**
+   One specific, unique previous output: which transaction it came from (`txid`) and which output index within that transaction(`vout`). 
+   `txid:vout` is a coordinate system — a single `txid` can have many outputs, so `vout` disambiguates exactly one of them.
+
+5. **How is a transaction fee calculated?**
+   `fee = sum(inputs) - sum(outputs)`. 
+   It is never a value written directly into the transaction. `fee()` computes it as `total_input_value() - total_output_value()` using `checked_sub`, so an impossible negative result (outputs worth more than inputs) produces a typed `OutputsExceedInputs`error instead of an integer-underflow panic.
+
+6. **Why use integers rather than floating-point numbers for bitcoin amounts?**
+    Floating-point numbers can't represent every decimal value exactly in binary, so repeated arithmetic on `f64` amounts accumulates rounding error — unacceptable when the numbers represent real money and totals must balance exactly. Satoshis are the smallest indivisible unit (1 BTC = 100,000,000 sats), so representing amounts as `u64` satoshi counts means every value is an exact integer: addition and subtraction never drift, and equality checks are always reliable.
+
+7. **Why does `total_input_value()` borrow `self`?**
+   It only needs to read the transaction's existing data (iterate `inputs`, sum their values) — it never changes anything. 
+   An immutable borrow (`&self`) is the minimum access the function actually needs, and it lets the caller keep using the `Transaction` afterward instead of losing access to it.
+
+8. **Why does `add_input()` take `&mut self`?**
+   It is because it genuinely mutates the transaction , it pushes a new element onto `self.inputs`, growing the vector, which
+   requires exclusive mutable access (`Vec::push` needs `&mut Vec`). An immutable `&self`wouldn't compile, and taking `self` by value would consume the whole transaction just to add one input.
+
+9. **What happens when an input is moved into a transaction?**
+   `add_input(&mut self, input: InputKind)` takes `input` by value, and
+   `self.inputs.push(input)` moves it out of the local parameter and into the `Vec`. After that call, the caller's original binding no longer owns anything — the `InputKind` now lives solely inside `transaction.inputs`, and attempting to use the original variable
+   again is a compile-time "use of moved value" error (exactly what the Part 7 ownership experiment demonstrated directly).
+
+10. **Why is `Result` preferable to `panic!` for validation failures?**
+    A validation failure (empty inputs, a malformed txid, outputs exceeding inputs) is an *expected*,recoverable condition, not a bug in the program. `panic!` immediately unwinds the whole program with no way for the caller to respond; `Result` lets the caller inspect exactly what went wrong via a specific `TransactionError` variant, decide how to handle it, and keep running. Because `TransactionError` also implements `Display`, an `Err` can be shown to a user as a clear message instead of crashing with a stack trace.
+
+11. **How do enums help model regular and coinbase inputs?**
+    `InputKind` expresses "exactly one of these two mutually exclusive shapes, and nothing else is representable" at the type level. A regular input and a coinbase input share no fields and are never a hybrid of both, so the enum makes invalid combinations structurally impossible rather than merely discouraged by convention. Combined with Rust's exhaustive `match`, every function that needs an input's value, or needs to validate or display it, is forced by the compiler to explicitly handle both variants — forgetting the coinbase case is a compile error, not a silent bug.
+
+12. **How does the `BitcoinValue` trait reduce duplication?**
+    Without it, every function needing "how much is this worth" would have to repeat the `match` distinguishing `InputKind::Regular`'s `value` field from `InputKind::Coinbase`'s `reward` field. By implementing `BitcoinValue::value()` once per type, that distinction lives in exactly one place; `total_input_value`, `fee`, and anything else needing a value just calls `.value()` (or passes the method itself as a function, e.g. `.map(InputKind::value)`) without knowing which variant it's looking at. It also gives `TxOutput` and `InputKind` a shared interface for free — the trait's default method `value_in_btc()` works identically on either type without either one writing its own conversion logic.
 
 ## Design notes
 
 Describe any choices you made, including your UTXO-selection trade-offs and (if
 attempted) the optional transaction-state extension.
 
+### UTXO-selection trade-offs
+
+`select_utxos` implements the simplest possible strategy: walk `available_utxos` in
+whatever order the caller passed in, accumulating value until the target is reached, and
+stop. This is deliberately minimal — O(n), no sorting, no backtracking — and it's enough to
+satisfy the assignment's borrowing requirements cleanly (no cloning, returns `Vec<&Utxo>`
+tied to the caller's slice). But it has real weaknesses if this were used for a genuine
+wallet rather than a teaching exercise:
+
+- **It doesn't minimize the number of inputs.** Every additional input adds real weight
+  (and therefore fee) to a serialized Bitcoin transaction. In-order selection might use
+  three small UTXOs where one large one would have sufficed, purely because of where they
+  happened to sit in the slice.
+- **It doesn't minimize change.** Leaving an awkward, arbitrary change amount behind is
+  both a fee inefficiency (an extra output costs weight too) and a privacy leak — an
+  observer can often infer which output was "change" simply because it's an odd,
+  non-round amount, which starts to reveal spending patterns over time.
+- **The whole notion of "strategy" is really just "whatever order the caller supplied."**
+  Since the function has no autonomy to reorder or choose among UTXOs, the actual selection
+  quality is entirely delegated to the caller — which isn't a real coin-selection policy at
+  all, just an accumulate-until-enough loop.
+
+Better alternatives, in rough order of sophistication:
+
+- **Largest-first** (sort descending, then apply the same accumulate loop): minimizes the
+  number of inputs used, which reduces transaction weight and fee for a given target. Trade-off:
+  it doesn't try to minimize leftover change, and repeatedly spending big UTXOs can leave a
+  wallet holding only small, awkward amounts over time.
+- **Smallest-first** (sort ascending): actively consolidates small "dust" UTXOs, which is
+  useful for wallet housekeeping (dust that's cheap to spend now becomes expensive to spend
+  later as fee rates rise). Trade-off: needs more inputs on average, so larger transactions
+  and higher fees for the same payment.
+- **Branch-and-bound / exact-match search** (closer to what Bitcoin Core actually does):
+  searches for a UTXO combination whose sum is exactly, or very close to, the target —
+  avoiding a change output entirely when possible. This is the strongest option for both
+  fee efficiency and privacy (no change output to fingerprint), but it's algorithmically
+  more involved — worst-case search space is exponential, so a real implementation needs
+  pruning heuristics and a time budget, not a simple loop.
+
+Given this assignment's actual purpose — practising ownership and borrowing, not building
+production-grade coin selection — the simple in-order approach is the right scope: it keeps
+the borrowing story (a borrowed slice in, borrowed references out) front and center without
+being obscured by sorting or search logic. A real wallet would likely default to something
+closer to branch-and-bound specifically because both money (fees) and privacy are at stake.
+
+### Optional state extension (Part 10)
+
+I modeled the lifecycle as a runtime state machine — a plain `TransactionState` enum
+(`Created`, `Validated`, `Signed`, `Broadcast`, `Confirmed`, `Rejected`) plus a
+`transition_to` method that checks a whitelist of allowed `(from, to)` pairs via
+`matches!` before mutating — rather than a compile-time typestate design (where each state
+would be a distinct generic type parameter on `Transaction` itself, making invalid
+transitions a compile error rather than a runtime one).
+
+I chose the runtime approach specifically because the assignment fixes `Transaction`'s
+public shape — the required tests and the Part 8 payment example all depend on it staying
+exactly as given, so wrapping it in a generic `Transaction<State>` would have risked
+breaking required, graded functionality for the sake of an optional bonus. A standalone
+`TransactionState` type, added purely alongside the existing `Transaction`, achieves the
+same goal ("prevent invalid transitions") without touching anything required.
+
+`transition_to` reuses the existing `TransactionError` enum (adding one variant,
+`InvalidStateTransition`) instead of introducing a second, separate error type — keeping
+one consistent error-handling approach across the whole crate rather than forcing callers
+to handle two unrelated error types depending on which part of the API they're using.
+
+
 ## Example output
 
 Paste the output of `cargo run` here once Part 8 is complete.
+
+​```text
+Transaction is valid!
+Transaction v2 (locktime 0): 2 input(s), 2 output(s), total_in=120000 sats, total_out=118000 sats, fee=2000 sats
+​```
+
