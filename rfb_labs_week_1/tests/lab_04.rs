@@ -11,20 +11,24 @@ fn sample_utxos() -> Vec<Utxo> {
         Utxo {
             txid: "tx-young".to_owned(),
             vout: 0,
+            label: None,
             address: Some("bcrt1qminer".to_owned()),
             script_pub_key: "0014aa".to_owned(),
             amount: 25.0,
             confirmations: 2,
             spendable: false,
+            solvable: true,
         },
         Utxo {
             txid: "tx-mature".to_owned(),
             vout: 1,
+            label: None,
             address: Some("bcrt1qminer".to_owned()),
             script_pub_key: "0014bb".to_owned(),
             amount: 50.0,
             confirmations: 101,
             spendable: true,
+            solvable: true,
         },
     ]
 }
@@ -36,7 +40,7 @@ fn decodes_listunspent_response() {
         Some("miner"),
         "listunspent",
         &[],
-        r#"[{"txid":"tx-mature","vout":1,"address":"bcrt1qminer","scriptPubKey":"0014bb","amount":50.0,"confirmations":101,"spendable":true}]"#,
+        r#"[{"txid":"tx-mature","vout":1,"address":"bcrt1qminer","scriptPubKey":"0014bb","amount":50.0,"confirmations":101,"spendable":true,"solvable":true}]"#,
     );
 
     assert_eq!(
@@ -50,13 +54,15 @@ fn decodes_listunspent_response() {
 fn selects_most_confirmed_spendable_utxo() {
     let mut utxos = sample_utxos();
     utxos.push(Utxo {
-        txid: "tx-other".to_owned(),
-        vout: 2,
-        address: None,
-        script_pub_key: "0014cc".to_owned(),
+        txid: "txid_123".to_string(),
+        vout: 0,
+        address: Some("bcrt1q...".to_string()),
+        label: None, // 👈 Add this
+        script_pub_key: "0014...".to_string(),
         amount: 1.0,
         confirmations: 6,
         spendable: true,
+        solvable: false, // 👈 Add this
     });
 
     assert_eq!(
@@ -82,11 +88,13 @@ fn sums_only_spendable_outputs() {
     utxos.push(Utxo {
         txid: "tx-other".to_owned(),
         vout: 2,
+        label: None,
         address: None,
         script_pub_key: "0014cc".to_owned(),
         amount: 1.25,
         confirmations: 6,
         spendable: true,
+        solvable: false,
     });
 
     assert!((sum_spendable_utxos(&utxos) - 51.25).abs() < 0.000_000_01);

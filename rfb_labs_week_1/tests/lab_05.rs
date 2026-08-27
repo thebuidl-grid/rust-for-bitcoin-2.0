@@ -45,10 +45,10 @@ fn reads_wallet_transaction_status() {
     assert_eq!(
         get_transaction_status(&rpc, "miner", "payment-txid").unwrap(),
         WalletTransactionStatus {
-            txid: "payment-txid".to_owned(),
-            confirmations: 0,
-            amount: -1.0,
+            txid: "payment-txid".to_string(),
+            amount: Some(-1.0),
             fee: Some(-0.00001),
+            confirmations: 0,
             block_hash: None,
         }
     );
@@ -86,7 +86,7 @@ fn observes_broadcast_without_confirmation() {
             sender_status: WalletTransactionStatus {
                 txid: "payment-txid".to_owned(),
                 confirmations: 0,
-                amount: -1.0,
+                amount: Some(-1.0),
                 fee: Some(-0.00001),
                 block_hash: None,
             },
