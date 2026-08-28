@@ -3,6 +3,7 @@
 use bitcoin::Network;
 
 use crate::model::P2pkhSpendTemplate;
+
 use crate::LabResult;
 
 /// Derive a P2PKH address from a serialized public key.
