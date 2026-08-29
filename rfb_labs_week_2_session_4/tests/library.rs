@@ -40,7 +40,7 @@ fn library_with_items() -> Library {
 // implement the TODOs. Remove `#[ignore]` from one test at a time while working.
 
 #[test]
-#[ignore = "enable after completing Parts 3 and 5"]
+
 fn checkout_updates_both_the_item_and_the_member() {
     let mut library = library_with_items();
 
@@ -57,7 +57,7 @@ fn checkout_updates_both_the_item_and_the_member() {
 }
 
 #[test]
-#[ignore = "enable after completing Part 5"]
+
 fn a_member_cannot_exceed_the_borrow_limit() {
     let mut library = library_with_items();
 
@@ -75,7 +75,7 @@ fn a_member_cannot_exceed_the_borrow_limit() {
 }
 
 #[test]
-#[ignore = "enable after completing Parts 4 and 6"]
+
 fn returning_a_book_late_charges_a_daily_fee() {
     let mut library = library_with_items();
 
@@ -94,7 +94,6 @@ fn returning_a_book_late_charges_a_daily_fee() {
 }
 
 #[test]
-#[ignore = "enable after completing Part 3"]
 fn searching_by_author_borrows_rather_than_clones() {
     let library = library_with_items();
 
@@ -104,4 +103,47 @@ fn searching_by_author_borrows_rather_than_clones() {
     assert_eq!(found[0].title, "Dune");
     // `found` holds references into `library`, so these are the same item.
     assert!(std::ptr::eq(found[0], library.find_item(1).unwrap()));
+}
+
+///part 7
+#[test]
+fn ownership_experiment_a() -> Result<(), LibraryError> {
+    let mut library = Library::new();
+
+    let item = Item::new(
+        1,
+        "Bitcoin Book".to_string(),
+        "Author".to_string(),
+        MediaKind::Book { pages: 200 },
+    );
+
+    library.add_item(item)?;
+
+    // println!("{}", item.title);
+
+    Ok(())
+}
+
+#[test]
+fn ownership_experiment_b() -> Result<(), LibraryError> {
+    let mut library = Library::new();
+
+    let item = Item::new(
+        1,
+        "Bitcoin Book".to_string(),
+        "Author".to_string(),
+        MediaKind::Book { pages: 200 },
+    );
+
+    library.add_item(item)?;
+
+    library.register_member(Member::new(1, "Rose".to_string()))?;
+
+    let held_item = library.find_item(1);
+
+    // library.checkout(1, 1, 10)?;
+
+    println!("{:?}", held_item);
+
+    Ok(())
 }
