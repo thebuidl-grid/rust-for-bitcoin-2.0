@@ -67,7 +67,6 @@ pub fn native_spend_template(
     signature_hex: &str,
     public_key_hex: &str,
 ) -> LabResult<NativeSegwitSpend> {
-
     //  vlaidate the signature hex
 
     hex::decode(signature_hex).map_err(|err| LabError::InvalidScript(err.to_string()))?;
@@ -82,10 +81,9 @@ pub fn native_spend_template(
     let compressed_key = CompressedPublicKey::try_from(public_key)
         .map_err(|err| LabError::InvalidKey(err.to_string()))?;
 
+    // return the native spend object
     Ok(NativeSegwitSpend {
         script_sig_hex: "".to_string(),
         witness_items: vec![signature_hex.to_owned(), compressed_key.to_string()],
     })
-
-    // mock the native spend object
 }
