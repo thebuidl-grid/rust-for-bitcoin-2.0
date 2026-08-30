@@ -43,5 +43,15 @@ network enforcement, and scriptPubKey extraction.
 
 ## Explanation
 
-<!-- Write your explanation here. Explain why a prefix is only a format clue and why
-checksum, encoding, and network validation are still required. -->
+An address prefix is a useful clue, but it is not sufficient proof that an address
+is valid. For example, `1...` commonly indicates mainnet P2PKH, `3...` commonly
+indicates mainnet P2SH, and `bc1q...` commonly indicates a version-0 SegWit output.
+Regtest uses different network prefixes, including `m...` or `n...` for P2PKH,
+`2...` for P2SH, and `bcrt1...` for SegWit addresses.
+
+Prefix inspection alone does not decode the complete address or verify its
+checksum. A malformed string can begin with a familiar prefix, and a valid address
+can still belong to the wrong network. Correct handling therefore requires parsing
+the complete Base58Check, Bech32, or Bech32m encoding, validating its checksum,
+checking its network, and then deriving the actual scriptPubKey. This prevents a
+format guess from being treated as a validated payment destination.

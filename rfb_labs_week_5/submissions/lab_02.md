@@ -54,5 +54,16 @@ P2PKH scriptPubKey:
 
 ## Explanation
 
-<!-- Write your explanation here. Describe what the P2PKH script commits to, what
-the spender supplies in ScriptSig, and how key identity differs from authorization. -->
+P2PKH locks an output to `HASH160(serialized public key)`, not to the full public key
+itself. Its standard scriptPubKey is
+`OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG`. When the output is
+spent, ScriptSig supplies a signature and the serialized public key. The script
+duplicates and hashes the supplied key, checks that this hash matches the committed
+value, and then verifies the signature with that key.
+
+These checks prove two different things. Matching the public-key hash establishes
+key identity: the spender revealed the key to which the output was locked. The
+signature establishes authorization: the spender possesses the corresponding
+private key and authorized this particular transaction. Revealing the correct
+public key without a valid signature is therefore insufficient to spend the output.
+Legacy P2PKH places both unlocking items in ScriptSig and leaves the witness empty.
