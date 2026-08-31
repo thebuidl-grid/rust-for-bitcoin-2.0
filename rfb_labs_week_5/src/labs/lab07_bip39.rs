@@ -7,8 +7,6 @@ use crate::{LabError, LabResult};
 
 /// Validate an English mnemonic and report its entropy/checksum structure.
 pub fn inspect_mnemonic(mnemonic: &str) -> LabResult<MnemonicReport> {
-    // todo!("Lab 07: validate BIP39 words and calculate ENT/CS lengths")
-
     // parse the mnemonic strings
     let parsed = Mnemonic::parse_in(Language::English, mnemonic)
         .map_err(|err| LabError::InvalidMnemonic(err.to_string()))?;

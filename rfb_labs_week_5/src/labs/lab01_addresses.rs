@@ -1,7 +1,5 @@
 //! Lab 01 — identify Bitcoin address formats and enforce network safety.
 
-use std::ptr::addr_eq;
-
 use bitcoin::address::NetworkUnchecked;
 use bitcoin::{Address, AddressType, Network};
 
@@ -19,7 +17,7 @@ pub fn identify_prefix(address: &str) -> AddressFormat {
     // bc1p / tb1p     → P2TR
     // bcrt1p          → P2TR
 
-    let format = match address {
+    match address {
         value if value.starts_with("1") || value.starts_with("m") || value.starts_with("n") => {
             AddressFormat::P2pkh
         }
@@ -39,9 +37,7 @@ pub fn identify_prefix(address: &str) -> AddressFormat {
             AddressFormat::P2tr
         }
         _ => AddressFormat::Unknown,
-    };
-
-    format
+    }
 }
 
 /// Return the expected human-readable prefix for a format on a selected network.

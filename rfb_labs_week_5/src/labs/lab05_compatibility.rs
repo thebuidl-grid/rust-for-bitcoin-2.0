@@ -31,8 +31,6 @@ pub fn compatibility_report(capabilities: SenderCapabilities) -> CompatibilityRe
 
 /// Choose the best supported single-key receiving format.
 pub fn best_supported_format(capabilities: SenderCapabilities) -> Option<AddressFormat> {
-    // todo!("Lab 05: prefer Taproot, then P2WPKH, wrapped SegWit, then P2PKH")
-
     if can_send_to(capabilities, AddressFormat::P2tr) {
         Some(AddressFormat::P2tr)
     } else if can_send_to(capabilities, AddressFormat::P2wpkh) {

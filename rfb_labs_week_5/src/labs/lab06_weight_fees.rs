@@ -19,7 +19,7 @@ pub fn transaction_weight(stripped_size: u64, total_size: u64) -> LabResult<u64>
 
 /// Calculate virtual size as `ceil(weight / 4)`.
 pub fn virtual_size(weight: u64) -> u64 {
-    weight / 4 + u64::from(weight % 4 != 0)
+    weight / 4 + u64::from(!weight.is_multiple_of(4))
 }
 
 /// Calculate a fee from virtual size and satoshis per virtual byte.
