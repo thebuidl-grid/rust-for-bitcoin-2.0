@@ -1,21 +1,40 @@
 //! Lab 06 — calculate transaction weight, virtual size, and fees.
 
 use crate::model::FeeComparison;
-use crate::LabResult;
+use crate::{LabError, LabResult};
 
 /// Calculate BIP141 weight from stripped and total serialized sizes.
 pub fn transaction_weight(stripped_size: u64, total_size: u64) -> LabResult<u64> {
-    todo!("Lab 06: weight = stripped_size * 3 + total_size")
+    if total_size < stripped_size {
+        return Err(LabError::InvalidSize(format!(
+            "total size ({total_size}) cannot be smaller than stripped size ({stripped_size})"
+        )));
+    }
+
+    let stripped_weight = stripped_size
+        .checked_mul(3)
+        .ok_or_else(|| LabError::InvalidSize("stripped size is too large".to_string()))?;
+
+    stripped_weight
+        .checked_add(total_size)
+        .ok_or_else(|| LabError::InvalidSize("transaction weight overflow".to_string()))
 }
 
 /// Calculate virtual size as `ceil(weight / 4)`.
 pub fn virtual_size(weight: u64) -> u64 {
-    todo!("Lab 06: round weight up to virtual bytes")
+    let quotient = weight / 4;
+    let remainder = weight % 4;
+
+    quotient + u64::from(remainder != 0)
 }
 
 /// Calculate a fee from virtual size and satoshis per virtual byte.
 pub fn fee_sats(vbytes: u64, feerate_sat_vb: u64) -> LabResult<u64> {
-    todo!("Lab 06: multiply safely and reject overflow")
+    vbytes.checked_mul(feerate_sat_vb).ok_or_else(|| {
+        LabError::InvalidSize(format!(
+            "fee overflow: {vbytes} vbytes × {feerate_sat_vb} sat/vB"
+        ))
+    })
 }
 
 /// Compare illustrative legacy and native-SegWit transactions at one feerate.
@@ -24,5 +43,14 @@ pub fn compare_fees(
     segwit_vbytes: u64,
     feerate_sat_vb: u64,
 ) -> LabResult<FeeComparison> {
-    todo!("Lab 06: compute both fees and the savings")
+    let legacy_fee_sats = fee_sats(legacy_vbytes, feerate_sat_vb)?;
+    let segwit_fee_sats = fee_sats(segwit_vbytes, feerate_sat_vb)?;
+
+    Ok(FeeComparison {
+        legacy_vbytes,
+        segwit_vbytes,
+        legacy_fee_sats,
+        segwit_fee_sats,
+        savings_sats: legacy_fee_sats.saturating_sub(segwit_fee_sats),
+    })
 }

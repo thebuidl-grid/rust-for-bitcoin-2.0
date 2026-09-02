@@ -2,17 +2,28 @@
 
 ## Commands used
 
-TODO: List the Rust commands you ran.
+`cargo test --test lab_01`
 
 ## Terminal output
 
-TODO: Record the checked formats, networks, and scriptPubKeys.
+```bash
+Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s
+Running tests/lab_01.rs (target/debug/deps/lab_01-4fd37e4269b310ea)
+
+running 4 tests
+test identifies_human_readable_prefixes ... ok
+test maps_regtest_prefixes ... ok
+test inspects_a_network_checked_address ... ok
+test rejects_an_address_for_the_wrong_network ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
 
 ## Evidence references
 
-TODO: Link screenshots or describe attached evidence.
+Code: src/labs/lab01_addresses.rs  
+Test: tests/lab_01.rs
 
 ## Explanation
 
-TODO: Explain why prefix inspection alone is not complete address validation.
-
+Prefix inspection only guesses the format based on the initial characteres, ignoring the rest of the string. Complete validation verifies the internal checksum to detect typos and ensures the characters belong to the correct alphabet. It also confirms the address is structurally valid and compatible with the specific network being used (Mainnet, Testnet, etc).
