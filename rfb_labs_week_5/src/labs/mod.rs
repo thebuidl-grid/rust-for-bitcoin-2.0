@@ -12,3 +12,5 @@ pub mod lab07_bip39;
 pub mod lab08_bip32;
 pub mod lab09_bip44;
 pub mod lab10_recovery;
+
+pub(crate) mod util;
