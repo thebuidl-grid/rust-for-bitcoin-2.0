@@ -1,5 +1,6 @@
 /target/
 **/target/
 rfb_labs_week_1/grading/
+rfb_labs_week_5/grading/
 *.log
 .DS_Store
