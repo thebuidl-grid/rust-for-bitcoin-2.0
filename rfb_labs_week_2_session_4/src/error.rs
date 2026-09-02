@@ -41,10 +41,40 @@ pub enum LibraryError {
 }
 
 impl fmt::Display for LibraryError {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 2): return a useful, human-readable message for every
-        // variant. Include the ids and numbers the variant carries.
-        todo!("implement Display for LibraryError")
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::EmptyTitle => write!(formatter, "an item needs a title"),
+            Self::DuplicateItemId { id } => {
+                write!(formatter, "item {id} is already stocked")
+            }
+            Self::DuplicateMemberId { id } => {
+                write!(formatter, "member {id} is already registered")
+            }
+            Self::ItemNotFound { id } => write!(formatter, "no item with id {id}"),
+            Self::MemberNotFound { id } => write!(formatter, "no member with id {id}"),
+            Self::ItemAlreadyOnLoan { id, member_id } => write!(
+                formatter,
+                "item {id} is already on loan to member {member_id}"
+            ),
+            Self::ItemNotOnLoan { id } => {
+                write!(
+                    formatter,
+                    "item {id} is not on loan, so it cannot be returned"
+                )
+            }
+            Self::ItemIsLost { id } => write!(formatter, "item {id} is lost"),
+            Self::BorrowLimitReached { member_id, limit } => write!(
+                formatter,
+                "member {member_id} already holds the limit of {limit} items"
+            ),
+            Self::InvalidReturnDay {
+                day_borrowed,
+                day_returned,
+            } => write!(
+                formatter,
+                "day {day_returned} is before the borrow day {day_borrowed}"
+            ),
+        }
     }
 }
 
