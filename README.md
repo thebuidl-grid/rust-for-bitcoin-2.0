@@ -67,6 +67,20 @@
 │   │   │   └── main.rs       # Clap CLI for collecting input and calling decode_transaction
 │   │   └── Cargo.toml
 │   │
+│   ├── serializeTrx/ # Program for serialising a transaction given on the command line
+│   │   ├── src/
+│   │   │   ├── cli.rs        # Argument definitions, parsing and validation
+│   │   │   ├── transaction.rs # Transaction model, serialiser and CompactSize
+│   │   │   ├── hex.rs        # Validated hex to bytes, and back
+│   │   │   ├── report.rs     # Printed output, including the --verbose breakdown
+│   │   │   ├── error.rs      # Validation failures and their hints
+│   │   │   ├── lib.rs        # Library entry point and public exports
+│   │   │   └── main.rs       # Reads the arguments, prints the result or the error
+│   │   ├── tests/
+│   │   │   └── serialize.rs  # Runs the binary against known transactions
+│   │   ├── Cargo.toml
+│   │   └── README.md         # Usage, design decisions and worked examples
+│   │
 │   ├── tests/        # Tests for transaction parsing and decoding
 │   │   ├── trxparse.rs       # Raw transaction parsing tests
 │   │   └── decodetrx.rs      # Legacy and SegWit decoding tests
