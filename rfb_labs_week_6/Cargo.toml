@@ -1,0 +1,23 @@
+[package]
+name = "rfb_labs_week_6"
+version = "0.1.0"
+edition = "2024"
+description = "Week 6 assignment: a regtest Bitcoin wallet built on rust-bitcoin, BDK (bdk_wallet) and bitcoincore-rpc."
+
+[dependencies]
+# Wallet engine: descriptor derivation, keychains, UTXO/balance tracking, tx building & signing.
+# "rusqlite" enables bdk_wallet's built-in SQLite persistence backend.
+bdk_wallet = { version = "3.1.0", features = ["rusqlite"] }
+# Bitcoin Core RPC chain source for bdk_wallet: syncs blocks/mempool and broadcasts transactions.
+# Re-exports the `bitcoincore-rpc` crate (as `bdk_bitcoind_rpc::bitcoincore_rpc`) so we use a
+# single, version-matched copy of it instead of a second, independently-versioned dependency.
+bdk_bitcoind_rpc = "0.22.0"
+# BIP39 mnemonic generation/parsing for the wallet's master seed (same crate used in Week 5).
+# The "rand" feature enables `Mnemonic::generate`, which we use in `init`.
+bip39 = { version = "2.2", features = ["rand"] }
+# CLI parsing, including reading defaults from environment variables / `.env`.
+clap = { version = "4", features = ["derive", "env"] }
+# Loads `.env` into the process environment before clap parses it.
+dotenvy = "0.15"
+# Ergonomic error propagation for a binary crate.
+anyhow = "1"

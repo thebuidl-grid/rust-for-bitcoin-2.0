@@ -1,0 +1,8 @@
+# Secrets: mnemonic + private descriptors written by `init`. Never commit this.
+.env
+
+# Wallet database (chain state, UTXOs, tx history) and SQLite side files.
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
