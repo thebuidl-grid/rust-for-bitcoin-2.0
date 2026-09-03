@@ -1,6 +1,8 @@
+use clap::{Arg, Command};
+use serde_json::Value;
 use std::error::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct TxInput {
     prev_txid: Vec<u8>,
     vout: u32,
@@ -9,13 +11,11 @@ struct TxInput {
     witness: Vec<Vec<u8>>,
 }
 
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct TxOutput {
     value: u64,
     script_pubkey: Vec<u8>,
 }
-
 
 #[derive(Debug)]
 struct Transaction {
@@ -26,123 +26,224 @@ struct Transaction {
     segwit: bool,
 }
 
-
 fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    if hex.is_empty() {
+        return Ok(Vec::new());
+    }
+
     if hex.len() % 2 != 0 {
         return Err("Hex string must have even length".into());
     }
 
-    // create vector with enough bytes capacity
     let mut bytes = Vec::with_capacity(hex.len() / 2);
 
     for i in (0..hex.len()).step_by(2) {
-        // Give me the next two hexadecimal characters.
-        // Convert the two hex characters into a byte
         let byte = u8::from_str_radix(&hex[i..i + 2], 16)?;
-        // from_str_radix - Parse a string as a number using a particular base i.e 16
         bytes.push(byte);
     }
 
     Ok(bytes)
 }
 
-
-fn main() -> Result<(), Box<dyn Error>> { 
-
-    let input = TxInput {
-        prev_txid: hex_to_bytes(
-            "8fb0d07bb3766421bff2d908b70e5de818e4d85a436ea3606310c1052b0dc821"
-        )?,
-        vout: 1,
-        script_sig: vec![],
-        sequence: 0xffffffff,
-        witness: vec![
-            hex_to_bytes("3045022100f8704a3e7d55d4b5ee448cc6365caeffa42c2b00f74a37726d4fa3c11982e3e502203591c4a4bde9200281755ae5a8759116ce6e0cc7f5d30cf0eeb5b2b74f74bab301")?,
-            hex_to_bytes("029cbb1e568de08f469a8751aa2000331f130ca92ad49012d9cececaf6f8eb2358")?   
-        ]
-    };
-
-    let output_0 = TxOutput {
-        value: 69886,
-        script_pubkey: hex_to_bytes("0014a632c1fff47af29f8c81dc4c6e91eb49a116c12b")?,
-    };
-
-    let output_1 = TxOutput {
-        value: 29442,
-        script_pubkey: hex_to_bytes("00149831122b93d21715c70db626ccc844d3c21f9687")?,
-    };
-    
-    let trx = Transaction {
-        version : 2,
-        inputs: vec![input],
-        outputs: vec![output_0, output_1],
-        locktime: 0,
-        segwit: true
-    };
-
-       // Serialize
-    let serialized = serialize_transaction(&trx);
-
-    println!("Serialized transaction:");
-    println!("{:?}", &serialized);
-    println!("Serialized Hex transaction:");
-    println!("{}", bytes_to_hex(&serialized));
-
-    println!("\nTransaction size: {} bytes", serialized.len());
-
-    Ok(())
-
-}   
-
 fn bytes_to_hex(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect()
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
+fn parse_input_json(json_str: &str) -> Result<TxInput, Box<dyn Error>> {
+    let obj: Value = serde_json::from_str(json_str)?;
 
+    let prev_txid = hex_to_bytes(
+        obj.get("prev_txid")
+            .and_then(|v| v.as_str())
+            .ok_or("Missing or invalid prev_txid")?,
+    )?;
 
-// ┌──────────────────────────────┐
-// │ Version          4 bytes     │
-// ├──────────────────────────────┤
-// │ Marker           1 byte      │
-// │ Flag             1 byte      │
-// ├──────────────────────────────┤
-// │ Input count      VarInt      │
-// │ Inputs           Variable    │
-// ├──────────────────────────────┤
-// │ Output count     VarInt      │
-// │ Outputs          Variable    │
-// ├──────────────────────────────┤
-// │ Witness          Variable    │
-// ├──────────────────────────────┤
-// │ Locktime         4 bytes  ←  │
-// └──────────────────────────────┘
+    if prev_txid.len() != 32 {
+        return Err("prev_txid must be exactly 32 bytes (64 hex characters)".into());
+    }
 
+    let vout = obj
+        .get("vout")
+        .and_then(|v| v.as_u64())
+        .ok_or("Missing or invalid vout")?;
+
+    if vout > u32::MAX as u64 {
+        return Err("vout must fit in u32".into());
+    }
+
+    let script_sig = hex_to_bytes(obj.get("script_sig").and_then(|v| v.as_str()).unwrap_or(""))?;
+
+    let sequence = obj
+        .get("sequence")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0xffffffff) as u32;
+
+    let witness: Vec<Vec<u8>> =
+        if let Some(witness_array) = obj.get("witness").and_then(|v| v.as_array()) {
+            witness_array
+                .iter()
+                .map(|item| hex_to_bytes(item.as_str().ok_or("Witness item must be a hex string")?))
+                .collect::<Result<Vec<_>, _>>()?
+        } else {
+            Vec::new()
+        };
+
+    Ok(TxInput {
+        prev_txid,
+        vout: vout as u32,
+        script_sig,
+        sequence,
+        witness,
+    })
+}
+
+fn parse_output_json(json_str: &str) -> Result<TxOutput, Box<dyn Error>> {
+    let obj: Value = serde_json::from_str(json_str)?;
+
+    let value = obj
+        .get("value")
+        .and_then(|v| v.as_u64())
+        .ok_or("Missing or invalid value")?;
+
+    let script_pubkey = hex_to_bytes(
+        obj.get("script_pubkey")
+            .and_then(|v| v.as_str())
+            .ok_or("Missing or invalid script_pubkey")?,
+    )?;
+
+    Ok(TxOutput {
+        value,
+        script_pubkey,
+    })
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let matches = Command::new("Bitcoin Transaction Serializer")
+        .version("0.1.0")
+        .author("Bitcoin Labs")
+        .about("Serializes Bitcoin transactions from command-line arguments")
+        .disable_version_flag(true)
+        .arg(
+            Arg::new("version")
+                .long("version")
+                .value_name("VERSION")
+                .help("Transaction version (default: 2)")
+                .default_value("2"),
+        )
+        .arg(
+            Arg::new("segwit")
+                .long("segwit")
+                .help("Enable SegWit serialization")
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("locktime")
+                .long("locktime")
+                .value_name("LOCKTIME")
+                .help("Transaction locktime (default: 0)")
+                .default_value("0"),
+        )
+        .arg(
+            Arg::new("input")
+                .long("input")
+                .value_name("JSON")
+                .help("Transaction input as JSON. Can be used multiple times. JSON format: {\"prev_txid\":\"...\",\"vout\":0,\"script_sig\":\"\",\"sequence\":4294967295,\"witness\":[]}")
+                .action(clap::ArgAction::Append),
+        )
+        .arg(
+            Arg::new("output")
+                .long("output")
+                .value_name("JSON")
+                .help("Transaction output as JSON. Can be used multiple times. JSON format: {\"value\":0,\"script_pubkey\":\"...\"}")
+                .action(clap::ArgAction::Append),
+        )
+        .get_matches();
+
+    // Parse version
+    let version: i32 = matches
+        .get_one::<String>("version")
+        .and_then(|v| v.parse().ok())
+        .ok_or("Invalid version number")?;
+
+    // Parse SegWit flag
+    let segwit = matches.get_flag("segwit");
+
+    // Parse locktime
+    let locktime: u32 = matches
+        .get_one::<String>("locktime")
+        .and_then(|v| v.parse().ok())
+        .ok_or("Invalid locktime")?;
+
+    // Parse inputs
+    let mut inputs = Vec::new();
+    if let Some(input_strs) = matches.get_many::<String>("input") {
+        for input_str in input_strs {
+            inputs.push(parse_input_json(input_str)?);
+        }
+    }
+
+    // Parse outputs
+    let mut outputs = Vec::new();
+    if let Some(output_strs) = matches.get_many::<String>("output") {
+        for output_str in output_strs {
+            outputs.push(parse_output_json(output_str)?);
+        }
+    }
+
+    // Validate transaction has at least one input and one output
+    if inputs.is_empty() {
+        return Err("Transaction must have at least one input".into());
+    }
+    if outputs.is_empty() {
+        return Err("Transaction must have at least one output".into());
+    }
+
+    // Create transaction
+    let trx = Transaction {
+        version,
+        inputs,
+        outputs,
+        locktime,
+        segwit,
+    };
+
+    // Serialize
+    let serialized = serialize_transaction(&trx);
+
+    // Display results
+    println!("\n=== Bitcoin Transaction Serialization ===\n");
+    println!("Transaction Details:");
+    println!("  Version: {}", trx.version);
+    println!("  SegWit: {}", trx.segwit);
+    println!("  Input Count: {}", trx.inputs.len());
+    println!("  Output Count: {}", trx.outputs.len());
+    println!("  Locktime: {}", trx.locktime);
+
+    println!("\nSerialized Transaction (Hex):");
+    println!("{}", bytes_to_hex(&serialized));
+
+    println!("\nTransaction Size: {} bytes", serialized.len());
+
+    Ok(())
+}
 
 fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
+    let mut result = Vec::new();
 
-     let mut result = Vec::new();
+    // Add version number
+    result.extend_from_slice(&trx.version.to_le_bytes());
 
-        // add version number
-          // to_le_bytes: converts the integer into its little-endian byte representation.
-    //  extend_from_slice: Take these bytes and append them to result.
-        result.extend_from_slice(&trx.version.to_le_bytes());
-
-     if trx.segwit {
+    // Add SegWit marker and flag if applicable
+    if trx.segwit {
         result.push(0x00); // marker
         result.push(0x01); // flag
-     };
+    }
 
-     // INPUTT COUNT
-      // script_sig: vec![] is empty because this particular transaction is a SegWit P2WPKH transaction.
-        // scriptSig belongs to the traditional input structure.
-        // witness contains the signature and public key for a native SegWit input.
-     result.extend_from_slice(&encode_varint(trx.inputs.len()));
+    // Input count
+    result.extend_from_slice(&encode_varint(trx.inputs.len()));
 
-     // input data 
-        for input in &trx.inputs {
+    // Input data
+    for input in &trx.inputs {
         // Previous transaction ID
         result.extend_from_slice(&input.prev_txid);
 
@@ -158,11 +259,12 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
         // Sequence
         result.extend_from_slice(&input.sequence.to_le_bytes());
     }
-    // OUTPUT COUNT
+
+    // Output count
     result.extend_from_slice(&encode_varint(trx.outputs.len()));
 
-    // OUTPUT DATA 
-        for output in &trx.outputs {
+    // Output data
+    for output in &trx.outputs {
         // Value in satoshis
         result.extend_from_slice(&output.value.to_le_bytes());
 
@@ -173,8 +275,8 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
         result.extend_from_slice(&output.script_pubkey);
     }
 
-    // witness data
-       if trx.segwit {
+    // Witness data (if SegWit)
+    if trx.segwit {
         for input in &trx.inputs {
             // Number of witness items
             result.extend_from_slice(&encode_varint(input.witness.len()));
@@ -189,21 +291,11 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
         }
     }
 
-    // add locktime 
+    // Add locktime
     result.extend_from_slice(&trx.locktime.to_le_bytes());
 
-    result 
-
+    result
 }
-
-// Bitcoin uses VarInts (encode_varint) when it needs to store things like:
-
-// number of inputs
-// number of outputs
-// script length
-// number of witness items
-// witness item length
-
 
 fn encode_varint(value: usize) -> Vec<u8> {
     match value {
@@ -228,47 +320,3 @@ fn encode_varint(value: usize) -> Vec<u8> {
         }
     }
 }
-
-// Bitcoin CompactSize follows this structure:
-// Value range          Encoding
-
-// 0 - 252              1 byte
-
-// 253 - 65,535         FD + 2 bytes
-
-// 65,536 - 4,294,967,295
-//                      FE + 4 bytes
-
-// larger values        FF + 8 bytes
-
-
-// A simpler way to visualize CompactSize
-//               ┌── small value?
-//               │
-//               ↓
-//            0 - 252 (0xfc)
-//               │
-//               └── store directly
-//                     ↓
-//                    [XX]
-
-
-//            253 - 65535
-//               │
-//               └── FD + 2 bytes
-//                     ↓
-//                  [FD][XX XX]
-
-
-//            65536 - 4294967295
-//               │
-//               └── FE + 4 bytes
-//                     ↓
-//               [FE][XX XX XX XX]
-
-
-//            larger
-//               │
-//               └── FF + 8 bytes
-//                     ↓
-//           [FF][XX XX XX XX XX XX XX XX]
