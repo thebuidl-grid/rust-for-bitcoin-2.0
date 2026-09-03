@@ -1,6 +1,7 @@
+use clap::Parser;
 use std::error::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct TxInput {
     prev_txid: Vec<u8>,
     vout: u32,
@@ -9,13 +10,11 @@ struct TxInput {
     witness: Vec<Vec<u8>>,
 }
 
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct TxOutput {
     value: u64,
     script_pubkey: Vec<u8>,
 }
-
 
 #[derive(Debug)]
 struct Transaction {
@@ -26,10 +25,12 @@ struct Transaction {
     segwit: bool,
 }
 
-
-fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn Error>> {
-    if hex.len() % 2 != 0 {
-        return Err("Hex string must have even length".into());
+fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, String> {
+    if !hex.len().is_multiple_of(2) {
+        return Err(format!(
+            "hex string '{hex}' must have even length, got {} characters",
+            hex.len()
+        ));
     }
 
     // create vector with enough bytes capacity
@@ -38,7 +39,8 @@ fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     for i in (0..hex.len()).step_by(2) {
         // Give me the next two hexadecimal characters.
         // Convert the two hex characters into a byte
-        let byte = u8::from_str_radix(&hex[i..i + 2], 16)?;
+        let byte = u8::from_str_radix(&hex[i..i + 2], 16)
+            .map_err(|e| format!("invalid hex string '{hex}': {e}"))?;
         // from_str_radix - Parse a string as a number using a particular base i.e 16
         bytes.push(byte);
     }
@@ -46,41 +48,139 @@ fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     Ok(bytes)
 }
 
+/// Parses one `--input` argument.
+///
+/// Format: `prev_txid_hex:vout:script_sig_hex:sequence[:witness_item_hex,witness_item_hex,...]`
+///
+/// The witness segment is optional (a legacy input has none) and, when present,
+/// is a comma-separated list of hex-encoded witness items. `script_sig` may be
+/// an empty string for native SegWit inputs, which carry no scriptSig.
+fn parse_input(s: &str) -> Result<TxInput, String> {
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 4 && parts.len() != 5 {
+        return Err(format!(
+            "expected 'prev_txid:vout:script_sig:sequence[:witness_items]', got {} field(s) in '{s}'",
+            parts.len()
+        ));
+    }
 
-fn main() -> Result<(), Box<dyn Error>> { 
+    let prev_txid = hex_to_bytes(parts[0])?;
+    if prev_txid.len() != 32 {
+        return Err(format!(
+            "prev_txid must be 32 bytes (64 hex characters), got {} bytes",
+            prev_txid.len()
+        ));
+    }
 
-    let input = TxInput {
-        prev_txid: hex_to_bytes(
-            "8fb0d07bb3766421bff2d908b70e5de818e4d85a436ea3606310c1052b0dc821"
-        )?,
-        vout: 1,
-        script_sig: vec![],
-        sequence: 0xffffffff,
-        witness: vec![
-            hex_to_bytes("3045022100f8704a3e7d55d4b5ee448cc6365caeffa42c2b00f74a37726d4fa3c11982e3e502203591c4a4bde9200281755ae5a8759116ce6e0cc7f5d30cf0eeb5b2b74f74bab301")?,
-            hex_to_bytes("029cbb1e568de08f469a8751aa2000331f130ca92ad49012d9cececaf6f8eb2358")?   
-        ]
+    let vout: u32 = parts[1]
+        .parse()
+        .map_err(|e| format!("invalid vout '{}': {e}", parts[1]))?;
+
+    let script_sig = hex_to_bytes(parts[2])?;
+
+    let sequence: u32 = parts[3]
+        .parse()
+        .map_err(|e| format!("invalid sequence '{}': {e}", parts[3]))?;
+
+    let witness = match parts.get(4) {
+        None | Some(&"") => vec![],
+        Some(items) => items
+            .split(',')
+            .map(hex_to_bytes)
+            .collect::<Result<Vec<Vec<u8>>, String>>()?,
     };
 
-    let output_0 = TxOutput {
-        value: 69886,
-        script_pubkey: hex_to_bytes("0014a632c1fff47af29f8c81dc4c6e91eb49a116c12b")?,
-    };
+    Ok(TxInput {
+        prev_txid,
+        vout,
+        script_sig,
+        sequence,
+        witness,
+    })
+}
 
-    let output_1 = TxOutput {
-        value: 29442,
-        script_pubkey: hex_to_bytes("00149831122b93d21715c70db626ccc844d3c21f9687")?,
-    };
-    
+/// Parses one `--output` argument.
+///
+/// Format: `value_sats:script_pubkey_hex`
+fn parse_output(s: &str) -> Result<TxOutput, String> {
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 2 {
+        return Err(format!(
+            "expected 'value_sats:script_pubkey', got {} field(s) in '{s}'",
+            parts.len()
+        ));
+    }
+
+    let value: u64 = parts[0]
+        .parse()
+        .map_err(|e| format!("invalid output value '{}': {e}", parts[0]))?;
+
+    let script_pubkey = hex_to_bytes(parts[1])?;
+
+    Ok(TxOutput {
+        value,
+        script_pubkey,
+    })
+}
+
+#[derive(Parser)]
+#[command(
+    name = "serializetrx",
+    disable_version_flag = true,
+    about = "Construct and serialize a Bitcoin transaction from command-line arguments",
+    long_about = "Construct and serialize a Bitcoin transaction from command-line arguments.\n\n\
+--input format:  prev_txid_hex:vout:script_sig_hex:sequence[:witness_item_hex,witness_item_hex,...]\n\
+--output format: value_sats:script_pubkey_hex\n\n\
+prev_txid must be 32 bytes of hex (64 characters), in internal (non-reversed) byte order.\n\
+script_sig may be an empty string for native SegWit inputs.\n\
+The witness segment is optional and only used when --segwit is passed."
+)]
+struct Cli {
+    /// Transaction version
+    #[arg(long, default_value_t = 2)]
+    version: i32,
+
+    /// Mark this as a SegWit transaction (adds marker/flag and serializes witness data)
+    #[arg(long)]
+    segwit: bool,
+
+    /// One transaction input: prev_txid:vout:script_sig:sequence[:witness_items]
+    /// Repeat --input for each input.
+    #[arg(long = "input", value_parser = parse_input, required = true)]
+    inputs: Vec<TxInput>,
+
+    /// One transaction output: value_sats:script_pubkey
+    /// Repeat --output for each output.
+    #[arg(long = "output", value_parser = parse_output, required = true)]
+    outputs: Vec<TxOutput>,
+
+    /// Transaction locktime
+    #[arg(long, default_value_t = 0)]
+    locktime: u32,
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let cli = Cli::parse();
+
+    if !cli.segwit
+        && let Some(bad_input) = cli.inputs.iter().find(|i| !i.witness.is_empty())
+    {
+        return Err(format!(
+            "input {} carries witness data but --segwit was not passed",
+            bytes_to_hex(&bad_input.prev_txid)
+        )
+        .into());
+    }
+
     let trx = Transaction {
-        version : 2,
-        inputs: vec![input],
-        outputs: vec![output_0, output_1],
-        locktime: 0,
-        segwit: true
+        version: cli.version,
+        inputs: cli.inputs,
+        outputs: cli.outputs,
+        locktime: cli.locktime,
+        segwit: cli.segwit,
     };
 
-       // Serialize
+    // Serialize
     let serialized = serialize_transaction(&trx);
 
     println!("Serialized transaction:");
@@ -91,17 +191,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("\nTransaction size: {} bytes", serialized.len());
 
     Ok(())
-
-}   
-
-fn bytes_to_hex(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect()
 }
 
-
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}
 
 // ┌──────────────────────────────┐
 // │ Version          4 bytes     │
@@ -120,29 +214,27 @@ fn bytes_to_hex(bytes: &[u8]) -> String {
 // │ Locktime         4 bytes  ←  │
 // └──────────────────────────────┘
 
-
 fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
+    let mut result = Vec::new();
 
-     let mut result = Vec::new();
-
-        // add version number
-          // to_le_bytes: converts the integer into its little-endian byte representation.
+    // add version number
+    // to_le_bytes: converts the integer into its little-endian byte representation.
     //  extend_from_slice: Take these bytes and append them to result.
-        result.extend_from_slice(&trx.version.to_le_bytes());
+    result.extend_from_slice(&trx.version.to_le_bytes());
 
-     if trx.segwit {
+    if trx.segwit {
         result.push(0x00); // marker
         result.push(0x01); // flag
-     };
+    };
 
-     // INPUTT COUNT
-      // script_sig: vec![] is empty because this particular transaction is a SegWit P2WPKH transaction.
-        // scriptSig belongs to the traditional input structure.
-        // witness contains the signature and public key for a native SegWit input.
-     result.extend_from_slice(&encode_varint(trx.inputs.len()));
+    // INPUTT COUNT
+    // script_sig: vec![] is empty because this particular transaction is a SegWit P2WPKH transaction.
+    // scriptSig belongs to the traditional input structure.
+    // witness contains the signature and public key for a native SegWit input.
+    result.extend_from_slice(&encode_varint(trx.inputs.len()));
 
-     // input data 
-        for input in &trx.inputs {
+    // input data
+    for input in &trx.inputs {
         // Previous transaction ID
         result.extend_from_slice(&input.prev_txid);
 
@@ -161,8 +253,8 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
     // OUTPUT COUNT
     result.extend_from_slice(&encode_varint(trx.outputs.len()));
 
-    // OUTPUT DATA 
-        for output in &trx.outputs {
+    // OUTPUT DATA
+    for output in &trx.outputs {
         // Value in satoshis
         result.extend_from_slice(&output.value.to_le_bytes());
 
@@ -174,7 +266,7 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
     }
 
     // witness data
-       if trx.segwit {
+    if trx.segwit {
         for input in &trx.inputs {
             // Number of witness items
             result.extend_from_slice(&encode_varint(input.witness.len()));
@@ -189,11 +281,10 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
         }
     }
 
-    // add locktime 
+    // add locktime
     result.extend_from_slice(&trx.locktime.to_le_bytes());
 
-    result 
-
+    result
 }
 
 // Bitcoin uses VarInts (encode_varint) when it needs to store things like:
@@ -203,7 +294,6 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
 // script length
 // number of witness items
 // witness item length
-
 
 fn encode_varint(value: usize) -> Vec<u8> {
     match value {
@@ -241,7 +331,6 @@ fn encode_varint(value: usize) -> Vec<u8> {
 
 // larger values        FF + 8 bytes
 
-
 // A simpler way to visualize CompactSize
 //               ┌── small value?
 //               │
@@ -252,20 +341,17 @@ fn encode_varint(value: usize) -> Vec<u8> {
 //                     ↓
 //                    [XX]
 
-
 //            253 - 65535
 //               │
 //               └── FD + 2 bytes
 //                     ↓
 //                  [FD][XX XX]
 
-
 //            65536 - 4294967295
 //               │
 //               └── FE + 4 bytes
 //                     ↓
 //               [FE][XX XX XX XX]
-
 
 //            larger
 //               │
