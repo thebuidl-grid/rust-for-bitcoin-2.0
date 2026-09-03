@@ -2,16 +2,16 @@
 
 ## Commands used
 
-TODO: List the Rust command and Bitcoin Core RPCs you ran.
+Ran `cargo test --test lab_01` and, in Polar Node A, `bitcoin-cli -regtest getblockchaininfo`, `getblockcount`, and `getbestblockhash`.
 
 ## Terminal output
 
-TODO: Record chain, block height, and best-block hash.
+Node A reported `chain: regtest`. The reset test chain began at height 0; both Polar Bitcoin Core nodes initially shared its same tip.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
+Terminal JSON was captured from running container `polar-n1-backend1` (`polarlightning/bitcoind:30.0`) in Polar.
 
 ## Explanation
 
-TODO: Explain Polar, Docker, Bitcoin Core, and regtest in your own words.
+Polar builds the local topology, Docker isolates node processes, and Bitcoin Core validates blocks and exposes RPC. Regtest is a private chain with valueless coins and on-demand mining, so this work cannot affect mainnet.

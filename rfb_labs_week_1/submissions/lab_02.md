@@ -2,16 +2,16 @@
 
 ## Commands used
 
-TODO: Record how you created and inspected both wallets and addresses.
+Ran `createwallet miner`, `createwallet receiver`, `listwallets`, wallet-scoped `getnewaddress`, and `getaddressinfo` with `-regtest`.
 
 ## Terminal output
 
-TODO: Include loaded wallets, addresses, and ownership evidence.
+Loaded wallets included `miner` and `receiver`. Their addresses were `bcrt1qh0hf6fkgrs9merk3xtc34dpfefgd02lyg4nnyy` and `bcrt1qtq62v48v6skk4awy5k6lnupc05qm9cq8w8qpz0`; both start `bcrt1` and returned `ismine: true` in their own wallet context.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
+Node A terminal JSON includes the labels `mining` and `classmate`, both addresses, and the ownership checks.
 
 ## Explanation
 
-TODO: Explain wallet context and the purpose of `-rpcwallet`.
+`-rpcwallet` routes a wallet RPC to one named wallet. The wrong context can create data in, or query, the wrong wallet; `ismine` confirms actual wallet control.

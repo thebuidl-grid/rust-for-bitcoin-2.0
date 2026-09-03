@@ -2,16 +2,16 @@
 
 ## Commands used
 
-TODO: Record the mining, mempool, transaction, and block commands.
+Ran `generatetoaddress 1`, `getrawmempool`, receiver `gettransaction`, `getbalances`, and `getblock <hash> 1`.
 
 ## Terminal output
 
-TODO: Show the empty mempool, confirmation count, block hash, and TXID in block.
+Confirming block `20cd1e994aef0397db662221ac6d394d8c674ffe5ea997cb267b4426dd61f1bb` was height 102. Mempool was empty, receiver trusted balance was 1 BTC, the payment had one confirmation, and the block `tx` list contained `b0be49f7ba206557fe14510f6d6f00e16a9cf1d7155fb459babd97695a8b7fe0`.
 
 ## Evidence references
 
-TODO: Link screenshots or describe the attached evidence.
+Captured `getblock` JSON reported `nTx: 2` and listed coinbase plus the payment; receiver JSON supplied the same block hash.
 
 ## Explanation
 
-TODO: Explain exactly what changed when the transaction became confirmed.
+Mining did not change the signed transaction bytes. It placed the transaction in an accepted proof-of-work block, giving it an agreed position in chain history and one confirmation.
