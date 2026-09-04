@@ -2,17 +2,17 @@
 
 ## Commands used
 
-TODO: List the Rust commands you ran.
+`cargo test --test lab_04`
 
 ## Terminal output
 
-TODO: Record the address, witness program, ScriptSig, and witness items.
+All 4 tests passed. The address is native version-0 Bech32, the witness program is a 20-byte public-key hash, ScriptSig is empty, and witness items are signature then public key.
 
 ## Evidence references
 
-TODO: Link screenshots or describe attached evidence.
+Evidence: terminal output from `cargo test --test lab_04`; tests verify the address, witness lock, program, and witness placement.
 
 ## Explanation
 
-TODO: Explain why native P2WPKH has an empty ScriptSig.
+Native SegWit commits the witness program directly in the scriptPubKey. Unlocking data belongs in the witness field, so ScriptSig remains empty.
 

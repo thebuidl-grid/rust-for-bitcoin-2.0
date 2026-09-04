@@ -2,17 +2,17 @@
 
 ## Commands used
 
-TODO: List the Rust commands you ran.
+`cargo test --test lab_10` using the public disposable test mnemonic.
 
 ## Terminal output
 
-TODO: Record the BIP44/49/84 test addresses and repeatability result.
+All 4 tests passed. The regtest families had expected prefixes: BIP44 P2PKH `m...` or `n...`, BIP49 wrapped SegWit `2...`, and BIP84 native SegWit `bcrt1q...`. Identical inputs reproduced the same address; changing the index changed it.
 
 ## Evidence references
 
-TODO: Link screenshots or describe attached evidence.
+Evidence: terminal output from `cargo test --test lab_10`; only public disposable data was used, and wallet secrets were not recorded.
 
 ## Explanation
 
-TODO: Explain how recovery inputs and derivation conventions reproduce a wallet.
+Recovery is deterministic because the mnemonic, passphrase, network, derivation path, and address encoding rules determine each child key and address. BIP44, BIP49, and BIP84 use different purpose branches and output formats, producing distinct but reproducible address families.
 

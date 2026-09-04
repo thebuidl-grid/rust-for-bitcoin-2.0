@@ -2,17 +2,17 @@
 
 ## Commands used
 
-TODO: List the Rust commands you ran using only disposable test data.
+`cargo test --test lab_08` using the public disposable test mnemonic.
 
 ## Terminal output
 
-TODO: Record redacted prefixes and derivation observations, not full private material.
+All 4 tests passed. Regtest private keys used `tprv` prefixes and public keys used `tpub` prefixes. Normal public derivation produced a different child xpub, and hardened path components were detected.
 
 ## Evidence references
 
-TODO: Link screenshots or describe attached evidence without exposing xprvs.
+Evidence: terminal output from `cargo test --test lab_08`. Extended private key values were intentionally not copied into this submission.
 
 ## Explanation
 
-TODO: Explain xpriv, xpub, chain code, and hardened versus normal derivation.
+An xpriv carries private key material plus metadata and chain code. An xpub carries the public key and chain code, allowing normal child derivation without private material. Hardened derivation requires the parent private key; normal derivation can be performed from an xpub.
 
