@@ -17,8 +17,13 @@ const EXTERNAL_PATH: &str = "m/84h/1h/0h/0";
 const INTERNAL_PATH: &str = "m/84h/1h/0h/1";
 
 pub struct Descriptors {
+    /// Private-key-embedded descriptors (tprv-based) — used to build a
+    /// signing-capable wallet. Never print or log these.
     pub external: String,
     pub internal: String,
+    /// Public-only equivalents (xpub-based), safe to print/log.
+    pub external_public: String,
+    pub internal_public: String,
 }
 
 /// Parses `existing` as a mnemonic if present, otherwise generates a fresh
@@ -54,16 +59,28 @@ pub fn descriptors_from_mnemonic(
     let internal_path = DerivationPath::from_str(INTERNAL_PATH).expect("valid hardcoded path");
     let mnemonic_with_passphrase = (mnemonic.clone(), None::<String>);
 
-    let (external, _) = descriptor!(wpkh((mnemonic_with_passphrase.clone(), external_path)))
-        .map_err(|e| WalletError::DescriptorBuild(e.to_string()))?
-        .into_wallet_descriptor(&secp, network)
-        .map_err(|e| WalletError::DescriptorBuild(e.to_string()))?;
-    let (internal, _) = descriptor!(wpkh((mnemonic_with_passphrase, internal_path)))
+    let (external, ext_keymap) =
+        descriptor!(wpkh((mnemonic_with_passphrase.clone(), external_path)))
+            .map_err(|e| WalletError::DescriptorBuild(e.to_string()))?
+            .into_wallet_descriptor(&secp, network)
+            .map_err(|e| WalletError::DescriptorBuild(e.to_string()))?;
+    let (internal, int_keymap) = descriptor!(wpkh((mnemonic_with_passphrase, internal_path)))
         .map_err(|e| WalletError::DescriptorBuild(e.to_string()))?
         .into_wallet_descriptor(&secp, network)
         .map_err(|e| WalletError::DescriptorBuild(e.to_string()))?;
 
-    Ok(Descriptors { external: external.to_string(), internal: internal.to_string() })
+    // `Descriptor::to_string()` only serializes the public half — the
+    // private key material lives in the separate KeyMap. A wallet built
+    // from public-only descriptor strings is watch-only and can't sign,
+    // so we must embed the private keys with `to_string_with_secret`.
+    // Keep the plain `to_string()` (xpub-only) form around too, for
+    // anything that wants to print/log a descriptor safely.
+    Ok(Descriptors {
+        external: external.to_string_with_secret(&ext_keymap),
+        internal: internal.to_string_with_secret(&int_keymap),
+        external_public: external.to_string(),
+        internal_public: internal.to_string(),
+    })
 }
 
 #[cfg(test)]

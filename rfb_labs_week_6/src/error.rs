@@ -30,4 +30,16 @@ pub enum NodeError {
     Sync(String),
 }
 
-// TODO(stage 9): TxError
+#[derive(Debug, Error)]
+pub enum TxError {
+    #[error("failed to build transaction: {0}")]
+    Build(String),
+    #[error("signing did not fully finalize the PSBT")]
+    NotFullyFinalized,
+    #[error("failed to extract final transaction: {0}")]
+    Extract(String),
+    #[error("failed to broadcast transaction: {0}")]
+    Broadcast(#[from] bitcoincore_rpc::Error),
+    #[error("wallet persistence error: {0}")]
+    Persistence(String),
+}
