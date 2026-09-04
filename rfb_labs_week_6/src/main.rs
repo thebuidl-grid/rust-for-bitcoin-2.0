@@ -36,5 +36,14 @@ fn main() -> anyhow::Result<()> {
     let (chain, blocks) = node::chain_info(&rpc_client)?;
     println!("connected to node: chain={chain} blocks={blocks}");
 
+    if chain == "regtest" {
+        let mined = node::fund_wallet_regtest(
+            &rpc_client,
+            &receive.address,
+            node::COINBASE_MATURITY + 1,
+        )?;
+        println!("mined {} blocks to {}", mined.len(), receive.address);
+    }
+
     Ok(())
 }
