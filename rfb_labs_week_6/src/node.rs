@@ -1,9 +1,13 @@
+use std::sync::Arc;
+
+use bdk_bitcoind_rpc::Emitter;
 use bitcoin::address::NetworkChecked;
 use bitcoin::{Address, BlockHash};
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 
 use crate::config::RpcAuthConfig;
 use crate::error::NodeError;
+use crate::wallet::WalletDb;
 
 /// Number of blocks needed for a coinbase output to mature and become
 /// spendable on regtest.
@@ -44,4 +48,35 @@ pub fn fund_wallet_regtest(
     Ok(client.generate_to_address(blocks, address)?)
 }
 
-// TODO(stage 8): sync_wallet()
+/// Syncs `wallet` against the node block-by-block via
+/// `bdk_bitcoind_rpc::Emitter`, then applies the current mempool
+/// snapshot, persisting after each step. This *is* the wallet's use of
+/// `bitcoincore-rpc` (the `Emitter` re-exports and wraps it) — separate
+/// from the direct `Client` calls above, which are regtest chain admin,
+/// not wallet sync.
+pub fn sync_wallet(
+    wallet: &mut bdk_wallet::PersistedWallet<WalletDb>,
+    client: Arc<Client>,
+    db: &mut WalletDb,
+) -> Result<(), NodeError> {
+    let wallet_tip = wallet.latest_checkpoint();
+    let unconfirmed_txs =
+        wallet.transactions().filter(|tx| tx.chain_position.is_unconfirmed());
+    let mut emitter = Emitter::new(client, wallet_tip, 0, unconfirmed_txs);
+
+    while let Some(block_emission) = emitter.next_block()? {
+        let height = block_emission.block_height();
+        let connected_to = block_emission.connected_to();
+        wallet
+            .apply_block_connected_to(&block_emission.block, height, connected_to)
+            .map_err(|e| NodeError::Sync(e.to_string()))?;
+        wallet.persist(db).map_err(|e| NodeError::Sync(e.to_string()))?;
+    }
+
+    let mempool_event = emitter.mempool()?;
+    wallet.apply_evicted_txs(mempool_event.evicted);
+    wallet.apply_unconfirmed_txs(mempool_event.update);
+    wallet.persist(db).map_err(|e| NodeError::Sync(e.to_string()))?;
+
+    Ok(())
+}

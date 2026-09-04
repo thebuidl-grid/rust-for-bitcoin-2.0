@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 mod config;
 mod error;
 mod keys;
@@ -32,7 +34,7 @@ fn main() -> anyhow::Result<()> {
     println!("change address (internal):  {}", change.address);
     assert_ne!(receive.address, change.address);
 
-    let rpc_client = node::build_rpc_client(&config.rpc_url, &config.rpc_auth)?;
+    let rpc_client = Arc::new(node::build_rpc_client(&config.rpc_url, &config.rpc_auth)?);
     let (chain, blocks) = node::chain_info(&rpc_client)?;
     println!("connected to node: chain={chain} blocks={blocks}");
 
@@ -44,6 +46,17 @@ fn main() -> anyhow::Result<()> {
         )?;
         println!("mined {} blocks to {}", mined.len(), receive.address);
     }
+
+    node::sync_wallet(&mut w, Arc::clone(&rpc_client), &mut db)?;
+    let balance = wallet::get_balance(&w);
+    let utxos = wallet::list_utxos(&w);
+    println!(
+        "balance: total={} confirmed={} trusted_pending={}",
+        balance.total(),
+        balance.confirmed,
+        balance.trusted_pending
+    );
+    println!("utxos: {}", utxos.len());
 
     Ok(())
 }

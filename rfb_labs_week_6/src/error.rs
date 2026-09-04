@@ -26,6 +26,8 @@ pub enum NodeError {
     ClientBuild(String),
     #[error("RPC call failed: {0}")]
     Rpc(#[from] bitcoincore_rpc::Error),
+    #[error("wallet sync error: {0}")]
+    Sync(String),
 }
 
 // TODO(stage 9): TxError
