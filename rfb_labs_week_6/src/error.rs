@@ -16,6 +16,8 @@ pub enum WalletError {
     InvalidMnemonic(String),
     #[error("failed to build descriptor: {0}")]
     DescriptorBuild(String),
+    #[error("wallet persistence error: {0}")]
+    Persistence(String),
 }
 
 // TODO(stage 4+): NodeError, TxError

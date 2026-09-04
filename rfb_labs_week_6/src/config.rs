@@ -48,8 +48,24 @@ impl fmt::Debug for Config {
 
 impl Config {
     pub fn from_env() -> Result<Config, ConfigError> {
-        dotenvy::dotenv().ok();
+        // A missing .env is fine (env vars may be set another way), but a
+        // malformed one should be surfaced rather than silently ignored —
+        // dotenvy stops applying variables at the first bad line, which
+        // otherwise fails in confusing ways further down.
+        match dotenvy::dotenv() {
+            Ok(_) | Err(dotenvy::Error::Io(_)) => {}
+            Err(e) => eprintln!("warning: failed to parse .env ({e}); continuing without it"),
+        }
 
+        Self::from_process_env()
+    }
+
+    /// Reads config from whatever is already in the process environment,
+    /// without touching `.env`. Split out from [`Config::from_env`] so
+    /// tests can exercise env-var parsing without a `.env` file on disk
+    /// (if present in the crate directory) silently reintroducing values
+    /// that a test just cleared.
+    fn from_process_env() -> Result<Config, ConfigError> {
         let network = match env::var("BITCOIN_NETWORK")
             .unwrap_or_else(|_| "regtest".to_string())
             .as_str()
@@ -111,7 +127,7 @@ mod tests {
     fn missing_rpc_url_is_an_error() {
         let _guard = ENV_LOCK.lock().unwrap();
         clear_env();
-        let err = Config::from_env().unwrap_err();
+        let err = Config::from_process_env().unwrap_err();
         assert!(matches!(err, ConfigError::MissingVar("RPC_URL")));
     }
 
@@ -123,7 +139,7 @@ mod tests {
             env::set_var("BITCOIN_NETWORK", "mainnet");
             env::set_var("RPC_URL", "127.0.0.1:18443");
         }
-        let err = Config::from_env().unwrap_err();
+        let err = Config::from_process_env().unwrap_err();
         assert!(matches!(err, ConfigError::InvalidNetwork(_)));
     }
 
@@ -134,7 +150,7 @@ mod tests {
         unsafe {
             env::set_var("RPC_URL", "127.0.0.1:18443");
         }
-        let config = Config::from_env().unwrap();
+        let config = Config::from_process_env().unwrap();
         assert_eq!(config.network, Network::Regtest);
         assert!(matches!(config.rpc_auth, RpcAuthConfig::None));
         assert_eq!(config.db_path, PathBuf::from("wallet.sqlite"));
@@ -148,7 +164,7 @@ mod tests {
             env::set_var("RPC_URL", "127.0.0.1:18443");
             env::set_var("MNEMONIC", "abandon abandon abandon");
         }
-        let config = Config::from_env().unwrap();
+        let config = Config::from_process_env().unwrap();
         let debug = format!("{config:?}");
         assert!(!debug.contains("abandon"));
         assert!(debug.contains("<redacted>"));
