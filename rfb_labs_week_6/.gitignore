@@ -1,0 +1,11 @@
+# Build output
+/target/
+
+# Cargo lock is kept for binaries
+# Cargo.lock
+
+# Wallet database — contains wallet state, not for version control
+wallet.sqlite
+
+# Environment secrets — NEVER commit this
+.env

@@ -1,6 +1,26 @@
 [package]
 name = "rfb_labs_week_6"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+description = "Rust for Bitcoin 2.0 — Week 6: Bitcoin Wallet in Rust"
+license = "MIT"
+publish = false
 
 [dependencies]
+# BDK wallet — descriptor-based wallet engine (keys-bip39 enables mnemonic helpers)
+bdk_wallet     = { version = "3.1.0", features = ["rusqlite", "keys-bip39"] }
+# BDK chain-source: sync via Bitcoin Core RPC
+bdk_bitcoind_rpc = "0.22.0"
+# Direct RPC access (broadcast, raw tx, getbalance, etc.)
+bitcoincore-rpc = "0.19.0"
+# rust-bitcoin re-exported by bdk_wallet; explicit for raw-bitcoin examples
+bitcoin = { version = "0.32", features = ["serde"] }
+# CLI argument parsing
+clap = { version = "4.6.6", features = ["derive"] }
+# .env file support — never hardcode secrets
+dotenv = "0.15.0"
+# Error ergonomics
+anyhow = "1"
+# Human-readable amounts / logging
+log    = "0.4"
+env_logger = "0.11"
