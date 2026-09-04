@@ -1,67 +1,124 @@
-# Assignment: Building a Bitcoin Wallet in Rust
+# Week 6 — Bitcoin Wallet in Rust
 
-## Goal
+A CLI wallet that runs against a local regtest `bitcoind`, built on `bdk_wallet` for
+descriptor/keychain/UTXO management and `bdk_bitcoind_rpc` for talking to the node.
 
-Build a functioning Bitcoin wallet in Rust (regtest) that demonstrates you can use the libraries covered in class effectively.
+## Setup
 
-## Minimum Requirements
+You need `bitcoind`/`bitcoin-cli` on your PATH (Bitcoin Core 25+). No Docker or Polar
+required — this runs a plain regtest node directly.
 
-Your wallet must be able to:
+```bash
+# start a regtest node (adjust paths as you like)
+mkdir -p /tmp/rfb_week6_regtest
+cat > /tmp/rfb_week6_bitcoin.conf << 'EOF'
+regtest=1
+server=1
+txindex=1
+fallbackfee=0.0001
+[regtest]
+rpcuser=rfbuser
+rpcpassword=rfbpass
+rpcport=18443
+EOF
+bitcoind -datadir=/tmp/rfb_week6_regtest -conf=/tmp/rfb_week6_bitcoin.conf -daemon
+```
 
-1. **Generate or import keys** and derive a wallet from a descriptor.
-2. **Generate addresses** from both an external (receiving) and internal (change) keychain.
-3. **Track UTXOs and calculate balance** for the wallet.
-4. **Persist wallet state locally** (e.g. with SQLite) so the wallet can be closed and reopened without losing track of its own state.
-5. **Construct, sign, and broadcast a transaction** on testnet.
-6. **Connect to a Bitcoin node** (via `bitcoincore-rpc`) to sync wallet state or broadcast transactions, i.e., your wallet should not be purely offline.
+Then set up the wallet's own config:
 
-## Stretch Goals
+```bash
+cp .env.example .env   # edit if you changed any of the values above
+cargo run -- init      # generates a mnemonic if MNEMONIC isn't already set,
+                        # prints it once, and creates the SQLite wallet DB
+```
 
-Pick any of these if you want to push further:
+`init` prints a `MNEMONIC="..."` line — paste it into `.env` so later commands can find
+it. Nothing is ever written to disk by this tool except the SQLite wallet database
+(`BDK_DB_PATH`, which holds no private key material — descriptors with keys live only
+in `.env`).
 
-- Support multiple descriptor types (e.g. compare `wpkh` vs `tr` Taproot)
-- Build a simple CLI so a user can check balance, get a new address, and send funds without editing code
-- Handle coin selection explicitly rather than relying on defaults
-- Add basic error handling/logging that would make this usable by someone other than you
-- Explain (in your README) a scenario where you reached for raw `rust-bitcoin` instead of BDK, and demonstrate it with a small code example
+## Commands
 
-## Acceptance Criteria
+```bash
+cargo run -- init                          # create the wallet, print first address
+cargo run -- address                       # reveal next receiving (external) address
+cargo run -- change-address                # reveal next change (internal) address
+cargo run -- sync                          # pull new blocks/mempool state, print balance
+cargo run -- utxos                         # sync, then list UTXOs
+cargo run -- send <address> <sats> [--fee-rate N]   # sync, build, sign, broadcast
+cargo run -- mine [count]                  # regtest-only: mine blocks to a wallet address
+```
 
-1. **A PR TO THE RFB GITHUB** (source code, `Cargo.toml`, etc.) as a zip or a link to a repository.
-2. **A README** that includes:
-   - How to run your wallet (setup instructions, any node/config required)
-   - A short explanation (project or descriptor structure, and why you chose it)
-   - Which libraries you used where, and why (e.g. "I used `bitcoincore-rpc` for X, and BDK for Y, because...")
-   - Any known limitations or things you'd improve with more time
+Regtest coinbase outputs need 100 confirmations to mature, so a fresh wallet needs:
 
-## Constraints
+```bash
+cargo run -- mine 101
+cargo run -- sync
+```
 
-- Testnet or regtest only.
-- Do not hardcode private keys or seed phrases in files you submit, use a `.env`, config file, or generate fresh test keys. (This is also good practice for real-world Bitcoin development.)
-- You may use any crates that support your chosen libraries (e.g. `dotenv`, `clap`, `tokio`), but the wallet logic itself should go through `rust-bitcoin`, `bitcoincore-rpc`, and/or BDK.
+before `balance.confirmed` shows anything spendable.
 
-## Reference Material
+## Project structure
 
-- rust-bitcoin docs: https://docs.rs/bitcoin/0.32.102/bitcoin/index.html
-- Bitcoin Core RPC reference: https://developer.bitcoin.org/reference/rpc/
-- BDK Wallet docs: https://docs.rs/bdk_wallet/latest/bdk_wallet/index.html
+```
+src/
+  main.rs    CLI (clap) — dispatches to the modules below
+  config.rs  reads .env / real env vars into a Config struct
+  keys.rs    mnemonic -> BIP84 wpkh descriptors (external + internal)
+  node.rs    builds the bitcoind RPC client from Config
+  wallet.rs  wallet open/create + sync (Emitter-driven block/mempool ingestion)
+```
 
----
+Each command is a fresh process: it opens the SQLite-backed wallet, syncs against
+bitcoind, does the thing, persists, and exits. There's no daemon — every command that
+needs current state calls `sync` first rather than trusting stale data on disk.
 
-## Grading Rubric (100 points)
+## Library choices
 
-| Category | Criteria |
-|---|---|
-| **Correctness — Core Functionality** | Wallet generates keys/addresses correctly from a descriptor; external and internal keychains are properly separated |
-| **Correctness — UTXO & Balance Tracking** | Wallet accurately tracks UTXOs and reports correct balance after syncing |
-| **Correctness — Transactions** | Wallet successfully creates, signs, and broadcasts a transaction on testnet/regtest; txid is verifiable |
-| **Persistence** | Wallet state survives a restart (SQLite or equivalent) without needing to re-derive/re-sync from scratch |
-| **Node Integration** | Wallet correctly connects to and communicates with a Bitcoin node (RPC or BDK-supported connection) |
-| **Architecture & Library Use** | Sensible use of rust-bitcoin / bitcoincore-rpc / BDK together, student can justify *why* each was used where|
-| **Code Quality** | Reasonably organized, readable, compiles cleanly, handles at least basic errors (doesn't just panic on bad input) |
-| **README & Documentation** | Clear setup instructions, explains design decisions, includes proof of a working transaction |
-| **Stretch Goals (bonus)** | Any stretch goal attempted and working |
+- **`bdk_wallet`** owns the actual wallet logic: descriptor parsing, keeping the
+  external/internal keychains separate, UTXO tracking, coin selection, PSBT
+  construction and signing, and SQLite persistence (`rusqlite` feature). This is
+  exactly the layer BDK exists to save you from hand-rolling.
+- **`bdk_bitcoind_rpc`** bridges bdk_wallet to a real node. `Emitter` walks blocks
+  from the wallet's last checkpoint forward and reports reorgs/mempool changes in a
+  form `Wallet::apply_block_connected_to` can consume directly — this is what makes
+  the wallet "not purely offline."
+- **`bitcoincore_rpc`** (re-exported through `bdk_bitcoind_rpc`, so it's not a
+  separate dependency) is used directly for `send_raw_transaction` (broadcasting the
+  final signed tx) and `generate_to_address` (the `mine` dev command). Both are
+  one-shot RPC calls that don't need to go through BDK's chain-source machinery.
+- No raw `rust-bitcoin` calls outside what `bdk_wallet` already re-exports —
+  `Address`, `Amount`, `FeeRate` all come from `bdk_wallet::bitcoin`. There wasn't a
+  case here where raw `rust-bitcoin` bought anything BDK's `TxBuilder`/`Wallet::sign`
+  didn't already cover; the whole point of this assignment was to use the ecosystem
+  crates, and reaching past BDK would've meant re-implementing what it does well.
 
-## Timeline
+## Descriptor choice
 
-- **Due:** 5th Septermber 2026
+BIP84 `wpkh` for both keychains (`m/84h/1h/0h/0/*` external, `m/84h/1h/0h/1/*`
+internal). Chosen over taproot because it's the format the Week 5 labs already built
+address/script logic around, and native SegWit's discounted witness weight is the
+actual reason wallets default to it — taproot buys signature aggregation and
+script-privacy properties this simple single-key wallet has no use for yet.
+
+## Known limitations / what I'd improve with more time
+
+- Single hardcoded account (`0'`) and a fixed BIP84 path — no multi-account support.
+- `send` always fully drains coin selection to BDK's default algorithm; no explicit
+  UTXO selection.
+- No taproot descriptor option, so there's no `wpkh` vs `tr` comparison here (stretch
+  goal not attempted, given the time available).
+- Error handling is `anyhow`-flavored bail/ensure — fine for a CLI, but a library
+  consumer of these modules would want typed errors.
+- `Mine` mines to a freshly revealed wallet address every time rather than reusing
+  the last one — harmless on regtest, just burns through the gap limit faster than
+  necessary.
+
+## Proof of a working transaction
+
+Verified live against a local regtest node during development: mined 101 blocks to
+mature a coinbase, `sync` reported a spendable balance, `send` built/signed/broadcast
+a transaction, and `bitcoin-cli getrawtransaction <txid> true` confirmed it in the
+node's mempool before being mined into the next block. Re-running `sync` in a fresh
+process afterward showed the same balance, confirming SQLite persistence survives a
+restart.
