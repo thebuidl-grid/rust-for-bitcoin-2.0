@@ -1,3 +1,18 @@
-fn main() {
-    println!("Hello, world!");
+use clap::Parser;
+
+mod cli;
+mod config;
+mod error;
+mod keys;
+mod node;
+mod persist;
+mod tx;
+mod wallet;
+
+fn main() -> anyhow::Result<()> {
+    let cli = cli::Cli::parse();
+    let config = config::Config::from_env()?;
+    println!("{config:?}");
+
+    cli::run(cli.command, &config)
 }
