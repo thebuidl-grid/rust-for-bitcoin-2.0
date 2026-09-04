@@ -8,4 +8,14 @@ pub enum ConfigError {
     InvalidNetwork(String),
 }
 
-// TODO(stage 4+): WalletError, NodeError, TxError
+#[derive(Debug, Error)]
+pub enum WalletError {
+    #[error("failed to generate a mnemonic")]
+    MnemonicGeneration,
+    #[error("invalid mnemonic: {0}")]
+    InvalidMnemonic(String),
+    #[error("failed to build descriptor: {0}")]
+    DescriptorBuild(String),
+}
+
+// TODO(stage 4+): NodeError, TxError
