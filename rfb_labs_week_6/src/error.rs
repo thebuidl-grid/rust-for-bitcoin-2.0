@@ -20,4 +20,12 @@ pub enum WalletError {
     Persistence(String),
 }
 
-// TODO(stage 4+): NodeError, TxError
+#[derive(Debug, Error)]
+pub enum NodeError {
+    #[error("failed to build RPC client: {0}")]
+    ClientBuild(String),
+    #[error("RPC call failed: {0}")]
+    Rpc(#[from] bitcoincore_rpc::Error),
+}
+
+// TODO(stage 9): TxError

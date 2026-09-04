@@ -32,5 +32,9 @@ fn main() -> anyhow::Result<()> {
     println!("change address (internal):  {}", change.address);
     assert_ne!(receive.address, change.address);
 
+    let rpc_client = node::build_rpc_client(&config.rpc_url, &config.rpc_auth)?;
+    let (chain, blocks) = node::chain_info(&rpc_client)?;
+    println!("connected to node: chain={chain} blocks={blocks}");
+
     Ok(())
 }
