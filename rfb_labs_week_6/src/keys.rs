@@ -55,8 +55,11 @@ pub fn descriptors_from_mnemonic(
     network: NetworkKind,
 ) -> Result<Descriptors, WalletError> {
     let secp = Secp256k1::new();
-    let external_path = DerivationPath::from_str(EXTERNAL_PATH).expect("valid hardcoded path");
-    let internal_path = DerivationPath::from_str(INTERNAL_PATH).expect("valid hardcoded path");
+    // EXTERNAL_PATH/INTERNAL_PATH are compile-time constants, not user
+    // input — `expect` is safe here because there's no runtime value
+    // that could make this parse fail.
+    let external_path = DerivationPath::from_str(EXTERNAL_PATH).expect("EXTERNAL_PATH is valid");
+    let internal_path = DerivationPath::from_str(INTERNAL_PATH).expect("INTERNAL_PATH is valid");
     let mnemonic_with_passphrase = (mnemonic.clone(), None::<String>);
 
     let (external, ext_keymap) =

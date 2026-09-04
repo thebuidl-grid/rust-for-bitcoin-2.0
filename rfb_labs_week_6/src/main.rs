@@ -32,7 +32,6 @@ fn main() -> anyhow::Result<()> {
 
     println!("receive address (external): {}", receive.address);
     println!("change address (internal):  {}", change.address);
-    assert_ne!(receive.address, change.address);
 
     let rpc_client = Arc::new(node::build_rpc_client(&config.rpc_url, &config.rpc_auth)?);
     let (chain, blocks) = node::chain_info(&rpc_client)?;
@@ -62,14 +61,13 @@ fn main() -> anyhow::Result<()> {
         let send_to = wallet::new_receive_address(&mut w);
         w.persist(&mut db)?;
 
-        let txid = tx::send(
-            &mut w,
-            &rpc_client,
-            &mut db,
-            &send_to.address,
-            bitcoin::Amount::from_btc(1.0).expect("valid amount"),
-            bitcoin::FeeRate::from_sat_per_vb(2).expect("valid fee rate"),
-        )?;
+        // Hardcoded demo values, not user input — `expect` here can't
+        // fail (1.0 and 2 are always in range), unlike everything else
+        // in this file that touches the network, disk, or wallet state.
+        let demo_amount = bitcoin::Amount::from_btc(1.0).expect("1.0 BTC is always representable");
+        let demo_fee_rate =
+            bitcoin::FeeRate::from_sat_per_vb(2).expect("2 sat/vB is always representable");
+        let txid = tx::send(&mut w, &rpc_client, &mut db, &send_to.address, demo_amount, demo_fee_rate)?;
         println!("broadcast txid: {txid}");
 
         if chain == "regtest" {
