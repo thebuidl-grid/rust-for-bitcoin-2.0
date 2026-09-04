@@ -2,6 +2,7 @@
 // students implement them. Keep initial compiler output focused on the actual lab.
 #![allow(unused_imports, unused_variables)]
 
+pub mod common;
 pub mod lab01_addresses;
 pub mod lab02_p2pkh;
 pub mod lab03_p2sh;
