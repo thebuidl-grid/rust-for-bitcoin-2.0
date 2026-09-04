@@ -6,6 +6,8 @@ mod persist;
 mod tx;
 mod wallet;
 
-fn main() {
-    println!("rfb_labs_week_6 wallet — scaffolding in place, stages to follow");
+fn main() -> anyhow::Result<()> {
+    let config = config::Config::from_env()?;
+    println!("{config:?}");
+    Ok(())
 }
