@@ -16,8 +16,7 @@ fn main() -> anyhow::Result<()> {
     println!("external descriptor: {}", descriptors.external);
     println!("internal descriptor: {}", descriptors.internal);
 
-    // Stage 5 replaces this with persist::open_db().
-    let mut db = bdk_wallet::rusqlite::Connection::open(&config.db_path)?;
+    let mut db = persist::open_db(&config.db_path)?;
     let mut w = wallet::open_or_create_wallet(
         descriptors.external,
         descriptors.internal,
