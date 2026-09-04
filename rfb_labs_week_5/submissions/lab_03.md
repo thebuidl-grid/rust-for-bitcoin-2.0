@@ -2,17 +2,17 @@
 
 ## Commands used
 
-TODO: List the Rust commands you ran.
+`cargo test --test lab_03`
 
 ## Terminal output
 
-TODO: Record the redeemScript, P2SH address, and outer scriptPubKey.
+All 4 tests passed. The redeemScript is a canonical 2-of-3 multisig script; the P2SH address and outer scriptPubKey commit to it.
 
 ## Evidence references
 
-TODO: Link screenshots or describe attached evidence.
+Evidence: terminal output from `cargo test --test lab_03`; tests verify the redeemScript, address, outer lock, and report.
 
 ## Explanation
 
-TODO: Explain the outer hash check and inner multisig check.
+The outer P2SH check requires a redeemScript whose HASH160 matches the script hash. The revealed script then requires two valid signatures for the three committed public keys.
 

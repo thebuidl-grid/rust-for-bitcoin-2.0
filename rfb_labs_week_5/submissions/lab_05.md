@@ -2,17 +2,17 @@
 
 ## Commands used
 
-TODO: List the Rust commands you ran.
+`cargo test --test lab_05`
 
 ## Terminal output
 
-TODO: Record the four-format compatibility report.
+All 4 tests passed. A Base58Check-only P2SH-era sender reports `p2pkh=true`, `p2sh_p2wpkh=true`, `p2wpkh=false`, and `p2tr=false`.
 
 ## Evidence references
 
-TODO: Link screenshots or describe attached evidence.
+Evidence: terminal output from `cargo test --test lab_05`; tests cover capability mapping, preference ordering, and encoding names.
 
 ## Explanation
 
-TODO: Explain why a P2SH-era wallet may accept 3... but reject bc1q....
+A P2SH-era wallet may understand Base58Check and the P2SH version byte, so it can decode `3...`. A `bc1q...` destination uses Bech32 and a SegWit witness program, requiring newer support.
 

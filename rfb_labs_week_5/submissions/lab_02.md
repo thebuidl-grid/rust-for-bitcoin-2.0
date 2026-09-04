@@ -2,17 +2,17 @@
 
 ## Commands used
 
-TODO: List the Rust commands you ran.
+`cargo test --test lab_02`
 
 ## Terminal output
 
-TODO: Record the address, public-key hash, and scriptPubKey.
+All 4 tests passed. HASH160 is committed in the standard P2PKH script, and the ScriptSig model contains signature then public key.
 
 ## Evidence references
 
-TODO: Link screenshots or describe attached evidence.
+Evidence: terminal output from `cargo test --test lab_02`; tests verify address derivation, script construction, HASH160, and ScriptSig placement.
 
 ## Explanation
 
-TODO: Explain P2PKH locking and unlocking in your own words.
+P2PKH locks coins to a HASH160 commitment of a public key. Spending supplies a signature and matching public key; script execution checks the hash and then verifies the signature.
 
