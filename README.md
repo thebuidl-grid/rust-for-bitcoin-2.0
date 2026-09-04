@@ -88,6 +88,13 @@
 │   ├── Cargo.lock    # Dependency lock file
 │   ├── LABS.md       # Lab documentation
 │   └── README.md     # Week 5 specific README
+├── rfb_labs_week_6/  # Week 6 assignment: a regtest Bitcoin wallet (rfbwallet)
+│   ├── src/          # CLI, config, keys, wallet (BDK), node (bitcoincore-rpc), sync, tx, raw_demo
+│   ├── tests/        # Unit tests + an ignored end-to-end regtest test
+│   ├── scripts/      # regtest.sh helper for a local bitcoind
+│   ├── .env.example  # Node/config template
+│   ├── ASSIGNMENT.md # Assignment brief
+│   └── README.md     # Setup, design decisions, transaction proof
 ├── .gitignore        # Git ignore patterns
 ├── README.md         # This file
 └── x.sh              # Setup/utility script
@@ -122,6 +129,11 @@
   - **`src/`** - Source code including lab implementations and supporting modules
   - **`submissions/`** - Templates for participants to submit their lab evidence
   - **`tests/`** - Unit tests for each lab to verify implementation correctness
+- **`rfb_labs_week_6/`** - Week 6 assignment: `rfbwallet`, a regtest Bitcoin wallet
+  - **`src/`** - BDK for wallet logic, `bitcoincore-rpc` for node I/O, `rust-bitcoin` for raw primitives
+  - **`tests/`** - Unit tests plus an ignored end-to-end regtest test
+  - **`ASSIGNMENT.md`** - Assignment brief
+  - **`README.md`** - Setup, design decisions, and proof of a working transaction
 
 ---
 
@@ -226,6 +238,9 @@ For the transaction modelling assignment, see
 
 For address formats and HD wallets, see
 [`rfb_labs_week_5/README.md`](rfb_labs_week_5/README.md).
+
+For the regtest wallet assignment, see
+[`rfb_labs_week_6/README.md`](rfb_labs_week_6/README.md).
 
 ---
 
