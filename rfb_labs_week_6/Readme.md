@@ -4,6 +4,47 @@
 
 Build a functioning Bitcoin wallet in Rust (regtest) that demonstrates you can use the libraries covered in class effectively.
 
+## Implementation
+
+This repository contains a small command-line wallet in `src/main.rs`. It generates a fresh BIP32 master key on `init`, stores it in a local SQLite database, derives separate external and internal native SegWit keychains, prints descriptors, and scans Bitcoin Core's UTXO set with `scantxoutset`.
+
+The default network is regtest. The database stores the encrypted-by-filesystem-equivalent local wallet state for this classroom exercise, address metadata, and discovered UTXOs. Do not use this storage design for production funds.
+
+Libraries used:
+
+- `bitcoin` derives keys, paths, compressed public keys, addresses, amounts, and network-specific encodings.
+- `bitcoincore-rpc` connects to Bitcoin Core and calls blockchain information and descriptor UTXO scanning RPCs.
+- `rusqlite` persists the wallet key, keychain counters, addresses, and UTXO set locally.
+- `clap` provides the CLI and environment-variable configuration.
+- `rand` generates fresh seed material at initialization.
+
+## Running
+
+From this directory:
+
+```bash
+cargo run -- --database wallet.db init
+cargo run -- --database wallet.db address external
+cargo run -- --database wallet.db address internal
+cargo run -- --database wallet.db show-descriptor
+cargo run -- --database wallet.db balance
+```
+
+Start a regtest node with RPC enabled, then configure credentials when needed:
+
+```bash
+export BITCOIN_RPC_URL=http://127.0.0.1:18443
+export BITCOIN_RPC_USER=rpcuser
+export BITCOIN_RPC_PASSWORD=rpcpassword
+cargo run -- --database wallet.db sync
+```
+
+`sync` scans descriptor ranges 0 through 99 and persists discovered UTXOs. The `send` command validates the destination and amount and requires the descriptors to be imported into a Bitcoin Core wallet before wallet-backed PSBT creation and signing. This keeps private-key handling inside Core rather than pretending an offline placeholder is a broadcast transaction.
+
+## Design and limitations
+
+The wallet uses `wpkh` descriptors with BIP84-style external branch 0 and internal branch 1. SQLite makes counters and discovered UTXOs survive process restarts. Descriptor checksums, encrypted-at-rest secrets, gap-limit expansion, confirmations, fee selection, PSBT signing, and automatic Core wallet creation are still improvements for a production implementation. The assignment is intentionally limited to regtest/testnet and does not handle mainnet funds.
+
 ## Minimum Requirements
 
 Your wallet must be able to:
