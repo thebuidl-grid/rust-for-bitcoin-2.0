@@ -61,3 +61,4 @@ fn format_selection_changes_the_lock_target() {
     .unwrap();
     assert_ne!(p2pkh, p2wpkh);
 }
+
