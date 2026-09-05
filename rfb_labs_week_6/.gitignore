@@ -1,0 +1,5 @@
+.env
+*.sqlite
+*.sqlite-*
+.env
+wallet.sqlite
