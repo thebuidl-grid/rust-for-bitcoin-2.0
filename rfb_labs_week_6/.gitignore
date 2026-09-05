@@ -1,0 +1,7 @@
+/target
+
+# Secrets and local wallet state -- never commit these.
+.env
+/data/
+*.db
+*.db-*
