@@ -4,3 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1"
+bdk_bitcoind_rpc = "0.22"
+bdk_sqlite = "0.6"
+bdk_wallet = { version = "3.1", features = ["keys-bip39"] }
+bitcoin = "0.32"
+bitcoincore-rpc = "0.19"
+clap = { version = "4.5", features = ["derive", "env"] }
+dotenvy = "0.15"
+tokio = { version = "1.45", features = ["macros", "rt-multi-thread"] }
+rand = "0.8"

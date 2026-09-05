@@ -1,0 +1,5 @@
+.env
+wallet.sqlite
+wallet.sqlite-shm
+wallet.sqlite-wal
+/target/
