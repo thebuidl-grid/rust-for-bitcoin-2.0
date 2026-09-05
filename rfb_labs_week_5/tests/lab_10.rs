@@ -61,3 +61,12 @@ fn format_selection_changes_the_lock_target() {
     .unwrap();
     assert_ne!(p2pkh, p2wpkh);
 }
+
+#[test]
+fn print_regtest_address_set() {
+    let set = derive_address_set(MNEMONIC, "", 0, 0, Network::Regtest).unwrap();
+
+    println!("BIP44 P2PKH: {}", set.bip44_p2pkh);
+    println!("BIP49 P2SH-P2WPKH: {}", set.bip49_p2sh_p2wpkh);
+    println!("BIP84 P2WPKH: {}", set.bip84_p2wpkh);
+}
