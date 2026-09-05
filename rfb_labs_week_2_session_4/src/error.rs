@@ -41,10 +41,42 @@ pub enum LibraryError {
 }
 
 impl fmt::Display for LibraryError {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 2): return a useful, human-readable message for every
-        // variant. Include the ids and numbers the variant carries.
-        todo!("implement Display for LibraryError")
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LibraryError::EmptyTitle => write!(formatter, "Title cannot be empty"),
+            LibraryError::DuplicateItemId { id } => {
+                write!(formatter, "Item with ID {} already exists", id)
+            }
+            LibraryError::DuplicateMemberId { id } => {
+                write!(formatter, "Member with ID {} already exists", id)
+            }
+            LibraryError::ItemNotFound { id } => write!(formatter, "Item with ID {} not found", id),
+            LibraryError::MemberNotFound { id } => {
+                write!(formatter, "Member with ID {} not found", id)
+            }
+            LibraryError::ItemAlreadyOnLoan { id, member_id } => write!(
+                formatter,
+                "Item with ID {} is already on loan by member {}",
+                id, member_id
+            ),
+            LibraryError::ItemNotOnLoan { id } => {
+                write!(formatter, "Item with ID {} is not on loan", id)
+            }
+            LibraryError::ItemIsLost { id } => write!(formatter, "Item with ID {} is lost", id),
+            LibraryError::BorrowLimitReached { member_id, limit } => write!(
+                formatter,
+                "Member with ID {} has reached the borrowing limit of {}",
+                member_id, limit
+            ),
+            LibraryError::InvalidReturnDay {
+                day_borrowed,
+                day_returned,
+            } => write!(
+                formatter,
+                "Invalid return day: borrowed on day {}, returned on day {}",
+                day_borrowed, day_returned
+            ),
+        }
     }
 }
 
