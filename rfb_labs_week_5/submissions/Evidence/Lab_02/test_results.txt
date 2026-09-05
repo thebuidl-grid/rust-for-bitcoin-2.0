@@ -1,0 +1,14 @@
+Lab 02 — Legacy P2PKH
+==================================================
+
+Test Results: 4/4 PASSED
+
+Functions Tested:
+1. derive_p2pkh_address() - ✓ PASS
+2. build_p2pkh_script_pubkey() - ✓ PASS
+3. committed_pubkey_hash() - ✓ PASS
+4. p2pkh_spend_template() - ✓ PASS
+
+Test execution: cargo test --test lab_02
+
+Result: ✓ All 4 tests passed successfully

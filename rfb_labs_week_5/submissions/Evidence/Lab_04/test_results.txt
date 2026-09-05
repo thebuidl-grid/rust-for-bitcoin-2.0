@@ -1,0 +1,14 @@
+Lab 04 — Native P2WPKH
+==================================================
+
+Test Results: 4/4 PASSED
+
+Functions Tested:
+1. derive_p2wpkh_address() - ✓ PASS
+2. build_p2wpkh_script_pubkey() - ✓ PASS
+3. witness_program() - ✓ PASS
+4. native_spend_template() - ✓ PASS
+
+Test execution: cargo test --test lab_04
+
+Result: ✓ All 4 tests passed successfully

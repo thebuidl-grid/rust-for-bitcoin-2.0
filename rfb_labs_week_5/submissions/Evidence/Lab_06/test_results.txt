@@ -1,0 +1,14 @@
+Lab 06 — Weight and Fees
+==================================================
+
+Test Results: 4/4 PASSED
+
+Functions Tested:
+1. transaction_weight() - ✓ PASS
+2. virtual_size() - ✓ PASS
+3. fee_sats() - ✓ PASS
+4. compare_fees() - ✓ PASS
+
+Test execution: cargo test --test lab_06
+
+Result: ✓ All 4 tests passed successfully
