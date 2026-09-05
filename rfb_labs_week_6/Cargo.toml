@@ -1,6 +1,24 @@
 [package]
 name = "rfb_labs_week_6"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+description = "A minimal regtest Bitcoin wallet built with BDK, rust-bitcoin and bitcoincore-rpc"
+
+[[bin]]
+name = "wallet"
+path = "src/main.rs"
 
 [dependencies]
+# Wallet logic: descriptors, keychains, UTXO tracking, coin selection, PSBT signing.
+bdk_wallet = { version = "3.1", features = ["rusqlite", "keys-bip39"] }
+# Syncs the BDK wallet from a Bitcoin Core node (block-by-block + mempool), no Electrum/Esplora needed.
+bdk_bitcoind_rpc = "0.22"
+# Direct JSON-RPC client used for node info, broadcasting and (in the demo) mining regtest blocks.
+bitcoincore-rpc = "0.19"
+# Core Bitcoin primitives (Address, Amount, Network, Txid, Transaction, ...), pinned to the same
+# release line bdk_wallet and bitcoincore-rpc are built against so all three share one type.
+bitcoin = "0.32"
+# Command line interface.
+clap = { version = "4", features = ["derive"] }
+# Loads BITCOIN_RPC_* settings from a local .env file instead of hardcoding them.
+dotenvy = "0.15"
