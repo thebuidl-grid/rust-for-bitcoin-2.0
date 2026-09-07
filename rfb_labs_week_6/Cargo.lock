@@ -1964,6 +1964,7 @@ dependencies = [
  "bitcoincore-rpc",
  "clap",
  "directories",
+ "dotenvy",
  "serde",
  "thiserror",
  "tracing",

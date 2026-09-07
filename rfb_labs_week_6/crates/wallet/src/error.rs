@@ -17,6 +17,9 @@ pub enum WalletError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
+    #[error("environment file error: {0}")]
+    Dotenv(#[from] dotenvy::Error),
+
     #[error("the `{0}` operation is scaffolded but not implemented yet")]
     NotImplemented(&'static str),
 }

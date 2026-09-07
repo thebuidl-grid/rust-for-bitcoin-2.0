@@ -18,11 +18,20 @@ use error::{WalletError, WalletResult};
 
 /// Parses process arguments and runs the selected wallet command.
 pub fn run() -> WalletResult<()> {
+    load_environment()?;
     logging::init();
 
     let cli = Cli::parse();
     let config = cli.wallet_config()?;
     Application::new(config).execute(cli.command)
+}
+
+fn load_environment() -> WalletResult<()> {
+    match dotenvy::dotenv() {
+        Ok(_) => Ok(()),
+        Err(dotenvy::Error::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.into()),
+    }
 }
 
 /// Thin orchestration layer between presentation and wallet services.

@@ -40,6 +40,9 @@ The dependency flow is simply `rfb-wallet` → `wallet`. The executable contains
 only `main`, while responsibilities remain separated by focused internal modules.
 This keeps navigation and refactoring simple without premature crate boundaries.
 
+Potential BDK contribution opportunities discovered during implementation are
+tracked in [`docs/bdk-friction-log.md`](docs/bdk-friction-log.md).
+
 ## Development Quick Start
 
 ```bash
@@ -49,7 +52,8 @@ cargo test
 ```
 
 The default network is `regtest`. Real RPC credentials and seed material must
-remain outside version control.
+remain outside version control. The application loads `.env` automatically when
+present; command-line options still take precedence over environment values.
 
 ### Planned CLI
 
