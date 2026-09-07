@@ -4,7 +4,7 @@ use bitcoin::Network;
 
 use crate::error::{WalletError, WalletResult};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct WalletConfig {
     pub network: Network,
     pub data_dir: PathBuf,
@@ -12,7 +12,7 @@ pub struct WalletConfig {
     pub rpc: RpcConfig,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct RpcConfig {
     pub url: String,
     pub user: Option<String>,

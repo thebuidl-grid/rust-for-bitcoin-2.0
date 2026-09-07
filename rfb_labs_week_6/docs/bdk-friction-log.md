@@ -41,16 +41,16 @@ application misuse, and check upstream discussions.
 
 ## Candidate Observations
 
-### 2026-09-07 — Minimal SQLite persistence lifecycle
+### 2026-09-07 — Selecting a SQLite persistence API
 
 - **Component:** `bdk_wallet` 3.1 and `bdk_sqlite` 0.6
-- **Status:** Investigating; not classified as a bug
-- **Observation:** We need a clear create, load, mutate, persist, and reopen
-  lifecycle for an asynchronous SQLite-backed descriptor wallet.
-- **Question:** Is there one current end-to-end example covering this complete
-  lifecycle, including failure handling?
-- **Next evidence:** Implement Mufasa's persistence flow, record the exact API
-  friction, and compare it with the official examples before opening an issue.
+- **Status:** Resolved as an application design choice; not a bug
+- **Observation:** `bdk_sqlite` 0.6 uses asynchronous `sqlx`, which requires an
+  async runtime. Mufasa is a small single-process CLI and does not otherwise need
+  asynchronous execution.
+- **Outcome:** Use `bdk_wallet`'s synchronous `rusqlite` persistence support to
+  keep the application and dependency model small. Revisit `bdk_sqlite` if the
+  application later gains concurrent services or asynchronous workflows.
 
 ## Entry Template
 

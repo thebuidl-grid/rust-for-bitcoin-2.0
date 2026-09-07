@@ -45,10 +45,40 @@ impl Application {
     }
 
     fn execute(self, command: Command) -> WalletResult<()> {
-        tracing::debug!(network = %self.config.network, command = ?command, "executing command");
+        tracing::debug!(network = %self.config.network, command = command.name(), "executing command");
 
-        // Command arms will call WalletService as each use case is implemented.
-        // Terminal formatting remains here rather than in domain modules.
-        Err(WalletError::NotImplemented(command.name()))
+        match command {
+            Command::Init { mnemonic } => {
+                let (_service, summary) =
+                    WalletService::initialize(&self.config, mnemonic.as_deref())?;
+
+                println!();
+                println!("Wallet initialized successfully.");
+                println!();
+                println!("  Network:  {}", summary.network);
+                println!("  Database: {}", summary.database_path.display());
+                println!();
+                println!("Receiving descriptor:");
+                println!("  {}", summary.external_descriptor);
+                println!();
+                println!("Change descriptor:");
+                println!("  {}", summary.internal_descriptor);
+
+                if let Some(recovery_phrase) = summary.recovery_phrase {
+                    println!();
+                    println!("Recovery phrase:");
+                    println!("  {recovery_phrase}");
+                    println!();
+                    println!(
+                        "Back it up now. To restore signing access, set MUF_MNEMONIC in your private .env file."
+                    );
+                }
+
+                println!();
+
+                Ok(())
+            }
+            other => Err(WalletError::NotImplemented(other.name())),
+        }
     }
 }

@@ -1,30 +1,35 @@
 use std::path::{Path, PathBuf};
 
-use crate::{
-    error::{WalletError, WalletResult},
-    persistence::WalletStore,
-};
+use bdk_wallet::rusqlite::Connection;
 
-/// Owns the SQLite location. The BDK SQLite connection will live here so
+use crate::error::WalletResult;
+
+/// Owns the SQLite location. The BDK-compatible connection lives here so
 /// database details remain outside wallet and CLI code.
 pub struct SqliteStore {
     path: PathBuf,
+    connection: Connection,
 }
 
 impl SqliteStore {
-    pub fn path(&self) -> &Path {
-        &self.path
-    }
-}
+    pub fn open(path: &Path) -> WalletResult<Self> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
 
-impl WalletStore for SqliteStore {
-    fn open(path: &Path) -> WalletResult<Self> {
+        let connection = Connection::open(path)?;
+
         Ok(Self {
             path: path.to_path_buf(),
+            connection,
         })
     }
 
-    fn initialize(&mut self) -> WalletResult<()> {
-        Err(WalletError::NotImplemented("SQLite persistence"))
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub(crate) fn connection_mut(&mut self) -> &mut Connection {
+        &mut self.connection
     }
 }

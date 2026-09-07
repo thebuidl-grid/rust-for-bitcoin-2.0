@@ -11,8 +11,7 @@ edition = "2024"
 license = "MIT"
 
 [workspace.dependencies]
-bdk_sqlite = "0.6"
-bdk_wallet = { version = "3.1", features = ["keys-bip39"] }
+bdk_wallet = { version = "3.1", features = ["keys-bip39", "rusqlite"] }
 bitcoin = { version = "0.32", features = ["serde"] }
 bitcoincore-rpc = "0.19"
 clap = { version = "4.5", features = ["derive", "env"] }
@@ -22,5 +21,6 @@ serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tempfile = "3"
 
 wallet = { path = "crates/wallet" }

@@ -11,29 +11,29 @@ use crate::{
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "rfb-wallet",
+    name = "muf_wallet",
     version,
     about = "A descriptor-based Bitcoin regtest wallet"
 )]
 pub struct Cli {
     /// Bitcoin network to use.
-    #[arg(long, env = "RFB_NETWORK", value_enum, default_value_t = NetworkArg::Regtest)]
+    #[arg(long, env = "MUF_NETWORK", value_enum, default_value_t = NetworkArg::Regtest)]
     pub network: NetworkArg,
 
     /// Directory used for the wallet database and local state.
-    #[arg(long, env = "RFB_DATA_DIR")]
+    #[arg(long, env = "MUF_DATA_DIR")]
     pub data_dir: Option<PathBuf>,
 
     /// Bitcoin Core JSON-RPC endpoint.
-    #[arg(long, env = "RFB_RPC_URL", default_value = "http://127.0.0.1:18443")]
+    #[arg(long, env = "MUF_RPC_URL", default_value = "http://127.0.0.1:18443")]
     pub rpc_url: String,
 
-    /// Bitcoin Core RPC username. Prefer the RFB_RPC_USER environment variable.
-    #[arg(long, env = "RFB_RPC_USER")]
+    /// Bitcoin Core RPC username. Prefer the MUF_RPC_USER environment variable.
+    #[arg(long, env = "MUF_RPC_USER")]
     pub rpc_user: Option<String>,
 
-    /// Bitcoin Core RPC password. Prefer the RFB_RPC_PASSWORD environment variable.
-    #[arg(long, env = "RFB_RPC_PASSWORD", hide_env_values = true)]
+    /// Bitcoin Core RPC password. Prefer the MUF_RPC_PASSWORD environment variable.
+    #[arg(long, env = "MUF_RPC_PASSWORD", hide_env_values = true)]
     pub rpc_password: Option<String>,
 
     #[command(subcommand)]
@@ -49,7 +49,11 @@ pub enum NetworkArg {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Create a new descriptor wallet and persist it locally.
-    Init,
+    Init {
+        /// Existing BIP39 recovery phrase to import. Prefer MUF_MNEMONIC over this option.
+        #[arg(long, env = "MUF_MNEMONIC", hide_env_values = true)]
+        mnemonic: Option<String>,
+    },
     /// Derive the next receiving or change address.
     Address {
         /// Derive from the internal/change keychain.
@@ -104,7 +108,7 @@ impl Cli {
 impl Command {
     pub const fn name(&self) -> &'static str {
         match self {
-            Self::Init => "init",
+            Self::Init { .. } => "init",
             Self::Address { .. } => "address",
             Self::Sync => "sync",
             Self::Balance => "balance",
@@ -122,7 +126,7 @@ mod tests {
 
     #[test]
     fn defaults_to_regtest() {
-        let cli = Cli::try_parse_from(["rfb-wallet", "balance"]).unwrap();
+        let cli = Cli::try_parse_from(["muf_wallet", "balance"]).unwrap();
 
         assert_eq!(cli.network, NetworkArg::Regtest);
         assert!(matches!(cli.command, Command::Balance));
@@ -131,7 +135,7 @@ mod tests {
     #[test]
     fn rejects_zero_value_send() {
         let result = Cli::try_parse_from([
-            "rfb-wallet",
+            "muf_wallet",
             "send",
             "--to",
             "bcrt1qexample",

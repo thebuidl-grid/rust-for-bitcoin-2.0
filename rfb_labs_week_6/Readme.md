@@ -6,11 +6,11 @@ Build a functioning Bitcoin wallet in Rust (regtest) that demonstrates you can u
 
 ## Project Status
 
-The project currently provides a compiling Cargo workspace skeleton. The CLI,
-configuration, domain types, error model, Bitcoin Core boundary, wallet service,
-and SQLite persistence boundary are in place. Wallet creation, synchronization,
-and transaction workflows are deliberately marked as not implemented until each
-can be added with tests.
+The project currently provides a compiling Cargo workspace with wallet
+initialization implemented. It can generate or import a BIP39 mnemonic, derive
+BIP84 receiving/change descriptors, and persist/reopen the wallet through
+SQLite. Synchronization, balances, addresses, and transaction workflows remain
+to be implemented incrementally with tests.
 
 ## Architecture
 
@@ -36,7 +36,7 @@ crates/
             └── sqlite.rs          # BDK SQLite persistence boundary
 ```
 
-The dependency flow is simply `rfb-wallet` → `wallet`. The executable contains
+The dependency flow is simply `muf_wallet` → `wallet`. The executable contains
 only `main`, while responsibilities remain separated by focused internal modules.
 This keeps navigation and refactoring simple without premature crate boundaries.
 
@@ -47,7 +47,7 @@ tracked in [`docs/bdk-friction-log.md`](docs/bdk-friction-log.md).
 
 ```bash
 cp .env.example .env
-cargo run -p rfb-wallet -- --help
+cargo run -p muf_wallet -- --help
 cargo test
 ```
 
@@ -55,15 +55,57 @@ The default network is `regtest`. Real RPC credentials and seed material must
 remain outside version control. The application loads `.env` automatically when
 present; command-line options still take precedence over environment values.
 
-### Planned CLI
+### Initialize the wallet
+
+Generate a new 12-word recovery phrase and initialize the SQLite wallet:
+
+```bash
+cargo run -p muf_wallet -- init
+```
+
+The recovery phrase is printed only when a new phrase is generated. Back it up
+before continuing. To import an existing phrase, place it in the untracked
+`.env` file instead of putting it in shell history:
+
+```env
+MUF_MNEMONIC="your twelve recovery words go here"
+```
+
+The SQLite database contains public descriptors and wallet state, not the
+mnemonic. This educational regtest wallet therefore needs the backed-up phrase
+again when restoring signing access.
+
+### Test initialization manually
+
+Use a disposable directory so the test does not touch your main wallet:
+
+```bash
+MUFASA_TEST_DATA_DIR="$(mktemp -d)"
+cargo run -p muf_wallet -- --network regtest --data-dir "$MUFASA_TEST_DATA_DIR" init
+```
+
+Verify that the database was created and contains BDK wallet state:
+
+```bash
+test -f "$MUFASA_TEST_DATA_DIR/wallet.sqlite3"
+sqlite3 "$MUFASA_TEST_DATA_DIR/wallet.sqlite3" ".tables"
+sqlite3 "$MUFASA_TEST_DATA_DIR/wallet.sqlite3" \
+  "SELECT network, descriptor, change_descriptor FROM bdk_wallet;"
+```
+
+Run the same initialization command again. It should fail safely with `a wallet
+is already initialized`, demonstrating that persisted state is detected instead
+of overwritten.
+
+### CLI
 
 ```text
-rfb-wallet init
-rfb-wallet address [--change]
-rfb-wallet sync
-rfb-wallet balance
-rfb-wallet utxos
-rfb-wallet send --to <ADDRESS> --amount <SATS> [--fee-rate <SAT/VB>]
+muf_wallet init
+muf_wallet address [--change]
+muf_wallet sync
+muf_wallet balance
+muf_wallet utxos
+muf_wallet send --to <ADDRESS> --amount <SATS> [--fee-rate <SAT/VB>]
 ```
 
 ## Minimum Requirements

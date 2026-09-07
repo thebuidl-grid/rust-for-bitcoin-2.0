@@ -1,5 +1,16 @@
+use std::path::PathBuf;
+
 use bitcoin::{Amount, OutPoint, Txid};
 use serde::Serialize;
+
+#[derive(Debug)]
+pub struct WalletInitialization {
+    pub database_path: PathBuf,
+    pub network: bitcoin::Network,
+    pub recovery_phrase: Option<String>,
+    pub external_descriptor: String,
+    pub internal_descriptor: String,
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]

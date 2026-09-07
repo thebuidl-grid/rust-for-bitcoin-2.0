@@ -1,5 +1,5 @@
 [package]
-name = "rfb-wallet"
+name = "muf_wallet"
 description = "Command-line Bitcoin wallet executable"
 version.workspace = true
 edition.workspace = true
