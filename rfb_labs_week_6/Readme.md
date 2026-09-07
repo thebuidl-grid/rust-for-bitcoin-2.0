@@ -4,6 +4,64 @@
 
 Build a functioning Bitcoin wallet in Rust (regtest) that demonstrates you can use the libraries covered in class effectively.
 
+## Project Status
+
+The project currently provides a compiling Cargo workspace skeleton. The CLI,
+configuration, domain types, error model, Bitcoin Core boundary, wallet service,
+and SQLite persistence boundary are in place. Wallet creation, synchronization,
+and transaction workflows are deliberately marked as not implemented until each
+can be added with tests.
+
+## Architecture
+
+```text
+bin/
+└── src/main.rs                    # Minimal executable entry point
+crates/
+└── wallet/                        # Cohesive application library
+    └── src/
+        ├── lib.rs                 # Startup and command orchestration
+        ├── cli.rs                 # Commands and argument validation
+        ├── config.rs              # Network, storage, and RPC configuration
+        ├── error.rs               # Shared typed errors
+        ├── logging.rs             # Structured logging configuration
+        ├── types.rs               # Wallet domain/output types
+        ├── core/
+        │   ├── keys.rs            # Key creation and address derivation
+        │   ├── sync.rs            # Chain sync, balances, and UTXOs
+        │   └── transactions.rs    # Transaction building and signing
+        ├── node/
+        │   └── bitcoin_core.rs    # Bitcoin Core RPC adapter and trait
+        └── persistence/
+            └── sqlite.rs          # BDK SQLite persistence boundary
+```
+
+The dependency flow is simply `rfb-wallet` → `wallet`. The executable contains
+only `main`, while responsibilities remain separated by focused internal modules.
+This keeps navigation and refactoring simple without premature crate boundaries.
+
+## Development Quick Start
+
+```bash
+cp .env.example .env
+cargo run -p rfb-wallet -- --help
+cargo test
+```
+
+The default network is `regtest`. Real RPC credentials and seed material must
+remain outside version control.
+
+### Planned CLI
+
+```text
+rfb-wallet init
+rfb-wallet address [--change]
+rfb-wallet sync
+rfb-wallet balance
+rfb-wallet utxos
+rfb-wallet send --to <ADDRESS> --amount <SATS> [--fee-rate <SAT/VB>]
+```
+
 ## Minimum Requirements
 
 Your wallet must be able to:
