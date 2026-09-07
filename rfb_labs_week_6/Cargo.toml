@@ -2,5 +2,20 @@
 name = "rfb_labs_week_6"
 version = "0.1.0"
 edition = "2024"
+description = "Descriptor wallet for Bitcoin regtest built on rust-bitcoin, bitcoincore-rpc and BDK"
+publish = false
+
+[[bin]]
+name = "rfbwallet"
+path = "src/main.rs"
 
 [dependencies]
+bdk_bitcoind_rpc = "0.22"
+bdk_wallet = { version = "3.1", features = ["rusqlite", "keys-bip39"] }
+bitcoin = { version = "0.32", features = ["base64", "rand-std"] }
+bitcoincore-rpc = "0.19"
+clap = { version = "4", features = ["derive", "env"] }
+dotenvy = "0.15"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
