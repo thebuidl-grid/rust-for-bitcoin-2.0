@@ -169,5 +169,12 @@ let finalized = wallet.sign(&mut psbt, SignOptions::default())?;
 
 println!("Transaction signed: {}", finalized);
 
+let tx = psbt.extract_tx()?;
+
+let txid = rpc.send_raw_transaction(&tx)?;
+
+println!("Transaction broadcast successfully!");
+println!("TXID: {}", txid);
+
     Ok(())
 }
