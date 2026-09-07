@@ -8,6 +8,7 @@ use bdk_wallet::bitcoin::{Address, Amount, Network};
 use dotenvy::dotenv;
 use rand::RngCore;
 use std::env;
+use bdk_wallet::SignOptions;
 
 const WALLET_DB: &str = "wallet.sqlite";
 
@@ -156,13 +157,17 @@ tx_builder.add_recipient(
     Amount::from_btc(1.0)?,
 );
 
-let psbt = tx_builder.finish()?;
+let mut psbt = tx_builder.finish()?;
 
 println!();
 println!("=== Transaction ===");
 println!("PSBT created successfully.");
 println!("Inputs: {}", psbt.inputs.len());
 println!("Outputs: {}", psbt.outputs.len());
+
+let finalized = wallet.sign(&mut psbt, SignOptions::default())?;
+
+println!("Transaction signed: {}", finalized);
 
     Ok(())
 }
