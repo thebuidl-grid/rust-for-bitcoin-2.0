@@ -106,6 +106,22 @@ impl Application {
 
                 Ok(())
             }
+            Command::Sync => {
+                let mut service = WalletService::load(&self.config, None)?;
+                let node = BitcoinCoreNode::connect(&self.config.rpc, self.config.network)?;
+                let summary = service.sync(&node)?;
+
+                println!("Wallet synchronized successfully.");
+                println!(
+                    "  Tip:             {}:{}",
+                    summary.tip_height, summary.tip_hash
+                );
+                println!("  Blocks applied:  {}", summary.blocks_applied);
+                println!("  Mempool txs:     {}", summary.mempool_transactions);
+                println!("  Evicted txs:     {}", summary.evicted_transactions);
+
+                Ok(())
+            }
             other => Err(WalletError::NotImplemented(other.name())),
         }
     }

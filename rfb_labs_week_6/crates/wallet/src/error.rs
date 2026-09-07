@@ -44,6 +44,9 @@ pub enum WalletError {
         actual: bitcoin::Network,
     },
 
+    #[error("wallet chain update error: {0}")]
+    ChainUpdate(#[from] bdk_wallet::chain::local_chain::ApplyHeaderError),
+
     #[error("wallet storage error: {0}")]
     Storage(#[from] bdk_wallet::rusqlite::Error),
 

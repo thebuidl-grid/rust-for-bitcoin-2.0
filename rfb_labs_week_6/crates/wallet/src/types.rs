@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use bitcoin::{Amount, OutPoint, Txid};
+use bitcoin::{Amount, BlockHash, OutPoint, Txid};
 use serde::Serialize;
 
 #[derive(Debug)]
@@ -24,6 +24,15 @@ pub struct DerivedAddress {
     pub address: String,
     pub keychain: Keychain,
     pub derivation_index: u32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct WalletSync {
+    pub blocks_applied: usize,
+    pub mempool_transactions: usize,
+    pub evicted_transactions: usize,
+    pub tip_height: u32,
+    pub tip_hash: BlockHash,
 }
 
 #[derive(Debug, Default, Serialize)]

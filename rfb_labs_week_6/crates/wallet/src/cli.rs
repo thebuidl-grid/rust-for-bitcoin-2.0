@@ -162,4 +162,11 @@ mod tests {
 
         assert!(matches!(cli.command, Command::NodeHealth));
     }
+
+    #[test]
+    fn recognizes_the_sync_command() {
+        let cli = Cli::try_parse_from(["muf_wallet", "sync"]).unwrap();
+
+        assert!(matches!(cli.command, Command::Sync));
+    }
 }

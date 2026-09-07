@@ -7,11 +7,12 @@ Build a functioning Bitcoin wallet in Rust (regtest) that demonstrates you can u
 ## Project Status
 
 The project currently provides a compiling Cargo workspace with wallet
-initialization and address derivation implemented. It can generate or import a
-BIP39 mnemonic, derive BIP84 receiving/change addresses, persist/reopen the
-wallet through SQLite, and verify the configured Bitcoin Core RPC connection
-and network. Synchronization, balances, and transaction workflows remain to be
-implemented incrementally with tests.
+initialization, address derivation, and Bitcoin Core synchronization
+implemented. It can generate or import a BIP39 mnemonic, derive BIP84
+receiving/change addresses, persist/reopen the wallet through SQLite, verify
+the configured Bitcoin Core RPC connection and network, and persist confirmed
+chain and mempool updates. Balance, UTXO, and transaction workflows remain to
+be implemented incrementally with tests.
 
 ## Architecture
 
@@ -121,6 +122,20 @@ cargo run -p muf_wallet -- node-health
 
 For Polar, copy the Bitcoin Core node's RPC host, port, username, and password
 into the corresponding `MUF_RPC_*` values in the private `.env` file.
+
+### Synchronize the wallet
+
+After deriving at least one receiving address, synchronize the wallet with the
+configured Bitcoin Core node:
+
+```bash
+cargo run -p muf_wallet -- sync
+```
+
+The command reopens the wallet, verifies the node network, streams blocks from
+the wallet's latest persisted checkpoint, applies current mempool changes, and
+persists the resulting BDK changeset to SQLite. A later invocation resumes from
+that checkpoint instead of processing the same blocks again.
 
 ### CLI
 

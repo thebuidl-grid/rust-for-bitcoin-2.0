@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bitcoin::{Network, Transaction, Txid};
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 
@@ -16,7 +18,8 @@ pub trait NodeBackend {
 }
 
 pub struct BitcoinCoreNode {
-    client: Client,
+    client: Arc<Client>,
+    url: String,
 }
 
 impl BitcoinCoreNode {
@@ -49,7 +52,21 @@ impl BitcoinCoreNode {
             "Bitcoin Core health check passed"
         );
 
-        Ok(Self { client })
+        Ok(Self {
+            client: Arc::new(client),
+            url: config.url.clone(),
+        })
+    }
+
+    pub(crate) fn rpc_client(&self) -> Arc<Client> {
+        Arc::clone(&self.client)
+    }
+
+    pub(crate) fn connection_error(&self, source: bitcoincore_rpc::Error) -> WalletError {
+        WalletError::BitcoinCoreConnection {
+            url: self.url.clone(),
+            source,
+        }
     }
 }
 
