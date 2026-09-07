@@ -60,6 +60,8 @@ pub enum Command {
         #[arg(long)]
         change: bool,
     },
+    /// Check the configured Bitcoin Core RPC connection and network.
+    NodeHealth,
     /// Synchronize wallet state with Bitcoin Core.
     Sync,
     /// Display confirmed, pending, immature, and total balance.
@@ -110,6 +112,7 @@ impl Command {
         match self {
             Self::Init { .. } => "init",
             Self::Address { .. } => "address",
+            Self::NodeHealth => "node-health",
             Self::Sync => "sync",
             Self::Balance => "balance",
             Self::Utxos => "utxos",
@@ -144,5 +147,19 @@ mod tests {
         ]);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn recognizes_the_change_address_flag() {
+        let cli = Cli::try_parse_from(["muf_wallet", "address", "--change"]).unwrap();
+
+        assert!(matches!(cli.command, Command::Address { change: true }));
+    }
+
+    #[test]
+    fn recognizes_the_node_health_command() {
+        let cli = Cli::try_parse_from(["muf_wallet", "node-health"]).unwrap();
+
+        assert!(matches!(cli.command, Command::NodeHealth));
     }
 }

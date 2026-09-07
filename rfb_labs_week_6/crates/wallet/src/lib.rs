@@ -15,6 +15,8 @@ use clap::Parser;
 use cli::{Cli, Command};
 use config::WalletConfig;
 use error::{WalletError, WalletResult};
+use node::{BitcoinCoreNode, NodeBackend};
+use types::Keychain;
 
 /// Parses process arguments and runs the selected wallet command.
 pub fn run() -> WalletResult<()> {
@@ -75,6 +77,32 @@ impl Application {
                 }
 
                 println!();
+
+                Ok(())
+            }
+            Command::Address { change } => {
+                let mut service = WalletService::load(&self.config, None)?;
+                let keychain = if change {
+                    Keychain::Internal
+                } else {
+                    Keychain::External
+                };
+                let derived = service.next_address(keychain)?;
+                let purpose = if change { "Change" } else { "Receiving" };
+
+                println!("{purpose} address #{}:", derived.derivation_index);
+                println!("  {}", derived.address);
+
+                Ok(())
+            }
+            Command::NodeHealth => {
+                let node = BitcoinCoreNode::connect(&self.config.rpc, self.config.network)?;
+                let height = node.tip_height()?;
+
+                println!("Bitcoin Core connection is healthy.");
+                println!("  Network: {}", self.config.network);
+                println!("  Height:  {height}");
+                println!("  RPC:     {}", self.config.rpc.url);
 
                 Ok(())
             }

@@ -7,10 +7,11 @@ Build a functioning Bitcoin wallet in Rust (regtest) that demonstrates you can u
 ## Project Status
 
 The project currently provides a compiling Cargo workspace with wallet
-initialization implemented. It can generate or import a BIP39 mnemonic, derive
-BIP84 receiving/change descriptors, and persist/reopen the wallet through
-SQLite. Synchronization, balances, addresses, and transaction workflows remain
-to be implemented incrementally with tests.
+initialization and address derivation implemented. It can generate or import a
+BIP39 mnemonic, derive BIP84 receiving/change addresses, persist/reopen the
+wallet through SQLite, and verify the configured Bitcoin Core RPC connection
+and network. Synchronization, balances, and transaction workflows remain to be
+implemented incrementally with tests.
 
 ## Architecture
 
@@ -97,11 +98,36 @@ Run the same initialization command again. It should fail safely with `a wallet
 is already initialized`, demonstrating that persisted state is detected instead
 of overwritten.
 
+### Derive addresses
+
+Derive and persist the next receiving or change address:
+
+```bash
+cargo run -p muf_wallet -- address
+cargo run -p muf_wallet -- address --change
+```
+
+Each command reopens the existing SQLite wallet and persists the revealed
+derivation index before displaying the address.
+
+### Check Bitcoin Core
+
+Verify that the configured RPC endpoint is reachable and serves the expected
+network:
+
+```bash
+cargo run -p muf_wallet -- node-health
+```
+
+For Polar, copy the Bitcoin Core node's RPC host, port, username, and password
+into the corresponding `MUF_RPC_*` values in the private `.env` file.
+
 ### CLI
 
 ```text
 muf_wallet init
 muf_wallet address [--change]
+muf_wallet node-health
 muf_wallet sync
 muf_wallet balance
 muf_wallet utxos

@@ -80,8 +80,20 @@ impl WalletService {
         Ok(Self { wallet, store })
     }
 
-    pub fn next_address(&mut self, _keychain: Keychain) -> WalletResult<DerivedAddress> {
-        Err(WalletError::NotImplemented("address derivation"))
+    pub fn next_address(&mut self, keychain: Keychain) -> WalletResult<DerivedAddress> {
+        let bdk_keychain = match keychain {
+            Keychain::External => KeychainKind::External,
+            Keychain::Internal => KeychainKind::Internal,
+        };
+        let address = self.wallet.reveal_next_address(bdk_keychain);
+
+        self.wallet.persist(self.store.connection_mut())?;
+
+        Ok(DerivedAddress {
+            address: address.address.to_string(),
+            keychain,
+            derivation_index: address.index,
+        })
     }
 }
 
@@ -212,5 +224,45 @@ mod tests {
         let result = WalletService::initialize(&config, Some("not a valid mnemonic"));
 
         assert!(matches!(result, Err(WalletError::AlreadyInitialized(_))));
+    }
+
+    #[test]
+    fn derives_and_persists_the_next_receiving_address() {
+        let temp = tempdir().unwrap();
+        let config = config(temp.path().join("wallet"));
+        let (mut service, _) = WalletService::initialize(&config, Some(MNEMONIC)).unwrap();
+
+        let first = service
+            .next_address(crate::types::Keychain::External)
+            .unwrap();
+        assert_eq!(first.derivation_index, 0);
+        assert!(first.address.starts_with("bcrt1q"));
+        drop(service);
+
+        let mut reopened = WalletService::load(&config, None).unwrap();
+        let second = reopened
+            .next_address(crate::types::Keychain::External)
+            .unwrap();
+
+        assert_eq!(second.derivation_index, 1);
+        assert_ne!(second.address, first.address);
+    }
+
+    #[test]
+    fn receiving_and_change_addresses_use_separate_keychains() {
+        let temp = tempdir().unwrap();
+        let config = config(temp.path().join("wallet"));
+        let (mut service, _) = WalletService::initialize(&config, Some(MNEMONIC)).unwrap();
+
+        let receiving = service
+            .next_address(crate::types::Keychain::External)
+            .unwrap();
+        let change = service
+            .next_address(crate::types::Keychain::Internal)
+            .unwrap();
+
+        assert_eq!(receiving.derivation_index, 0);
+        assert_eq!(change.derivation_index, 0);
+        assert_ne!(receiving.address, change.address);
     }
 }

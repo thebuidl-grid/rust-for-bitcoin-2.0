@@ -25,6 +25,25 @@ pub enum WalletError {
     #[error("Bitcoin Core RPC error: {0}")]
     Rpc(#[from] bitcoincore_rpc::Error),
 
+    #[error(
+        "could not connect to Bitcoin Core at `{url}`: {source}\n\
+         If you are using Polar, make sure the workspace is running and its Bitcoin Core node is started, then copy that node's RPC host, port, username, and password into MUF_RPC_URL, MUF_RPC_USER, and MUF_RPC_PASSWORD."
+    )]
+    BitcoinCoreConnection {
+        url: String,
+        #[source]
+        source: bitcoincore_rpc::Error,
+    },
+
+    #[error(
+        "Bitcoin Core network mismatch at `{url}`: wallet expects `{expected}`, but the node reports `{actual}`. Start or select a Polar/Bitcoin Core node on `{expected}`, or correct MUF_NETWORK."
+    )]
+    BitcoinCoreNetworkMismatch {
+        url: String,
+        expected: bitcoin::Network,
+        actual: bitcoin::Network,
+    },
+
     #[error("wallet storage error: {0}")]
     Storage(#[from] bdk_wallet::rusqlite::Error),
 
@@ -40,6 +59,8 @@ pub enum WalletError {
 
 #[cfg(test)]
 mod tests {
+    use bitcoin::Network;
+
     use super::WalletError;
 
     #[test]
@@ -52,5 +73,33 @@ mod tests {
             error.to_string(),
             "wallet descriptor error: External and internal descriptors are the same"
         );
+    }
+
+    #[test]
+    fn connection_error_explains_how_to_check_polar_configuration() {
+        let error = WalletError::BitcoinCoreConnection {
+            url: "http://127.0.0.1:18443".into(),
+            source: bitcoincore_rpc::Error::ReturnedError("authentication failed".into()),
+        };
+        let message = error.to_string();
+
+        assert!(message.contains("Polar"));
+        assert!(message.contains("Bitcoin Core node is started"));
+        assert!(message.contains("MUF_RPC_URL"));
+        assert!(message.contains("MUF_RPC_USER"));
+        assert!(message.contains("MUF_RPC_PASSWORD"));
+    }
+
+    #[test]
+    fn network_mismatch_names_both_networks() {
+        let error = WalletError::BitcoinCoreNetworkMismatch {
+            url: "http://127.0.0.1:18443".into(),
+            expected: Network::Regtest,
+            actual: Network::Bitcoin,
+        };
+        let message = error.to_string();
+
+        assert!(message.contains("regtest"));
+        assert!(message.contains("bitcoin"));
     }
 }
