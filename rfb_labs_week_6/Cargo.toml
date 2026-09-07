@@ -10,3 +10,4 @@ bdk_wallet = { version = "3.1.0", features = ["rusqlite"] }
 bitcoin = "0.32.8"
 bitcoincore-rpc = "0.19.0"
 dotenvy = "0.15.7"
+rand = "0.8"
