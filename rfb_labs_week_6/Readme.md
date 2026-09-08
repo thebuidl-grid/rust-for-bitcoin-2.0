@@ -181,6 +181,18 @@ finalizes the transaction. The application persists any new change derivation
 index, broadcasts through Bitcoin Core, records the outgoing transaction as
 unconfirmed, persists it, and prints its transaction ID and fee.
 
+### Polar demonstration
+
+The complete regtest flow was exercised with Polar: mine 101 blocks, fund a
+Mufasa receiving address, synchronize and confirm the wallet balance, then send
+bitcoin back through Bitcoin Core.
+
+Outgoing transaction ID:
+
+```text
+db8619ce84762aec780f9239f9804f4bf5e24112235b2a89df17673bd1573ba5
+```
+
 ### CLI
 
 ```text

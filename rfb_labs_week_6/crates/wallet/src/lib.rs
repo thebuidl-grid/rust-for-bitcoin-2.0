@@ -11,7 +11,7 @@ pub mod types;
 
 pub use core::WalletService;
 
-use bitcoin::{Amount, FeeRate};
+use bitcoin::{Amount, Denomination, FeeRate};
 use clap::Parser;
 use cli::{Cli, Command};
 use config::WalletConfig;
@@ -128,26 +128,17 @@ impl Application {
                 synchronize_unless_offline(&self.config, &mut service, offline)?;
                 let balance = service.balance()?;
 
-                println!("Wallet balance:");
-                println!(
-                    "  Confirmed:            {} sats",
-                    balance.confirmed.to_sat()
-                );
-                println!(
-                    "  Pending (trusted):     {} sats",
-                    balance.trusted_pending.to_sat()
-                );
-                println!(
-                    "  Pending (untrusted):   {} sats",
-                    balance.untrusted_pending.to_sat()
-                );
-                println!("  Pending (total):       {} sats", balance.pending.to_sat());
-                println!("  Immature:             {} sats", balance.immature.to_sat());
-                println!(
-                    "  Spendable:            {} sats",
-                    balance.spendable.to_sat()
-                );
-                println!("  Total:                {} sats", balance.total.to_sat());
+                println!("Wallet balance");
+                println!("  ------------------------------------------");
+                print_balance_row("Confirmed", balance.confirmed);
+                print_balance_row("Pending (trusted)", balance.trusted_pending);
+                print_balance_row("Pending (untrusted)", balance.untrusted_pending);
+                print_balance_row("Pending (total)", balance.pending);
+                print_balance_row("Immature", balance.immature);
+                print_balance_row("Spendable", balance.spendable);
+                println!("  ------------------------------------------");
+                print_balance_row("Total", balance.total);
+                println!("  {:<21} {:>18}", "Total in BTC", format_btc(balance.total));
 
                 Ok(())
             }
@@ -244,9 +235,34 @@ const fn yes_or_no(value: bool) -> &'static str {
     if value { "yes" } else { "no" }
 }
 
+fn print_balance_row(label: &str, amount: Amount) {
+    println!("  {label:<21} {:>18}", format_sats(amount));
+}
+
+fn format_sats(amount: Amount) -> String {
+    let digits = amount.to_sat().to_string();
+    let mut formatted = String::with_capacity(digits.len() + digits.len() / 3);
+
+    for (index, character) in digits.chars().rev().enumerate() {
+        if index > 0 && index % 3 == 0 {
+            formatted.push(',');
+        }
+        formatted.push(character);
+    }
+
+    let grouped: String = formatted.chars().rev().collect();
+    format!("{grouped} sats")
+}
+
+fn format_btc(amount: Amount) -> String {
+    format!("{:.8} BTC", amount.display_in(Denomination::Bitcoin))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::fee_rate_from_sat_per_vbyte;
+    use bitcoin::Amount;
+
+    use super::{fee_rate_from_sat_per_vbyte, format_btc, format_sats};
 
     #[test]
     fn converts_fractional_sat_per_vbyte_without_rounding_down() {
@@ -258,5 +274,14 @@ mod tests {
     #[test]
     fn rejects_fee_rates_too_large_to_represent() {
         assert!(fee_rate_from_sat_per_vbyte(f64::MAX).is_err());
+    }
+
+    #[test]
+    fn formats_wallet_amounts_for_terminal_output() {
+        let one_btc = Amount::from_sat(100_000_000);
+
+        assert_eq!(format_sats(one_btc), "100,000,000 sats");
+        assert_eq!(format_btc(one_btc), "1.00000000 BTC");
+        assert_eq!(format_btc(Amount::from_sat(1)), "0.00000001 BTC");
     }
 }
