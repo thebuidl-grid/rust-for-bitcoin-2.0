@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "segwit": true,
+  "inputs": [
+    {
+      "prev_txid": "8fb0d07b",
+      "vout": 1,
+      "script_sig": "",
+      "sequence": 4294967295,
+      "witness": []
+    }
+  ],
+  "outputs": [
+    {
+      "value": 69886,
+      "script_pubkey": "0014a632c1fff47af29f8c81dc4c6e91eb49a116c12b"
+    }
+  ],
+  "locktime": 0
+}

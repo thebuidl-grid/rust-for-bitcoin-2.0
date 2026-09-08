@@ -1,13 +1,17 @@
-use clap::{Arg, Command};
-use decodetrx::decode_transaction;
+use clap::{Arg, Command, Parser};
+use decodetrx::{decode_transaction, CLI};
 
 fn main() {
     // Define CLI using Clap
+    let cli = CLI::parse();
    
     // Retrieve transaction hex argument
+    let hex = cli.transaction_hex;
     
 
     // Call the decoder function from the library
+    let result = decode_transaction(hex).unwrap();
+    println!("{}", result);
     
 }
 

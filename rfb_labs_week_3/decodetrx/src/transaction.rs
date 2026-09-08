@@ -29,7 +29,8 @@ pub struct Output {
 }
 
 fn as_btc<S: Serializer, T: BitcoinValue>(t: &T, s: S) -> Result<S::Ok, S::Error> {
-
+    let btc = t.to_btc();
+    s.serialize_f64(btc)
 }
 
 #[derive(Debug)]
@@ -55,7 +56,9 @@ impl Txid {
 
 impl Serialize for Txid {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-       
+       let mut bytes = self.0.clone();
+        bytes.reverse();
+        s.serialize_str(&hex::encode(&bytes))
     }
 }
 
@@ -66,7 +69,7 @@ trait BitcoinValue {
 
 impl BitcoinValue for Amount {
     fn to_btc(&self) -> f64 {
-       
+        self.0 as f64 / 100_000_000.0
     }
 }
 
