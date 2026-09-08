@@ -1,0 +1,13 @@
+# Secrets — the assignment forbids committing seed material.
+.env
+
+# Wallet state. BDK stores only the PUBLIC descriptor here, so this is not a
+# spending risk — but it holds the account xpub plus every address and
+# transaction, which is a complete privacy picture of the wallet.
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+wallet.db*
+
+/target/

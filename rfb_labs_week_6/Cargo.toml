@@ -2,5 +2,32 @@
 name = "rfb_labs_week_6"
 version = "0.1.0"
 edition = "2024"
+authors = ["savagechucks"]
+description = "Week 6 — a descriptor-based Bitcoin wallet on regtest"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "rfbwallet"
+path = "src/main.rs"
 
 [dependencies]
+# The wallet state machine: descriptor expansion, script-pubkey indexing, UTXO
+# tracking, coin selection, PSBT signing, and changeset persistence.
+#   rusqlite     -> SQLite persister (pulls a version-matched rusqlite 0.31)
+#   keys-bip39   -> mnemonic support (re-exports the bip39 crate)
+bdk_wallet = { version = "3.1", features = ["rusqlite", "keys-bip39"] }
+
+# Chain source: pulls blocks + mempool from Bitcoin Core over JSON-RPC and feeds
+# them to the wallet. Re-exports a version-matched bitcoincore-rpc 0.19, which is
+# how we keep a single `bitcoin` crate in the dependency graph.
+bdk_bitcoind_rpc = "0.22"
+
+clap = { version = "4.5", features = ["derive"] }
+dotenvy = "0.15"
+thiserror = "2"
+
+# NOTE: deliberately absent — `bitcoin` and `rusqlite`.
+# Both are reached through `bdk_wallet::bitcoin` and `bdk_wallet::rusqlite`.
+# Declaring either here resolves a SECOND copy at a different version, and every
+# shared type (Transaction, Txid, BlockHash, Connection) silently stops matching.
