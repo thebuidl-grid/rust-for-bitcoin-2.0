@@ -1,0 +1,18 @@
+[package]
+name = "serialize-trx"
+version = "0.1.0"
+edition = "2021"
+description = "Rust for Bitcoin 2.0 — Week 3 CLI Bitcoin transaction serializer"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "serialize-trx"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
