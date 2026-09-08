@@ -1,5 +1,6 @@
 /target/
 **/target/
 rfb_labs_week_1/grading/
+**/rust_out
 *.log
 .DS_Store
