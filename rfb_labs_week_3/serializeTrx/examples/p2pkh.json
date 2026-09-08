@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "segwit": false,
+  "inputs": [
+    {
+      "prev_txid": "e3bf3d07d4b0375638d5f1db5268fa49132729392207162c51852f5f1b1e5c0a",
+      "vout": 0,
+      "script_sig": "483045022100abc123000000000000000000000000000000000000000000000000000000000002201234567890abcdef00000000000000000000000000000000000000000000000001210279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sequence": 4294967295,
+      "witness": []
+    }
+  ],
+  "outputs": [
+    {
+      "value": 100000,
+      "script_pubkey": "76a914d0ef7e97b9512e32f56a4a701f9b2a3b5f628a1488ac"
+    }
+  ],
+  "locktime": 0
+}
