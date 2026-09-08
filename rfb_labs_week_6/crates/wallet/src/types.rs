@@ -38,8 +38,11 @@ pub struct WalletSync {
 #[derive(Debug, Default, Serialize)]
 pub struct WalletBalance {
     pub confirmed: Amount,
+    pub trusted_pending: Amount,
+    pub untrusted_pending: Amount,
     pub pending: Amount,
     pub immature: Amount,
+    pub spendable: Amount,
     pub total: Amount,
 }
 
@@ -48,7 +51,13 @@ pub struct WalletUtxo {
     pub outpoint: OutPoint,
     pub value: Amount,
     pub keychain: Keychain,
+    pub derivation_index: u32,
+    pub confirmation_height: Option<u32>,
     pub confirmed: bool,
+    pub coinbase: bool,
+    pub mature: bool,
+    pub locked: bool,
+    pub spendable: bool,
 }
 
 #[derive(Debug, Serialize)]

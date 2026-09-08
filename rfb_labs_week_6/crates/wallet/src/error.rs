@@ -16,6 +16,23 @@ pub enum WalletError {
     #[error("invalid BIP39 mnemonic: {0}")]
     InvalidMnemonic(String),
 
+    #[error(
+        "signing requires a recovery phrase; set MUF_MNEMONIC in your private .env file or pass --mnemonic"
+    )]
+    SigningMnemonicRequired,
+
+    #[error("invalid Bitcoin address `{address}`: {reason}")]
+    InvalidAddress { address: String, reason: String },
+
+    #[error("address `{address}` is not valid for the wallet's `{expected}` network")]
+    AddressNetworkMismatch {
+        address: String,
+        expected: bitcoin::Network,
+    },
+
+    #[error("invalid fee rate: {0}")]
+    InvalidFeeRate(String),
+
     #[error("a wallet is already initialized at `{0}`")]
     AlreadyInitialized(PathBuf),
 
@@ -46,6 +63,21 @@ pub enum WalletError {
 
     #[error("wallet chain update error: {0}")]
     ChainUpdate(#[from] bdk_wallet::chain::local_chain::ApplyHeaderError),
+
+    #[error("could not build transaction: {0}")]
+    CreateTransaction(#[from] bdk_wallet::error::CreateTxError),
+
+    #[error("could not sign transaction: {0}")]
+    SignTransaction(#[from] bdk_wallet::signer::SignerError),
+
+    #[error("the PSBT could not be fully signed and finalized")]
+    TransactionNotFinalized,
+
+    #[error("the PSBT is missing input information required to calculate its fee")]
+    MissingTransactionFee,
+
+    #[error("could not extract the signed transaction from the PSBT: {0}")]
+    ExtractTransaction(String),
 
     #[error("wallet storage error: {0}")]
     Storage(#[from] bdk_wallet::rusqlite::Error),

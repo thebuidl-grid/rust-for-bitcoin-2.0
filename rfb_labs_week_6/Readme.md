@@ -10,9 +10,9 @@ The project currently provides a compiling Cargo workspace with wallet
 initialization, address derivation, and Bitcoin Core synchronization
 implemented. It can generate or import a BIP39 mnemonic, derive BIP84
 receiving/change addresses, persist/reopen the wallet through SQLite, verify
-the configured Bitcoin Core RPC connection and network, and persist confirmed
-chain and mempool updates. Balance, UTXO, and transaction workflows remain to
-be implemented incrementally with tests.
+the configured Bitcoin Core RPC connection and network, persist confirmed
+chain and mempool updates, calculate balances, inspect wallet UTXOs, and build,
+sign, broadcast, and persist outgoing transactions.
 
 ## Architecture
 
@@ -137,6 +137,50 @@ the wallet's latest persisted checkpoint, applies current mempool changes, and
 persists the resulting BDK changeset to SQLite. A later invocation resumes from
 that checkpoint instead of processing the same blocks again.
 
+### Inspect balances and UTXOs
+
+Synchronize and then inspect the wallet:
+
+```bash
+cargo run -p muf_wallet -- balance
+cargo run -p muf_wallet -- utxos
+```
+
+`balance` separates confirmed, trusted pending, untrusted pending, immature,
+spendable, and total funds. `utxos` displays each output's outpoint, value,
+receiving/change derivation path, confirmation status, coinbase maturity,
+locked state, and spendability. Both commands synchronize with Bitcoin Core by
+default. Use `--offline` to inspect the latest state already saved in SQLite:
+
+```bash
+cargo run -p muf_wallet -- balance --offline
+cargo run -p muf_wallet -- utxos --offline
+```
+
+### Send bitcoin
+
+Keep the wallet's mnemonic in the private `.env` file so BDK can load its
+signing keys:
+
+```env
+MUF_MNEMONIC="your twelve recovery words go here"
+```
+
+Send an exact satoshi amount to an address on the configured network:
+
+```bash
+cargo run -p muf_wallet -- send \
+  --to bcrt1q... \
+  --amount 100000 \
+  --fee-rate 2
+```
+
+Before coin selection, `send` synchronizes the wallet. BDK then selects usable
+UTXOs, calculates a change output and fee, builds and signs a PSBT, and
+finalizes the transaction. The application persists any new change derivation
+index, broadcasts through Bitcoin Core, records the outgoing transaction as
+unconfirmed, persists it, and prints its transaction ID and fee.
+
 ### CLI
 
 ```text
@@ -144,8 +188,8 @@ muf_wallet init
 muf_wallet address [--change]
 muf_wallet node-health
 muf_wallet sync
-muf_wallet balance
-muf_wallet utxos
+muf_wallet balance [--offline]
+muf_wallet utxos [--offline]
 muf_wallet send --to <ADDRESS> --amount <SATS> [--fee-rate <SAT/VB>]
 ```
 

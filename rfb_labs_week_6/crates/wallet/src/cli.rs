@@ -65,9 +65,17 @@ pub enum Command {
     /// Synchronize wallet state with Bitcoin Core.
     Sync,
     /// Display confirmed, pending, immature, and total balance.
-    Balance,
+    Balance {
+        /// Read persisted wallet state without contacting Bitcoin Core.
+        #[arg(long)]
+        offline: bool,
+    },
     /// List wallet-controlled unspent transaction outputs.
-    Utxos,
+    Utxos {
+        /// Read persisted wallet state without contacting Bitcoin Core.
+        #[arg(long)]
+        offline: bool,
+    },
     /// Construct, sign, and broadcast a transaction.
     Send {
         /// Network-valid destination address.
@@ -77,8 +85,11 @@ pub enum Command {
         #[arg(long, value_parser = clap::value_parser!(u64).range(1..))]
         amount: u64,
         /// Fee rate in satoshis per virtual byte.
-        #[arg(long, default_value_t = 2.0)]
-        fee_rate: f32,
+        #[arg(long, default_value_t = 2.0, value_parser = parse_positive_fee_rate)]
+        fee_rate: f64,
+        /// BIP39 phrase used to sign. Prefer MUF_MNEMONIC over this option.
+        #[arg(long, env = "MUF_MNEMONIC", hide_env_values = true)]
+        mnemonic: Option<String>,
     },
 }
 
@@ -114,11 +125,23 @@ impl Command {
             Self::Address { .. } => "address",
             Self::NodeHealth => "node-health",
             Self::Sync => "sync",
-            Self::Balance => "balance",
-            Self::Utxos => "utxos",
+            Self::Balance { .. } => "balance",
+            Self::Utxos { .. } => "utxos",
             Self::Send { .. } => "send",
         }
     }
+}
+
+fn parse_positive_fee_rate(value: &str) -> Result<f64, String> {
+    let fee_rate = value
+        .parse::<f64>()
+        .map_err(|_| "fee rate must be a number".to_owned())?;
+
+    if !fee_rate.is_finite() || fee_rate <= 0.0 {
+        return Err("fee rate must be a finite number greater than zero".to_owned());
+    }
+
+    Ok(fee_rate)
 }
 
 #[cfg(test)]
@@ -132,7 +155,7 @@ mod tests {
         let cli = Cli::try_parse_from(["muf_wallet", "balance"]).unwrap();
 
         assert_eq!(cli.network, NetworkArg::Regtest);
-        assert!(matches!(cli.command, Command::Balance));
+        assert!(matches!(cli.command, Command::Balance { offline: false }));
     }
 
     #[test]
@@ -168,5 +191,35 @@ mod tests {
         let cli = Cli::try_parse_from(["muf_wallet", "sync"]).unwrap();
 
         assert!(matches!(cli.command, Command::Sync));
+    }
+
+    #[test]
+    fn recognizes_offline_wallet_queries() {
+        let balance = Cli::try_parse_from(["muf_wallet", "balance", "--offline"]).unwrap();
+        let utxos = Cli::try_parse_from(["muf_wallet", "utxos", "--offline"]).unwrap();
+
+        assert!(matches!(
+            balance.command,
+            Command::Balance { offline: true }
+        ));
+        assert!(matches!(utxos.command, Command::Utxos { offline: true }));
+    }
+
+    #[test]
+    fn rejects_invalid_fee_rates() {
+        for fee_rate in ["0", "-1", "NaN", "inf"] {
+            let result = Cli::try_parse_from([
+                "muf_wallet",
+                "send",
+                "--to",
+                "bcrt1qexample",
+                "--amount",
+                "1000",
+                "--fee-rate",
+                fee_rate,
+            ]);
+
+            assert!(result.is_err(), "accepted invalid fee rate: {fee_rate}");
+        }
     }
 }
