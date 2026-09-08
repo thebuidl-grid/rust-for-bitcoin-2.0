@@ -4,7 +4,7 @@ Working plan for the Week 6 assignment. Tick boxes as you go.
 
 - **Started:** 2026-09-08
 - **Assignment:** [`Readme.md`](./Readme.md)
-- **Current phase:** Phase 2 ✅ complete — next: Phase 3 (build/sign/broadcast)
+- **Current phase:** Phase 3 ✅ complete — next: Phase 4 (README + stretch)
 
 ---
 
@@ -202,16 +202,27 @@ Rubric: *UTXO & Balance Tracking*, *Node Integration*
 
 Files: `tx.rs`
 
-- [ ] `wallet.build_tx()` → `.add_recipient(spk, amount)` → `.fee_rate(fee_rate)` → `.finish()` → PSBT
-- [ ] `wallet.sign(&mut psbt, SignOptions::default())` — **assert it returns `true`**
-- [ ] `psbt.extract_tx()?` → `client.send_raw_transaction(&tx)`
-- [ ] `persist()` after broadcast
-- [ ] `send --to --amount [--fee-rate]` command
+- [x] `wallet.build_tx()` → `.add_recipient(spk, amount)` → `.fee_rate(fee_rate)` → `.finish()` → PSBT
+- [x] `wallet.sign(&mut psbt, SignOptions::default())` — asserted; `false` → `IncompleteSignature`
+- [x] `psbt.extract_tx()?` → `client.send_raw_transaction(&tx)`
+- [x] `persist()` after build (the build reveals a change address)
+- [x] `send --to --amount [--fee-rate] [--largest-first] [--dry-run]` command
 - [ ] **Checkpoint** (see below)
 
-> **Checkpoint:** txid verifiable via `getrawtransaction <txid> true`. Mine 1 block, re-sync,
-> confirm the change output landed on the **internal** keychain. Save the terminal output —
-> it's a required README artifact.
+> **Checkpoint:** ✅ verified live.
+>
+> ```
+> txid           2deedc5213558f04a82d882c36d9c57d41922509db261e54064a4fb52b3fb164
+> block          0692c8ca44df56b215d5961aa95e546e184181a82cd2967ab556012b62b551ec (height 103)
+> confirmations  1
+> vsize          141 vB      fee 281 sat @ 2 sat/vB
+> vout 0          2.50000000 BTC -> bcrt1q6tqyfukzez7fusm5pczmerwqczzq4z4z3ezyag  (recipient)
+> vout 1         47.49999719 BTC -> bcrt1qkqv3v678svq432rc07k72n6csn3n08fd0dzfdc  (change, INTERNAL index 0)
+> ```
+>
+> Confirmed independently through `getrawtransaction`. The change output landed on
+> the internal keychain, which is the payoff for separating the two keychains in
+> Phase 1. **This is the README's proof-of-transaction artifact.**
 
 Rubric: *Transactions*
 
@@ -231,7 +242,11 @@ Stretch goals, ranked by value per unit effort:
 - [ ] **CLI** — free, it's the spine of the project
 - [ ] **`wpkh` vs `tr`** — one enum + one match arm; show both descriptors and address forms
 - [ ] **Raw `rust-bitcoin` vs BDK** — the `Xpriv` → `Bip84` step, or reuse Week 3's `decodetrx`
-- [ ] **Explicit coin selection** — swap default for `LargestFirstCoinSelection`
+- [x] **Explicit coin selection** — `--largest-first` swaps `BranchAndBoundCoinSelection`
+      for `LargestFirstCoinSelection`. Measured on a 120 BTC payment from 101 equal-value
+      50 BTC coinbase UTXOs: both picked 3 inputs, 276 vB, 553 sat fee — identical, because
+      with uniform UTXOs there is nothing for branch-and-bound to optimise. The algorithms
+      diverge on a mixed UTXO set; worth saying so rather than claiming a win that is not there.
 - [ ] **Error handling / logging** — `error.rs` already covers most of this
 
 ---

@@ -94,6 +94,14 @@ pub enum WalletError {
     NetworkMismatch { node: String, wallet: String },
 
     // ---- transactions -----------------------------------------------------
+    /// Covers both a malformed address and one belonging to the wrong network —
+    /// `require_network` reports the latter through the same `ParseError`.
+    #[error("invalid address: {0}")]
+    Address(#[from] bdk_wallet::bitcoin::address::ParseError),
+
+    #[error("invalid fee rate `{0}` sat/vB")]
+    FeeRate(u64),
+
     #[error("could not build transaction: {0}")]
     BuildTx(String),
 

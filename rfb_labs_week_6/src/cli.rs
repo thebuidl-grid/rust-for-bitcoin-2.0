@@ -16,6 +16,7 @@ use crate::config::{Config, restrict_permissions};
 use crate::error::{Result, WalletError};
 use crate::keys;
 use crate::node;
+use crate::tx::{self, Selection};
 use crate::wallet::Wallet;
 
 #[derive(Debug, Parser)]
@@ -60,6 +61,29 @@ pub enum Command {
 
     /// Pull blocks and mempool from the Bitcoin node
     Sync,
+
+    /// Build, sign and broadcast a payment
+    Send {
+        /// Recipient address
+        #[arg(long)]
+        to: String,
+
+        /// Amount in satoshis
+        #[arg(long)]
+        amount: u64,
+
+        /// Fee rate in sat/vB
+        #[arg(long, default_value_t = 2)]
+        fee_rate: u64,
+
+        /// Use largest-first coin selection instead of BDK's branch-and-bound
+        #[arg(long)]
+        largest_first: bool,
+
+        /// Build and sign, print the details, but do not broadcast
+        #[arg(long)]
+        dry_run: bool,
+    },
 
     /// Mine regtest blocks paying this wallet (regtest only)
     Fund {
@@ -128,6 +152,13 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Utxos => utxos(),
         Command::Sync => sync(),
         Command::Fund { blocks } => fund(blocks),
+        Command::Send {
+            to,
+            amount,
+            fee_rate,
+            largest_first,
+            dry_run,
+        } => send(&to, amount, fee_rate, largest_first, dry_run),
     }
 }
 
@@ -384,6 +415,73 @@ fn fund(blocks: u64) -> Result<()> {
         if need > 0 {
             println!("  Mine ~{need} more block(s) to make them spendable.");
         }
+        println!();
+    }
+
+    Ok(())
+}
+
+fn send(
+    to: &str,
+    amount_sat: u64,
+    fee_rate_sat_vb: u64,
+    largest_first: bool,
+    dry_run: bool,
+) -> Result<()> {
+    let config = Config::load()?;
+    let mut wallet = Wallet::open(&config)?;
+
+    let recipient = tx::parse_address(&wallet, to)?;
+    let value = Amount::from_sat(amount_sat);
+    let fee_rate = tx::fee_rate_from_sat_per_vb(fee_rate_sat_vb)?;
+    let selection = if largest_first {
+        Selection::LargestFirst
+    } else {
+        Selection::Default
+    };
+
+    println!();
+    println!("  paying    {} to {recipient}", amount(value));
+    println!("  fee rate  {fee_rate_sat_vb} sat/vB");
+    println!("  selection {}", if largest_first { "largest-first" } else { "branch-and-bound" });
+    println!();
+
+    let draft = tx::build_and_sign(&mut wallet, &recipient, value, fee_rate, selection)?;
+
+    println!("  txid      {}", draft.txid);
+    println!("  inputs    {}", draft.inputs);
+    println!("  outputs   {}", draft.outputs);
+    println!("  fee       {}", amount(draft.fee));
+    match draft.change_vout {
+        Some(vout) => println!(
+            "  change    vout {vout}, {} -> internal keychain",
+            amount(draft.change_amount)
+        ),
+        None => println!("  change    none (exact match, no change output)"),
+    }
+    println!("  size      {} vB", draft.tx.vsize());
+    println!();
+
+    if dry_run {
+        println!("  --dry-run: signed but NOT broadcast.");
+        println!();
+        return Ok(());
+    }
+
+    let client = node::connect(&config)?;
+    let txid = tx::broadcast(&client, &draft.tx)?;
+
+    println!("  broadcast ok");
+    println!("  txid      {txid}");
+    println!();
+    println!("  Verify:  bitcoin-cli -regtest -rpcport=18443 -rpcuser=polaruser \\");
+    println!("             -rpcpassword=polarpass getrawtransaction {txid} true");
+    println!();
+
+    // Pick the transaction up from the mempool so it shows as pending right away.
+    let report = node::sync(&mut wallet, &client)?;
+    if report.mempool_txs > 0 {
+        println!("  now in mempool; balance {}", amount(wallet.balance().total()));
         println!();
     }
 
