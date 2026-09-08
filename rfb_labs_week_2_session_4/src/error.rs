@@ -1,10 +1,5 @@
 use std::fmt;
 
-/// Every expected failure in the lending library.
-///
-/// This is the only file whose types are written for you. Nothing here should
-/// ever be produced by a `panic!`, an `unwrap`, or an `expect` — these are
-/// ordinary outcomes a caller is expected to handle.
 #[derive(Debug, PartialEq, Eq)]
 pub enum LibraryError {
     EmptyTitle,
@@ -41,10 +36,52 @@ pub enum LibraryError {
 }
 
 impl fmt::Display for LibraryError {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 2): return a useful, human-readable message for every
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // (Part 2): return a useful, human-readable message for every
         // variant. Include the ids and numbers the variant carries.
-        todo!("implement Display for LibraryError")
+        match self {
+            LibraryError::EmptyTitle => write!(formatter, "Error: Empty Tittle not allowed"),
+
+            LibraryError::DuplicateItemId { id } => {
+                write!(formatter, "Error: An  Item with Id: {id} already exists")
+            }
+
+            LibraryError::DuplicateMemberId { id } => {
+                write!(formatter, "Error: A  member  of id: {id} already exists")
+            }
+
+            LibraryError::ItemNotFound { id } => {
+                write!(formatter, "Error: Item of id: {id}, was not found")
+            }
+
+            LibraryError::MemberNotFound { id } => {
+                write!(formatter, "Error: Member of id: {id}, was not found")
+            }
+
+            LibraryError::ItemAlreadyOnLoan { id, member_id } => write!(
+                formatter,
+                "Error: Item of id: {id} already on loan to member of id: {member_id}"
+            ),
+
+            LibraryError::ItemNotOnLoan { id } => {
+                write!(formatter, "Error: Item of Id {id} is not on loan")
+            }
+
+            LibraryError::ItemIsLost { id } => write!(formatter, "Error: Item of id: {id} is lost"),
+
+            LibraryError::BorrowLimitReached { member_id, limit } => write!(
+                formatter,
+                "Error: Member with id: {member_id} has reached the limit of {limit} borrowed items"
+            ),
+
+            LibraryError::InvalidReturnDay {
+                day_borrowed,
+                day_returned,
+            } => write!(
+                formatter,
+                "Error: Invalid return day, day borrowed: {day_borrowed} and day returned is: {day_returned}"
+            ),
+        }
     }
 }
 
