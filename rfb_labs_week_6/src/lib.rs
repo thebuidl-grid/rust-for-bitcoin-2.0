@@ -16,6 +16,7 @@ pub mod cli;
 pub mod config;
 pub mod error;
 pub mod keys;
+pub mod node;
 pub mod wallet;
 
 pub use error::{Result, WalletError};

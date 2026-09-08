@@ -83,6 +83,16 @@ pub enum WalletError {
     #[error("chain data does not connect to the wallet's checkpoint: {0}")]
     CannotConnect(String),
 
+    /// A block header could not be applied to the local chain. In practice this
+    /// means a reorg raced the sync loop; re-running `sync` resolves it.
+    #[error("could not apply block header: {0} — re-run `sync`")]
+    ApplyHeader(String),
+
+    /// The node is on a different network than the wallet expects. Catching this
+    /// early beats deriving addresses nobody on that chain can pay.
+    #[error("node is on `{node}` but the wallet is configured for `{wallet}`")]
+    NetworkMismatch { node: String, wallet: String },
+
     // ---- transactions -----------------------------------------------------
     #[error("could not build transaction: {0}")]
     BuildTx(String),
@@ -121,5 +131,11 @@ impl From<bdk_wallet::bitcoin::psbt::ExtractTxError> for WalletError {
 impl From<bdk_wallet::chain::local_chain::CannotConnectError> for WalletError {
     fn from(e: bdk_wallet::chain::local_chain::CannotConnectError) -> Self {
         Self::CannotConnect(e.to_string())
+    }
+}
+
+impl From<bdk_wallet::chain::local_chain::ApplyHeaderError> for WalletError {
+    fn from(e: bdk_wallet::chain::local_chain::ApplyHeaderError) -> Self {
+        Self::ApplyHeader(e.to_string())
     }
 }

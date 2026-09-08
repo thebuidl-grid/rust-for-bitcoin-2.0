@@ -4,7 +4,7 @@ Working plan for the Week 6 assignment. Tick boxes as you go.
 
 - **Started:** 2026-09-08
 - **Assignment:** [`Readme.md`](./Readme.md)
-- **Current phase:** Phase 1 ✅ complete — next: Phase 2 (node sync)
+- **Current phase:** Phase 2 ✅ complete — next: Phase 3 (build/sign/broadcast)
 
 ---
 
@@ -160,14 +160,14 @@ Rubric: *Core Functionality*, *Persistence*
 
 Files: `node.rs`, extend `wallet.rs`
 
-- [ ] `Client::new(url, Auth::UserPass(user, pass))`
-- [ ] `Emitter::new(client, wallet.latest_checkpoint(), start_height, mempool_txs)`
-- [ ] Loop `emitter.next_block()` → `wallet.apply_block_connected_to(&block, height, connected_to)`
-- [ ] Then `emitter.mempool()` → `wallet.apply_unconfirmed_txs(..)`
-- [ ] `persist()` after the loop
-- [ ] `sync`, `balance`, `utxos` commands
-- [ ] `fund --blocks 101` helper
-- [ ] **Checkpoint** (see below)
+- [x] `Client::new(url, Auth::UserPass(user, pass))` + network-mismatch guard
+- [x] `Emitter::new(client, wallet.latest_checkpoint(), start_height, mempool_txs)`
+- [x] Loop `emitter.next_block()` → `wallet.apply_block_connected_to(&block, height, connected_to)`
+- [x] Then `emitter.mempool()` → `wallet.apply_unconfirmed_txs(..)` + `apply_evicted_txs`
+- [x] `persist()` after the loop (one flush, not one per block)
+- [x] `sync`, `balance`, `utxos` commands
+- [x] `fund --blocks 101` helper (regtest-guarded)
+- [x] **Checkpoint** — verified live (see below)
 
 Funding on regtest — no faucet, no node wallet required:
 
@@ -177,12 +177,24 @@ bitcoin-cli -regtest -rpcconnect=127.0.0.1 -rpcport=18443 \
   generatetoaddress 101 <your external address>
 ```
 
-> **Expect the balance to land in `immature` first.** Coinbase outputs need 100 confirmations.
-> Mining 101 blocks matures exactly the first one → 50 BTC spendable (regtest subsidy is
-> 50 BTC for the first 150 blocks). This is not a bug — explain it in the README.
+> **Expect most of the balance to land in `immature`.** Coinbase outputs need 100
+> confirmations, where a coinbase at height H has `tip - H + 1` confirmations.
+>
+> Measured, starting from tip 1 and mining 101 blocks (tip becomes 102):
+>
+> | coinbase height | confirmations | status |
+> |---|---|---|
+> | 2 | 101 | mature |
+> | 3 | 100 | mature |
+> | 4 | 99 | immature |
+>
+> So **two** coinbases mature, not one: 100 BTC spendable, 4950 BTC immature,
+> 5050 BTC total across 101 UTXOs (regtest subsidy is 50 BTC for the first 150
+> blocks). This is not a bug — explain it in the README.
 
-> **Checkpoint:** `sync` then `balance` shows ~50 BTC confirmed; `utxos` lists the coinbase
-> outputs with keychain + derivation index.
+> **Checkpoint:** ✅ verified — `fund --blocks 101` mined to
+> `bcrt1qzfzzppmkzfuau20gk6mdla92gu83lnl5820xts`, synced 101 blocks, 101 UTXOs,
+> 100 BTC spendable / 4950 BTC immature.
 
 Rubric: *UTXO & Balance Tracking*, *Node Integration*
 

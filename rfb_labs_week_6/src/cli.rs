@@ -8,13 +8,14 @@ use std::fs;
 use std::path::Path;
 
 use bdk_wallet::KeychainKind;
-use bdk_wallet::bitcoin::Amount;
+use bdk_wallet::bitcoin::{Amount, Network};
 use bdk_wallet::keys::bip39::WordCount;
 use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::config::{Config, restrict_permissions};
 use crate::error::{Result, WalletError};
 use crate::keys;
+use crate::node;
 use crate::wallet::Wallet;
 
 #[derive(Debug, Parser)]
@@ -56,6 +57,17 @@ pub enum Command {
 
     /// List unspent outputs
     Utxos,
+
+    /// Pull blocks and mempool from the Bitcoin node
+    Sync,
+
+    /// Mine regtest blocks paying this wallet (regtest only)
+    Fund {
+        /// How many blocks to mine. 101 matures exactly one coinbase, since
+        /// coinbase outputs need 100 confirmations before they can be spent.
+        #[arg(long, default_value_t = 101)]
+        blocks: u64,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -114,6 +126,8 @@ pub fn run(cli: Cli) -> Result<()> {
         },
         Command::Balance => balance(),
         Command::Utxos => utxos(),
+        Command::Sync => sync(),
+        Command::Fund { blocks } => fund(blocks),
     }
 }
 
@@ -297,6 +311,81 @@ fn utxos() -> Result<()> {
     println!();
     println!("  {} unspent output(s)", utxos.len());
     println!();
+
+    Ok(())
+}
+
+fn sync() -> Result<()> {
+    let config = Config::load()?;
+    let mut wallet = Wallet::open(&config)?;
+
+    println!();
+    println!("  connecting to {} ...", config.rpc.url);
+    let client = node::connect(&config)?;
+
+    let before = wallet.balance().total();
+    let report = node::sync(&mut wallet, &client)?;
+    let after = wallet.balance().total();
+
+    println!("  applied {} block(s), tip now {}", report.blocks_applied, report.tip_height);
+    if report.mempool_txs > 0 {
+        println!("  {} unconfirmed tx(s) in mempool", report.mempool_txs);
+    }
+    if report.evicted_txs > 0 {
+        println!("  {} tx(s) evicted from mempool", report.evicted_txs);
+    }
+    println!();
+    println!("  balance  {}", amount(after));
+    if after != before {
+        println!("  changed  {} -> {}", before.to_sat(), after.to_sat());
+    }
+    println!();
+
+    Ok(())
+}
+
+fn fund(blocks: u64) -> Result<()> {
+    let config = Config::load()?;
+
+    // Mining on anything but regtest is either impossible or a very bad idea.
+    if config.network != Network::Regtest {
+        return Err(WalletError::InvalidEnv {
+            key: "BITCOIN_NETWORK",
+            value: config.network.to_string(),
+            reason: "`fund` mines blocks, which only works on regtest. \
+                     Use a faucet on signet or testnet",
+        });
+    }
+
+    let mut wallet = Wallet::open(&config)?;
+    let client = node::connect(&config)?;
+
+    // Mine to our own external address so the coinbase outputs belong to us.
+    let address = wallet.next_unused_address(KeychainKind::External)?;
+
+    println!();
+    println!("  mining {blocks} block(s) to {}", address.address);
+    let hashes = node::mine_to(&client, &address.address, blocks)?;
+    println!("  mined {} block(s), node tip now {}", hashes.len(), node::tip_height(&client)?);
+
+    let report = node::sync(&mut wallet, &client)?;
+    let b = wallet.balance();
+
+    println!("  synced {} block(s)", report.blocks_applied);
+    println!();
+    println!("  spendable  {}", amount(b.trusted_spendable()));
+    println!("  immature   {}", amount(b.immature));
+    println!("  total      {}", amount(b.total()));
+    println!();
+
+    if b.immature > Amount::ZERO {
+        let need = 100u64.saturating_sub(blocks.saturating_sub(1));
+        println!("  Coinbase outputs mature after 100 confirmations.");
+        if need > 0 {
+            println!("  Mine ~{need} more block(s) to make them spendable.");
+        }
+        println!();
+    }
 
     Ok(())
 }
