@@ -63,10 +63,12 @@ fn hex(v: &[u8]) -> String {
 }
 
 fn main() {
-    let raw = "0200000000010196277c04c986c1ad78c909287fd12dba2924324699a0232e0533f46a6a3916bb0100000000ffffffff026400000000000000160014274ae586ad2035efb4c25049c155f98310d7e106ca16440000000000160014599bcef6387256c6b019030c421b4a4d382fe2600247304402204d94a1e4047ca38a450177ccb6f88585ca147f1939df343d8ac5d962c5f35bb302206f7fa42c21c47ebccdc460393d35c5dfd3b6f0a26cf10fac23d3e6fab71835c20121020cb972a66e3fb1cdcc9efcad060b4457ebec534942700d4af1c0d82a33aa13f100000000";
+    let raw = "020000000001018fb0d07bb3766421bff2d908b70e5de818e4d85a436ea3606310c1052b0dc8210100000000ffffffff02fe10010000000000160014a632c1fff47af29f8c81dc4c6e91eb49a116c12b02730000000000001600149831122b93d21715c70db626ccc844d3c21f968702483045022100f8704a3e7d55d4b5ee448cc6365caeffa42c2b00f74a37726d4fa3c11982e3e502203591c4a4bde9200281755ae5a8759116ce6e0cc7f5d30cf0eeb5b2b74f74bab30121029cbb1e568de08f469a8751aa2000331f130ca92ad49012d9cececaf6f8eb235800000000";
     // version: 02000000
   
    let bytes = hex::decode(raw).unwrap();
+
+   println!("bytes = {:?}", bytes);
 
      let mut r = Cursor::new(bytes);
 
@@ -79,13 +81,13 @@ fn main() {
      let version = r.read_u32::<LittleEndian>().unwrap();
      println!("Version: {}", version);
 
-    // read_u8() consumes exactly one byte : 00
-    // u8 means an unsigned 8-bit integer : 8 bits = 1 byte
+    // // read_u8() consumes exactly one byte : 00
+    // // u8 means an unsigned 8-bit integer : 8 bits = 1 byte
 
     let marker = r.read_u8().unwrap();
     let flag = r.read_u8().unwrap();
-      // marker and flag are each one byte.
-    // marker and flag tell us that this is SegWit transaction, and witness data is present.
+    //   // marker and flag are each one byte.
+    // // marker and flag tell us that this is SegWit transaction, and witness data is present.
 
     println!("SegWit marker={} flag={}", marker, flag);
 
