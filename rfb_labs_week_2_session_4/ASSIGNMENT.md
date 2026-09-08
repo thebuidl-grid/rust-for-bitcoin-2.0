@@ -1,4 +1,4 @@
-# Week 2 Session 4 Assignment — A Community Lending Library
+# Week 2 Session 4 Assignment — A Community Lending Library.
 
 The point is enums, structs, traits,
 ownership, borrowing, and `Result`, with nothing else competing for attention.
