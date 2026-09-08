@@ -1,0 +1,22 @@
+[package]
+name = "wallet"
+description = "Descriptor-based Bitcoin wallet application library"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bdk_wallet.workspace = true
+bdk_bitcoind_rpc.workspace = true
+bitcoin.workspace = true
+bitcoincore-rpc.workspace = true
+clap.workspace = true
+directories.workspace = true
+dotenvy.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

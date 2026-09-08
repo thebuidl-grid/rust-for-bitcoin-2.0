@@ -1,0 +1,4 @@
+.env
+.wallet-data/
+wallet-data/
+target/

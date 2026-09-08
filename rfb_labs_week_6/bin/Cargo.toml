@@ -1,0 +1,9 @@
+[package]
+name = "muf_wallet"
+description = "Command-line Bitcoin wallet executable"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+wallet.workspace = true

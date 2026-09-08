@@ -1,6 +1,27 @@
-[package]
-name = "rfb_labs_week_6"
+[workspace]
+members = [
+    "bin",
+    "crates/wallet",
+]
+resolver = "3"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
-[dependencies]
+[workspace.dependencies]
+bdk_wallet = { version = "3.1", features = ["keys-bip39", "rusqlite"] }
+bdk_bitcoind_rpc = "0.22"
+bitcoin = { version = "0.32", features = ["serde"] }
+bitcoincore-rpc = "0.19"
+clap = { version = "4.5", features = ["derive", "env"] }
+directories = "6"
+dotenvy = "0.15"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tempfile = "3"
+
+wallet = { path = "crates/wallet" }
