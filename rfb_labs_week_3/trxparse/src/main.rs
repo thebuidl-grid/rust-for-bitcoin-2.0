@@ -1,11 +1,156 @@
+// Bitcoin Transaction Parser — CLI edition
+//
+// Companion refactor to the Week 4 serializer. The original program had a
+// single raw transaction hex string hardcoded in `main()`. This version
+// reads the raw hex from a command-line flag (or a file), validates it
+// before decoding, and parses it with the same field-by-field logic as the
+// original — now with proper errors instead of `.unwrap()` panics, and
+// automatic detection of SegWit vs. legacy transactions (the original
+// always assumed SegWit was present).
+
 use byteorder::{LittleEndian, ReadBytesExt};
+use clap::Parser;
 use std::io::{Cursor, Read};
+use std::process::ExitCode;
+use thiserror::Error;
+
+// ---------------------------------------------------------------------
+// CLI definition
+// ---------------------------------------------------------------------
+
+/// Parse and decode a raw Bitcoin transaction supplied via the command line.
+#[derive(Parser, Debug)]
+#[command(name = "trxparse", version, about, long_about = None)]
+struct Cli {
+    /// Raw transaction as a hex string
+    #[arg(long, value_name = "HEX")]
+    tx: Option<String>,
+
+    /// Path to a file containing the raw transaction hex (leading/trailing
+    /// whitespace and newlines are trimmed)
+    #[arg(long, value_name = "PATH")]
+    file: Option<String>,
+}
+
+// ---------------------------------------------------------------------
+// Error handling
+// ---------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+enum TxParseError {
+    #[error("no transaction hex provided (use --tx <HEX> or --file <PATH>)")]
+    NoInput,
+
+    #[error("provide either --tx or --file, not both")]
+    ConflictingInput,
+
+    #[error("could not read file '{0}': {1}")]
+    FileRead(String, String),
+
+    #[error("invalid hex string: length {0} is odd (hex must have an even number of characters)")]
+    OddLengthHex(usize),
+
+    #[error("invalid hex string: contains non-hexadecimal character '{0}'")]
+    NonHexCharacter(char),
+
+    #[error("unexpected end of data while reading {0} (transaction hex is truncated or malformed)")]
+    UnexpectedEnd(&'static str),
+
+    #[error("invalid SegWit flag byte: expected 0x01, got 0x{0:02x}")]
+    InvalidSegwitFlag(u8),
+
+    #[error("{0} unexpected trailing byte(s) after locktime; transaction hex is longer than expected")]
+    TrailingBytes(usize),
+}
+
+// ---------------------------------------------------------------------
+// Hex helpers (validated)
+// ---------------------------------------------------------------------
+
+/// Convert a hex string into bytes, validating length parity and that every
+/// character is a valid hex digit before converting.
+fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, TxParseError> {
+    if hex.len() % 2 != 0 {
+        return Err(TxParseError::OddLengthHex(hex.len()));
+    }
+
+    if let Some(bad) = hex.chars().find(|c| !c.is_ascii_hexdigit()) {
+        return Err(TxParseError::NonHexCharacter(bad));
+    }
+
+    let mut bytes = Vec::with_capacity(hex.len() / 2);
+    for i in (0..hex.len()).step_by(2) {
+        // Already validated as hex above, so this cannot fail.
+        let byte = u8::from_str_radix(&hex[i..i + 2], 16).unwrap();
+        bytes.push(byte);
+    }
+
+    Ok(bytes)
+}
+
+fn bytes_to_hex(v: &[u8]) -> String {
+    v.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+// ---------------------------------------------------------------------
+// Low-level cursor readers (validated — no panics on malformed input)
+// ---------------------------------------------------------------------
+
+fn read_u8(r: &mut Cursor<Vec<u8>>, field: &'static str) -> Result<u8, TxParseError> {
+    r.read_u8().map_err(|_| TxParseError::UnexpectedEnd(field))
+}
+
+fn read_u32(r: &mut Cursor<Vec<u8>>, field: &'static str) -> Result<u32, TxParseError> {
+    r.read_u32::<LittleEndian>()
+        .map_err(|_| TxParseError::UnexpectedEnd(field))
+}
+
+fn read_u64(r: &mut Cursor<Vec<u8>>, field: &'static str) -> Result<u64, TxParseError> {
+    r.read_u64::<LittleEndian>()
+        .map_err(|_| TxParseError::UnexpectedEnd(field))
+}
+
+fn read_bytes(r: &mut Cursor<Vec<u8>>, n: usize, field: &'static str) -> Result<Vec<u8>, TxParseError> {
+    let mut b = vec![0u8; n];
+    r.read_exact(&mut b)
+        .map_err(|_| TxParseError::UnexpectedEnd(field))?;
+    Ok(b)
+}
+
+/// Peek at the next byte without consuming it (used for SegWit marker
+/// detection).
+fn peek_u8(r: &mut Cursor<Vec<u8>>, field: &'static str) -> Result<u8, TxParseError> {
+    let pos = r.position();
+    let b = read_u8(r, field)?;
+    r.set_position(pos);
+    Ok(b)
+}
+
+// CompactSize / VarInt reader. Used throughout the Bitcoin transaction
+// format to encode input/output counts, script lengths, and witness item
+// counts and lengths.
+fn read_varint(r: &mut Cursor<Vec<u8>>, field: &'static str) -> Result<u64, TxParseError> {
+    let n = read_u8(r, field)?;
+    match n {
+        0x00..=0xfc => Ok(n as u64),
+        0xfd => r
+            .read_u16::<LittleEndian>()
+            .map(|v| v as u64)
+            .map_err(|_| TxParseError::UnexpectedEnd(field)),
+        0xfe => read_u32(r, field).map(|v| v as u64),
+        _ => read_u64(r, field),
+    }
+}
+
+// ---------------------------------------------------------------------
+// Transaction parsing
+// ---------------------------------------------------------------------
 
 // ┌──────────────────────────────┐
 // │ Version          4 bytes     │
 // ├──────────────────────────────┤
-// │ Marker           1 byte      │
-// │ Flag             1 byte      │
+// │ Marker           1 byte      │  (SegWit only)
+// │ Flag             1 byte      │  (SegWit only)
 // ├──────────────────────────────┤
 // │ Input count      VarInt      │
 // │ Inputs           Variable    │
@@ -13,130 +158,132 @@ use std::io::{Cursor, Read};
 // │ Output count     VarInt      │
 // │ Outputs          Variable    │
 // ├──────────────────────────────┤
-// │ Witness          Variable    │
+// │ Witness          Variable    │  (SegWit only)
 // ├──────────────────────────────┤
 // │ Locktime         4 bytes  ←  │
 // └──────────────────────────────┘
 
+fn parse_transaction(raw_hex: &str) -> Result<(), TxParseError> {
+    let bytes = hex_to_bytes(raw_hex)?;
+    let total_len = bytes.len();
+    let mut r = Cursor::new(bytes);
 
-//  outputs: [
-//         TxOut1 {
-//             value: 100,
-//             script_pubkey: ...
-//         },
-//         TxOut2 {
-//             value: 100,
-//             script_pubkey: ...
-//         },
-//  ]
+    // Version: 4-byte little-endian integer.
+    let version = read_u32(&mut r, "version")?;
+    println!("Version: {}", version);
 
-// read_u64: read the next 8 bytes
-// read_u32: read the next 4 bytes
-// read_u16: read the next 2 bytes
-// read_u8: read the next 1 byte 
+    // SegWit detection: a legacy transaction's next byte is the input-count
+    // VarInt (never 0x00 for a valid transaction, since the input count is
+    // always at least 1). A SegWit transaction inserts marker=0x00 and a
+    // flag byte before the input count. Peek to decide which we have,
+    // instead of assuming SegWit unconditionally.
+    let maybe_marker = peek_u8(&mut r, "segwit marker")?;
+    let is_segwit = maybe_marker == 0x00;
 
-
-// This function is a fundamental building block in a Bitcoin parser because CompactSize integers are used throughout the protocol to 
-// encode the number of transaction inputs, outputs, script lengths, witness element counts, and many other variable-length fields.
-
-fn read_varint(r: &mut Cursor<Vec<u8>>) -> u64 {
-    let n = r.read_u8().unwrap();
-    match n {
-        0x00..=0xfc => n as u64,
-        0xfd => r.read_u16::<LittleEndian>().unwrap() as u64,
-        0xfe => r.read_u32::<LittleEndian>().unwrap() as u64,
-        _ => r.read_u64::<LittleEndian>().unwrap(),
+    if is_segwit {
+        let marker = read_u8(&mut r, "segwit marker")?;
+        let flag = read_u8(&mut r, "segwit flag")?;
+        if flag != 0x01 {
+            return Err(TxParseError::InvalidSegwitFlag(flag));
+        }
+        println!("SegWit marker={} flag={}", marker, flag);
+    } else {
+        println!("SegWit: no (legacy transaction)");
     }
-}
 
-
-
-fn read_bytes(r: &mut Cursor<Vec<u8>>, n: usize) -> Vec<u8> {
-    let mut b = vec![0; n]; // creates a Vec<u8> with 32 elements, where each element is one byte (u8).
-    r.read_exact(&mut b).unwrap(); // read exactly 32 bytes from the last position of the cursor, 
-    // The cursor moves forward by 32 bytes.
-    b
-}
-
-fn hex(v: &[u8]) -> String {
-    v.iter().map(|b| format!("{:02x}", b)).collect()
-}
-
-fn main() {
-    let raw = "0200000000010196277c04c986c1ad78c909287fd12dba2924324699a0232e0533f46a6a3916bb0100000000ffffffff026400000000000000160014274ae586ad2035efb4c25049c155f98310d7e106ca16440000000000160014599bcef6387256c6b019030c421b4a4d382fe2600247304402204d94a1e4047ca38a450177ccb6f88585ca147f1939df343d8ac5d962c5f35bb302206f7fa42c21c47ebccdc460393d35c5dfd3b6f0a26cf10fac23d3e6fab71835c20121020cb972a66e3fb1cdcc9efcad060b4457ebec534942700d4af1c0d82a33aa13f100000000";
-    // version: 02000000
-  
-   let bytes = hex::decode(raw).unwrap();
-
-     let mut r = Cursor::new(bytes);
-
-       // When we read 4 bytes, the cursor automatically moves forward:
-    // read_u32 : Read the next 4 bytes and interpret them as an unsigned 32-bit integer.
-    // LittleEndian:  With little-endian, the least significant byte comes first.
-    // Bitcoin  transaction version is a 4-byte little-endian integer.
-    // we have 02 00 00 00 little-endian  turn it into 00 00 00 02: 0x00000002
-
-     let version = r.read_u32::<LittleEndian>().unwrap();
-     println!("Version: {}", version);
-
-    // read_u8() consumes exactly one byte : 00
-    // u8 means an unsigned 8-bit integer : 8 bits = 1 byte
-
-    let marker = r.read_u8().unwrap();
-    let flag = r.read_u8().unwrap();
-      // marker and flag are each one byte.
-    // marker and flag tell us that this is SegWit transaction, and witness data is present.
-
-    println!("SegWit marker={} flag={}", marker, flag);
-
-    let in_count = read_varint(&mut r);
-
-     println!("Inputs: {}", in_count);
+    let in_count = read_varint(&mut r, "input count")?;
+    println!("Inputs: {}", in_count);
 
     for i in 0..in_count {
         println!("Input {}", i);
-         // 32-byte previous transaction ID from the input. (from the current position of the cursor)
-        // From the current cursor position, read exactly 32 bytes
-        // Bitcoin transaction input contains a 32-byte previous transaction hash (TXID).
-        let prev = read_bytes(&mut r, 32);
-          println!("  Prev TXID (LE): {}", hex(&prev));
-        let vout = r.read_u32::<LittleEndian>().unwrap(); 
-         println!("  Vout: {}", vout);
-       let slen = read_varint(&mut r) as usize;
+
+        // 32-byte previous transaction ID.
+        let prev = read_bytes(&mut r, 32, "input previous txid")?;
+        println!("  Prev TXID (LE): {}", bytes_to_hex(&prev));
+
+        let vout = read_u32(&mut r, "input vout")?;
+        println!("  Vout: {}", vout);
+
+        let slen = read_varint(&mut r, "input scriptSig length")? as usize;
         println!("  script length: {}", slen);
-        
-        let script = read_bytes(&mut r,slen);
-        println!("  ScriptSig: {}", hex(&script)); 
-        let seq = r.read_u32::<LittleEndian>().unwrap();
+
+        let script = read_bytes(&mut r, slen, "input scriptSig")?;
+        println!("  ScriptSig: {}", bytes_to_hex(&script));
+
+        let seq = read_u32(&mut r, "input sequence")?;
         println!("  Sequence: {:08x}", seq);
     }
 
-    let out_count = read_varint(&mut r);
-
+    let out_count = read_varint(&mut r, "output count")?;
     println!("Outputs: {}", out_count);
+
     for i in 0..out_count {
         println!("Output {}", i);
-        let value = r.read_u64::<LittleEndian>().unwrap(); // Read the next 8 bytes and interpret them as a little-endian u64.
+
+        let value = read_u64(&mut r, "output value")?;
         println!("  Value: {} sats", value);
-        let slen = read_varint(&mut r) as usize;
+
+        let slen = read_varint(&mut r, "output scriptPubKey length")? as usize;
         println!("  script length: {}", slen);
-        let script = read_bytes(&mut r,slen);
-        println!("  ScriptPubKey: {}", hex(&script));
+
+        let script = read_bytes(&mut r, slen, "output scriptPubKey")?;
+        println!("  ScriptPubKey: {}", bytes_to_hex(&script));
     }
 
-       // each input has its own witness field,
-    for i in 0..in_count {
-        let items = read_varint(&mut r);
-        println!("Witness for input {} ({} item(s))", i, items);
-        for j in 0..items {
-            let len = read_varint(&mut r) as usize;
-            let item = read_bytes(&mut r,len);
-            println!("  Item {}: {}", j, hex(&item));
+    // Each input has its own witness field, present only for SegWit
+    // transactions.
+    if is_segwit {
+        for i in 0..in_count {
+            let items = read_varint(&mut r, "witness item count")?;
+            println!("Witness for input {} ({} item(s))", i, items);
+            for j in 0..items {
+                let len = read_varint(&mut r, "witness item length")? as usize;
+                let item = read_bytes(&mut r, len, "witness item")?;
+                println!("  Item {}: {}", j, bytes_to_hex(&item));
+            }
         }
     }
 
-    let locktime = r.read_u32::<LittleEndian>().unwrap();
+    let locktime = read_u32(&mut r, "locktime")?;
     println!("Locktime: {}", locktime);
 
+    let remaining = total_len as u64 - r.position();
+    if remaining > 0 {
+        return Err(TxParseError::TrailingBytes(remaining as usize));
+    }
 
+    Ok(())
+}
+
+// ---------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------
+
+fn load_raw_hex(cli: &Cli) -> Result<String, TxParseError> {
+    match (&cli.tx, &cli.file) {
+        (Some(_), Some(_)) => Err(TxParseError::ConflictingInput),
+        (None, None) => Err(TxParseError::NoInput),
+        (Some(tx), None) => Ok(tx.trim().to_string()),
+        (None, Some(path)) => {
+            let content = std::fs::read_to_string(path)
+                .map_err(|e| TxParseError::FileRead(path.clone(), e.to_string()))?;
+            Ok(content.trim().to_string())
+        }
+    }
+}
+
+fn run() -> Result<(), TxParseError> {
+    let cli = Cli::parse();
+    let raw_hex = load_raw_hex(&cli)?;
+    parse_transaction(&raw_hex)
+}
+
+fn main() -> ExitCode {
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::FAILURE
+        }
+    }
 }
