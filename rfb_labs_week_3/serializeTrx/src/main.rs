@@ -1,4 +1,7 @@
+use clap::Parser;
 use std::error::Error;
+use std::fmt;
+use std::io::{self, Write};
 
 #[derive(Debug)]
 struct TxInput {
@@ -9,13 +12,11 @@ struct TxInput {
     witness: Vec<Vec<u8>>,
 }
 
-
 #[derive(Debug)]
 struct TxOutput {
     value: u64,
     script_pubkey: Vec<u8>,
 }
-
 
 #[derive(Debug)]
 struct Transaction {
@@ -26,9 +27,60 @@ struct Transaction {
     segwit: bool,
 }
 
+#[derive(Debug)]
+struct ParseError(String);
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Error for ParseError {}
+
+fn err(msg: impl Into<String>) -> Box<dyn Error> {
+    Box::new(ParseError(msg.into()))
+}
+
+/// Build and serialize a Bitcoin transaction from command-line arguments.
+#[derive(Parser, Debug)]
+#[command(
+    name = "serializeTrx",
+    version = "1.0",
+    about = "Serialize a Bitcoin transaction from CLI-supplied data",
+    disable_version_flag = true
+)]
+struct Cli {
+    /// Transaction version
+    #[arg(long, default_value_t = 2)]
+    version: i32,
+
+    /// Locktime
+    #[arg(long, default_value_t = 0)]
+    locktime: u32,
+
+    /// Mark this as a SegWit transaction (adds marker/flag and witness data)
+    #[arg(long)]
+    segwit: bool,
+
+    /// A transaction input: "<prev_txid_hex>:<vout>:<sequence>:<script_sig_hex>"
+    /// script_sig_hex may be empty. Repeat this flag for multiple inputs.
+    #[arg(long = "input", required = true)]
+    inputs: Vec<String>,
+
+    /// A transaction output: "<value_sats>:<script_pubkey_hex>"
+    /// Repeat this flag for multiple outputs.
+    #[arg(long = "output", required = true)]
+    outputs: Vec<String>,
+
+    /// Witness data for one input: "<input_index>:<hex_item_1>,<hex_item_2>,..."
+    /// Repeat this flag once per input that carries witness data.
+    #[arg(long = "witness")]
+    witness: Vec<String>,
+}
 
 fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn Error>> {
-    if hex.len() % 2 != 0 {
+    if !hex.len().is_multiple_of(2) {
         return Err("Hex string must have even length".into());
     }
 
@@ -46,62 +98,138 @@ fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     Ok(bytes)
 }
 
-
-fn main() -> Result<(), Box<dyn Error>> { 
-
-    let input = TxInput {
-        prev_txid: hex_to_bytes(
-            "8fb0d07bb3766421bff2d908b70e5de818e4d85a436ea3606310c1052b0dc821"
-        )?,
-        vout: 1,
-        script_sig: vec![],
-        sequence: 0xffffffff,
-        witness: vec![
-            hex_to_bytes("3045022100f8704a3e7d55d4b5ee448cc6365caeffa42c2b00f74a37726d4fa3c11982e3e502203591c4a4bde9200281755ae5a8759116ce6e0cc7f5d30cf0eeb5b2b74f74bab301")?,
-            hex_to_bytes("029cbb1e568de08f469a8751aa2000331f130ca92ad49012d9cececaf6f8eb2358")?   
-        ]
-    };
-
-    let output_0 = TxOutput {
-        value: 69886,
-        script_pubkey: hex_to_bytes("0014a632c1fff47af29f8c81dc4c6e91eb49a116c12b")?,
-    };
-
-    let output_1 = TxOutput {
-        value: 29442,
-        script_pubkey: hex_to_bytes("00149831122b93d21715c70db626ccc844d3c21f9687")?,
-    };
-    
-    let trx = Transaction {
-        version : 2,
-        inputs: vec![input],
-        outputs: vec![output_0, output_1],
-        locktime: 0,
-        segwit: true
-    };
-
-       // Serialize
-    let serialized = serialize_transaction(&trx);
-
-    println!("Serialized transaction:");
-    println!("{:?}", &serialized);
-    println!("Serialized Hex transaction:");
-    println!("{}", bytes_to_hex(&serialized));
-
-    println!("\nTransaction size: {} bytes", serialized.len());
-
-    Ok(())
-
-}   
-
-fn bytes_to_hex(bytes: &[u8]) -> String {
-    bytes
+fn build_transaction(cli: &Cli) -> Result<Transaction, Box<dyn Error>> {
+    let mut inputs: Vec<TxInput> = cli
+        .inputs
         .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect()
+        .map(|raw| parse_input(raw))
+        .collect::<Result<_, _>>()?;
+
+    let outputs: Vec<TxOutput> = cli
+        .outputs
+        .iter()
+        .map(|raw| parse_output(raw))
+        .collect::<Result<_, _>>()?;
+
+    for raw in &cli.witness {
+        let (index, items) = parse_witness(raw)?;
+        let input_count = inputs.len();
+        let input = inputs.get_mut(index).ok_or_else(|| {
+        err(format!(
+            "--witness '{raw}': input index {index} out of range (only {input_count} input(s) given)"
+        ))
+    })?;
+        input.witness = items;
+    }
+
+    Ok(Transaction {
+        version: cli.version,
+        inputs,
+        outputs,
+        locktime: cli.locktime,
+        segwit: cli.segwit,
+    })
 }
 
+fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = std::env::args().collect();
 
+    let trx = if args.len() == 1 {
+        // no flags given — walk the user through it
+        run_interactive()?
+    } else {
+        let cli = Cli::parse();
+        build_transaction(&cli)?
+    };
+
+    let serialized = serialize_transaction(&trx);
+    println!("Serialized transaction:");
+    println!("{:?}", serialized);
+    println!("Serialized Hex transaction:");
+    println!("{}", bytes_to_hex(&serialized));
+    println!("\nTransaction size: {} bytes", serialized.len());
+    Ok(())
+}
+
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+fn parse_input(raw: &str) -> Result<TxInput, Box<dyn Error>> {
+    let parts: Vec<&str> = raw.split(':').collect();
+    if parts.len() != 4 {
+        return Err(err(format!(
+            "--input '{raw}' must have 4 colon-separated fields: prev_txid:vout:sequence:script_sig"
+        )));
+    }
+
+    let prev_txid = hex_to_bytes(parts[0])
+        .map_err(|e| err(format!("--input '{raw}': invalid prev_txid hex: {e}")))?;
+    let vout: u32 = parts[1]
+        .parse()
+        .map_err(|_| err(format!("--input '{raw}': vout must be a valid u32")))?;
+    let sequence: u32 = parts[2]
+        .parse()
+        .map_err(|_| err(format!("--input '{raw}': sequence must be a valid u32")))?;
+    let script_sig = hex_to_bytes(parts[3])
+        .map_err(|e| err(format!("--input '{raw}': invalid script_sig hex: {e}")))?;
+
+    Ok(TxInput {
+        prev_txid,
+        vout,
+        script_sig,
+        sequence,
+        witness: Vec::new(),
+    })
+}
+
+fn parse_output(raw: &str) -> Result<TxOutput, Box<dyn Error>> {
+    let parts: Vec<&str> = raw.split(':').collect();
+    if parts.len() != 2 {
+        return Err(err(format!(
+            "--output '{raw}' must have 2 colon-separated fields: value:script_pubkey"
+        )));
+    }
+
+    let value: u64 = parts[0]
+        .parse()
+        .map_err(|_| err(format!("--output '{raw}': value must be a valid u64")))?;
+    let script_pubkey = hex_to_bytes(parts[1])
+        .map_err(|e| err(format!("--output '{raw}': invalid script_pubkey hex: {e}")))?;
+
+    Ok(TxOutput {
+        value,
+        script_pubkey,
+    })
+}
+
+/// Returns (input_index, witness_items).
+type WitnessEntry = (usize, Vec<Vec<u8>>);
+fn parse_witness(raw: &str) -> Result<WitnessEntry, Box<dyn Error>> {
+    let (index_part, items_part) = raw
+        .split_once(':')
+        .ok_or_else(|| err(format!("--witness '{raw}' must be '<input_index>:<items>'")))?;
+
+    let index: usize = index_part.parse().map_err(|_| {
+        err(format!(
+            "--witness '{raw}': input_index must be a valid number"
+        ))
+    })?;
+
+    let items = if items_part.is_empty() {
+        Vec::new()
+    } else {
+        items_part
+            .split(',')
+            .map(|item| {
+                hex_to_bytes(item)
+                    .map_err(|e| err(format!("--witness '{raw}': invalid item hex: {e}")))
+            })
+            .collect::<Result<Vec<_>, _>>()?
+    };
+
+    Ok((index, items))
+}
 
 // ┌──────────────────────────────┐
 // │ Version          4 bytes     │
@@ -120,29 +248,27 @@ fn bytes_to_hex(bytes: &[u8]) -> String {
 // │ Locktime         4 bytes  ←  │
 // └──────────────────────────────┘
 
-
 fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
+    let mut result = Vec::new();
 
-     let mut result = Vec::new();
-
-        // add version number
-          // to_le_bytes: converts the integer into its little-endian byte representation.
+    // add version number
+    // to_le_bytes: converts the integer into its little-endian byte representation.
     //  extend_from_slice: Take these bytes and append them to result.
-        result.extend_from_slice(&trx.version.to_le_bytes());
+    result.extend_from_slice(&trx.version.to_le_bytes());
 
-     if trx.segwit {
+    if trx.segwit {
         result.push(0x00); // marker
         result.push(0x01); // flag
-     };
+    };
 
-     // INPUTT COUNT
-      // script_sig: vec![] is empty because this particular transaction is a SegWit P2WPKH transaction.
-        // scriptSig belongs to the traditional input structure.
-        // witness contains the signature and public key for a native SegWit input.
-     result.extend_from_slice(&encode_varint(trx.inputs.len()));
+    // INPUTT COUNT
+    // script_sig: vec![] is empty because this particular transaction is a SegWit P2WPKH transaction.
+    // scriptSig belongs to the traditional input structure.
+    // witness contains the signature and public key for a native SegWit input.
+    result.extend_from_slice(&encode_varint(trx.inputs.len()));
 
-     // input data 
-        for input in &trx.inputs {
+    // input data
+    for input in &trx.inputs {
         // Previous transaction ID
         result.extend_from_slice(&input.prev_txid);
 
@@ -161,8 +287,8 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
     // OUTPUT COUNT
     result.extend_from_slice(&encode_varint(trx.outputs.len()));
 
-    // OUTPUT DATA 
-        for output in &trx.outputs {
+    // OUTPUT DATA
+    for output in &trx.outputs {
         // Value in satoshis
         result.extend_from_slice(&output.value.to_le_bytes());
 
@@ -174,7 +300,7 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
     }
 
     // witness data
-       if trx.segwit {
+    if trx.segwit {
         for input in &trx.inputs {
             // Number of witness items
             result.extend_from_slice(&encode_varint(input.witness.len()));
@@ -189,11 +315,10 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
         }
     }
 
-    // add locktime 
+    // add locktime
     result.extend_from_slice(&trx.locktime.to_le_bytes());
 
-    result 
-
+    result
 }
 
 // Bitcoin uses VarInts (encode_varint) when it needs to store things like:
@@ -203,7 +328,6 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
 // script length
 // number of witness items
 // witness item length
-
 
 fn encode_varint(value: usize) -> Vec<u8> {
     match value {
@@ -229,6 +353,71 @@ fn encode_varint(value: usize) -> Vec<u8> {
     }
 }
 
+fn prompt(label: &str) -> Result<String, Box<dyn Error>> {
+    print!("{label}: ");
+    io::stdout().flush()?;
+    let mut line = String::new();
+    io::stdin().read_line(&mut line)?;
+    Ok(line.trim().to_string())
+}
+
+fn run_interactive() -> Result<Transaction, Box<dyn Error>> {
+    let version: i32 = prompt("Transaction version")?.parse()?;
+    let locktime: u32 = prompt("Locktime")?.parse()?;
+    let segwit = prompt("Is this a SegWit transaction? (y/n)")?.eq_ignore_ascii_case("y");
+
+    let mut inputs = Vec::new();
+    loop {
+        let raw = prompt("Input as prev_txid:vout:sequence:script_sig (blank to finish)")?;
+        if raw.is_empty() {
+            break;
+        }
+        match parse_input(&raw) {
+            Ok(input) => inputs.push(input),
+            Err(e) => println!("  invalid input, try again: {e}"),
+        }
+    }
+
+    let mut outputs = Vec::new();
+    loop {
+        let raw = prompt("Output as value:script_pubkey (blank to finish)")?;
+        if raw.is_empty() {
+            break;
+        }
+        match parse_output(&raw) {
+            Ok(output) => outputs.push(output),
+            Err(e) => println!("  invalid output, try again: {e}"),
+        }
+    }
+
+    if segwit {
+        loop {
+            let raw = prompt("Witness as input_index:item1,item2,... (blank to finish)")?;
+            if raw.is_empty() {
+                break;
+            }
+            match parse_witness(&raw) {
+                Ok((index, items)) => {
+                    if let Some(input) = inputs.get_mut(index) {
+                        input.witness = items;
+                    } else {
+                        println!("  input index {index} out of range, ignoring");
+                    }
+                }
+                Err(e) => println!("  invalid witness data, try again: {e}"),
+            }
+        }
+    }
+
+    Ok(Transaction {
+        version,
+        inputs,
+        outputs,
+        locktime,
+        segwit,
+    })
+}
+
 // Bitcoin CompactSize follows this structure:
 // Value range          Encoding
 
@@ -241,7 +430,6 @@ fn encode_varint(value: usize) -> Vec<u8> {
 
 // larger values        FF + 8 bytes
 
-
 // A simpler way to visualize CompactSize
 //               ┌── small value?
 //               │
@@ -252,20 +440,17 @@ fn encode_varint(value: usize) -> Vec<u8> {
 //                     ↓
 //                    [XX]
 
-
 //            253 - 65535
 //               │
 //               └── FD + 2 bytes
 //                     ↓
 //                  [FD][XX XX]
 
-
 //            65536 - 4294967295
 //               │
 //               └── FE + 4 bytes
 //                     ↓
 //               [FE][XX XX XX XX]
-
 
 //            larger
 //               │
