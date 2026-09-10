@@ -1,0 +1,19 @@
+# Standalone crate, like the other lab weeks — not part of any parent workspace.
+[workspace]
+
+[package]
+name = "bitcoin-tx-serializer"
+version = "0.1.0"
+edition = "2024"
+description = "Rust for Bitcoin 2.0 — Transaction serializer assignment"
+license = "MIT"
+publish = false
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+thiserror = "1.0"
+hex = "0.4"
+
+[[bin]]
+name = "bitcoin-tx-serializer"
+path = "src/main.rs"
