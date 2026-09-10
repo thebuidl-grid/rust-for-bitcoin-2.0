@@ -2,7 +2,8 @@
 
 ## Commands used
 
-TODO: Record the verbose transaction-decoding commands.
+cargo build
+cargo run --bin lab_06_usage
 
 ## Terminal output
 
