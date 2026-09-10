@@ -1,7 +1,4 @@
-
 use serde::{Serialize, Serializer};
-
-
 
 #[derive(Debug, Serialize)]
 pub struct Transaction {
@@ -12,10 +9,9 @@ pub struct Transaction {
     pub lock_time: u32,
 }
 
-
 #[derive(Debug, Serialize)]
 pub struct Input {
-    pub txid: Txid, // [u8; 32],
+    pub txid: Txid,
     pub output_index: u32,
     pub script_sig: Vec<u8>,
     pub sequence: u32
@@ -29,36 +25,39 @@ pub struct Output {
 }
 
 fn as_btc<S: Serializer, T: BitcoinValue>(t: &T, s: S) -> Result<S::Ok, S::Error> {
-
+    s.serialize_f64(t.to_btc())
 }
 
-#[derive(Debug)]
-pub struct Amount( u64);
+#[derive(Debug, Clone)]
+pub struct Amount(pub u64);
 
 impl Amount {
-  // type associated functiion that initiate the instance of the struct i.e Amount
-  pub fn from_sat(satoshi: u64) -> Amount {
-    Amount(satoshi)
-  }
+    pub fn from_sat(satoshi: u64) -> Amount {
+        Amount(satoshi)
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Txid([u8; 32]);
-
-// [u8; 32] => array of 32 element each element is 1 byte [u8]; i.e one byte is u8;
 
 impl Txid {
     pub fn from_bytes(bytes: [u8; 32]) -> Txid {
+        Txid(bytes)
+    }
+
+    pub fn from_bytes_reversed(mut bytes: [u8; 32]) -> Txid {
+        bytes.reverse();
         Txid(bytes)
     }
 }
 
 impl Serialize for Txid {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-       
+        let mut reversed = self.0;
+        reversed.reverse();
+        s.serialize_str(&hex::encode(reversed))
     }
 }
-
 
 trait BitcoinValue {
     fn to_btc(&self) -> f64;
@@ -66,12 +65,6 @@ trait BitcoinValue {
 
 impl BitcoinValue for Amount {
     fn to_btc(&self) -> f64 {
-       
+        self.0 as f64 / 100_000_000.0
     }
 }
-
-
-
-
-
-
