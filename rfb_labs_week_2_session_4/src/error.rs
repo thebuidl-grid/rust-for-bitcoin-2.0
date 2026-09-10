@@ -42,9 +42,49 @@ pub enum LibraryError {
 
 impl fmt::Display for LibraryError {
     fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 2): return a useful, human-readable message for every
-        // variant. Include the ids and numbers the variant carries.
-        todo!("implement Display for LibraryError")
+        match self {
+            LibraryError::EmptyTitle => write!(_formatter, "title cannot be empty"),
+            LibraryError::DuplicateItemId { id } => {
+                write!(_formatter, "item id {} already exists", id)
+            }
+            LibraryError::DuplicateMemberId { id } => {
+                write!(_formatter, "member id {} already exists", id)
+            }
+            LibraryError::ItemNotFound { id } => {
+                write!(_formatter, "item id {} not found", id)
+            }
+            LibraryError::MemberNotFound { id } => {
+                write!(_formatter, "member id {} not found", id)
+            }
+            LibraryError::ItemAlreadyOnLoan { id, member_id } => {
+                write!(
+                    _formatter,
+                    "item id {} is already on loan to member id {}",
+                    id, member_id
+                )
+            }
+            LibraryError::ItemNotOnLoan { id } => {
+                write!(_formatter, "item id {} is not currently on loan", id)
+            }
+            LibraryError::ItemIsLost { id } => {
+                write!(_formatter, "item id {} is marked as lost", id)
+            }
+            LibraryError::BorrowLimitReached { member_id, limit } => {
+                write!(
+                    _formatter,
+                    "member id {} has reached the borrow limit of {}",
+                    member_id, limit
+                )
+            }
+            LibraryError::InvalidReturnDay {
+                day_borrowed,
+                day_returned,
+            } => write!(
+                _formatter,
+                "invalid return day: borrowed on day {}, returned on day {}",
+                day_borrowed, day_returned
+            ),
+        }
     }
 }
 
