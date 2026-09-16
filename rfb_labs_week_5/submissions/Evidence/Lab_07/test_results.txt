@@ -1,0 +1,14 @@
+Lab 07 — BIP39 Mnemonic
+==================================================
+
+Test Results: 4/4 PASSED
+
+Functions Tested:
+1. rejects_an_invalid_checksum() - ✓ PASS
+2. validates_entropy_and_checksum_structure() - ✓ PASS
+3. matches_the_published_bip39_seed_vector() - ✓ PASS
+4. passphrase_selects_a_different_wallet() - ✓ PASS
+
+Test execution: cargo test --test lab_07
+
+Result: ✓ All 4 tests passed successfully
