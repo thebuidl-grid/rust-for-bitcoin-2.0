@@ -1,0 +1,14 @@
+Lab 03 — P2SH Multisig
+==================================================
+
+Test Results: 4/4 PASSED
+
+Functions Tested:
+1. build_2_of_3_redeem_script() - ✓ PASS
+2. derive_p2sh_address() - ✓ PASS
+3. build_p2sh_script_pubkey() - ✓ PASS
+4. inspect_p2sh_multisig() - ✓ PASS
+
+Test execution: cargo test --test lab_03
+
+Result: ✓ All 4 tests passed successfully

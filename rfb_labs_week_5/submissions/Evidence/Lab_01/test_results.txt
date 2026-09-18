@@ -1,0 +1,41 @@
+Lab 01 — Address and network identification
+=============================================
+
+Test Results: 4/4 PASSED
+
+Functions Tested:
+1. identify_prefix() - Maps address strings to AddressFormat
+   Status: ✓ PASS
+   Test: identifies_human_readable_prefixes
+
+2. expected_prefix() - Returns correct prefix for format + network
+   Status: ✓ PASS
+   Test: maps_regtest_prefixes
+
+3. inspect_address() - Parses and validates addresses
+   Status: ✓ PASS
+   Test: inspects_a_network_checked_address
+
+4. script_pubkey_hex() - Converts address to scriptPubKey hex
+   Status: ✓ PASS
+   Test: rejects_an_address_for_the_wrong_network
+
+Test execution: cargo test --test lab_01
+
+Output:
+-------
+running 4 tests
+test identifies_human_readable_prefixes ... ok
+test maps_regtest_prefixes ... ok
+test inspects_a_network_checked_address ... ok
+test rejects_an_address_for_the_wrong_network ... ok
+
+test result: ok. 4 passed; 0 failed
+
+Key observations:
+- Prefix detection works correctly for P2PKH (1, m/n)
+- Prefix detection works correctly for P2SH (3, 2)
+- Prefix detection works correctly for P2WPKH (bc1q, tb1q, bcrt1q)
+- Prefix detection works correctly for P2TR (bc1p, tb1p, bcrt1p)
+- Network validation correctly rejects cross-network addresses
+- scriptPubKey encoding is correct for each address type
