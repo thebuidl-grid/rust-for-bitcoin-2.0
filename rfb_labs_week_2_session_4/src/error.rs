@@ -41,10 +41,43 @@ pub enum LibraryError {
 }
 
 impl fmt::Display for LibraryError {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 2): return a useful, human-readable message for every
-        // variant. Include the ids and numbers the variant carries.
-        todo!("implement Display for LibraryError")
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LibraryError::EmptyTitle => write!(formatter, "item title cannot be empty"),
+            LibraryError::DuplicateItemId { id } => {
+                write!(formatter, "item id {id} is already stocked")
+            }
+            LibraryError::DuplicateMemberId { id } => {
+                write!(formatter, "member id {id} is already registered")
+            }
+            LibraryError::ItemNotFound { id } => {
+                write!(formatter, "item id {id} was not found")
+            }
+            LibraryError::MemberNotFound { id } => {
+                write!(formatter, "member id {id} was not found")
+            }
+            LibraryError::ItemAlreadyOnLoan { id, member_id } => write!(
+                formatter,
+                "item id {id} is already on loan to member id {member_id}"
+            ),
+            LibraryError::ItemNotOnLoan { id } => {
+                write!(formatter, "item id {id} is not currently on loan")
+            }
+            LibraryError::ItemIsLost { id } => {
+                write!(formatter, "item id {id} is marked lost")
+            }
+            LibraryError::BorrowLimitReached { member_id, limit } => write!(
+                formatter,
+                "member id {member_id} has reached the borrow limit {limit}"
+            ),
+            LibraryError::InvalidReturnDay {
+                day_borrowed,
+                day_returned,
+            } => write!(
+                formatter,
+                "return day {day_returned} is earlier than borrow day {day_borrowed}"
+            ),
+        }
     }
 }
 
