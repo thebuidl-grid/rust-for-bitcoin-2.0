@@ -17,7 +17,7 @@ pub struct Transaction {
 pub struct Input {
     pub txid: Txid, // [u8; 32],
     pub output_index: u32,
-    pub script_sig: Vec<u8>,
+    pub script_sig: String, // hex
     pub sequence: u32
 }
 
@@ -25,11 +25,13 @@ pub struct Input {
 pub struct Output {
     #[serde(serialize_with = "as_btc")]
     pub amount: Amount,
-    pub script_pubkey: Vec<u8>,
+    pub script_pubkey: String, // hex
 }
 
+// serde calls this instead of serializing the raw satoshi count,
+// so amounts show up in the JSON as BTC.
 fn as_btc<S: Serializer, T: BitcoinValue>(t: &T, s: S) -> Result<S::Ok, S::Error> {
-
+    s.serialize_f64(t.to_btc())
 }
 
 #[derive(Debug)]
@@ -55,7 +57,10 @@ impl Txid {
 
 impl Serialize for Txid {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-       
+        // A txid is displayed in reverse byte order (big-endian) by convention.
+        let mut bytes = self.0;
+        bytes.reverse();
+        s.serialize_str(&hex::encode(bytes))
     }
 }
 
@@ -66,7 +71,7 @@ trait BitcoinValue {
 
 impl BitcoinValue for Amount {
     fn to_btc(&self) -> f64 {
-       
+        self.0 as f64 / 100_000_000.0 // 1 BTC = 100,000,000 satoshis
     }
 }
 
