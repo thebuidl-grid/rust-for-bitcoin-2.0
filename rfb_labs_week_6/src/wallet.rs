@@ -6,8 +6,12 @@ use crate::error::WalletError;
 /// - Address derivation (both receiving and change addresses)
 /// - UTXO tracking and balance calculation
 /// - Transaction creation and signing
+use bitcoin::secp256k1::Secp256k1;
+use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::Address;
 use bitcoin::Network;
+use bitcoin::PublicKey;
+use std::str::FromStr;
 
 /// Main wallet structure that manages Bitcoin addresses and transactions.
 ///
@@ -25,7 +29,7 @@ pub struct Wallet {
     network: Network,
     external_index: u32,
     internal_index: u32,
-    seed_phrase: String,
+    root_xprv: ExtendedPrivKey,
     external_addresses: Vec<String>,
     internal_addresses: Vec<String>,
 }
@@ -53,27 +57,28 @@ impl Wallet {
             ));
         }
 
-        for word in &words {
-            if word.is_empty() || word.len() > 20 {
-                return Err(WalletError::InvalidSeedPhrase(format!(
-                    "Invalid word in seed phrase: {}",
-                    word
-                )));
-            }
-        }
+        let mnemonic = bip39::Mnemonic::parse(seed_phrase).map_err(|e| {
+            WalletError::InvalidSeedPhrase(format!("Invalid BIP39 mnemonic: {}", e))
+        })?;
+
+        let seed = mnemonic.to_seed("");
+        let root_xprv = ExtendedPrivKey::new_master(network, &seed).map_err(|e| {
+            WalletError::WalletCreationError(format!("Failed to derive master key: {}", e))
+        })?;
 
         Ok(Wallet {
             network,
             external_index: 0,
             internal_index: 0,
-            seed_phrase: seed_phrase.to_string(),
+            root_xprv,
             external_addresses: Vec::new(),
             internal_addresses: Vec::new(),
         })
     }
 
     pub fn get_new_address(&mut self) -> Result<AddressString, WalletError> {
-        let addr_str = self.generate_test_address(self.external_index, false);
+        let address = self.derive_address(self.external_index, false)?;
+        let addr_str = address.to_string();
         self.external_addresses.push(addr_str.clone());
         self.external_index += 1;
 
@@ -81,39 +86,32 @@ impl Wallet {
     }
 
     pub fn get_change_address(&mut self) -> Result<AddressString, WalletError> {
-        let addr_str = self.generate_test_address(self.internal_index, true);
+        let address = self.derive_address(self.internal_index, true)?;
+        let addr_str = address.to_string();
         self.internal_addresses.push(addr_str.clone());
         self.internal_index += 1;
 
         Ok(AddressString(addr_str))
     }
 
-    fn generate_test_address(&self, index: u32, is_change: bool) -> String {
-        let chain_char = if is_change { "c" } else { "e" };
+    /// Derives a native SegWit (BIP84) address at `m/84'/0'/0'/{0,1}/{index}`.
+    fn derive_address(&self, index: u32, is_change: bool) -> Result<Address, WalletError> {
+        let secp = Secp256k1::new();
+        let chain = if is_change { 1 } else { 0 };
 
-        let seed_hash = self
-            .seed_phrase
-            .chars()
-            .take(8)
-            .fold(0u64, |acc, c| acc.wrapping_mul(31).wrapping_add(c as u64));
+        let path = DerivationPath::from_str(&format!("m/84'/0'/0'/{}/{}", chain, index))
+            .map_err(|e| WalletError::Internal(format!("Invalid derivation path: {}", e)))?;
 
-        let combined = seed_hash.wrapping_add(index as u64);
-        let hex = format!("{:016x}", combined);
+        let child_xprv = self
+            .root_xprv
+            .derive_priv(&secp, &path)
+            .map_err(|e| WalletError::Internal(format!("Key derivation failed: {}", e)))?;
 
-        // Create valid-looking bech32 address
-        match self.network {
-            Network::Regtest => {
-                // Regtest uses tb1 prefix (same as testnet for bech32)
-                format!("tb1q{}{}{}", chain_char, &hex[0..15], index % 10)
-            }
-            Network::Testnet => {
-                format!("tb1q{}{}{}", chain_char, &hex[0..15], index % 10)
-            }
-            Network::Bitcoin => {
-                format!("bc1q{}{}{}", chain_char, &hex[0..15], index % 10)
-            }
-            _ => format!("bc1q{}{}{}", chain_char, &hex[0..15], index % 10),
-        }
+        let child_xpub = ExtendedPubKey::from_priv(&secp, &child_xprv);
+        let public_key = PublicKey::new(child_xpub.public_key);
+
+        Address::p2wpkh(&public_key, self.network)
+            .map_err(|e| WalletError::Internal(format!("Address generation failed: {}", e)))
     }
 
     pub fn get_balance(&self) -> Result<u64, WalletError> {
@@ -134,7 +132,9 @@ impl Wallet {
     }
 
     pub fn get_xpub(&self) -> Result<String, WalletError> {
-        Ok("xpub_placeholder".to_string())
+        let secp = Secp256k1::new();
+        let xpub = ExtendedPubKey::from_priv(&secp, &self.root_xprv);
+        Ok(xpub.to_string())
     }
 }
 
@@ -163,14 +163,14 @@ mod tests {
     #[tokio::test]
     async fn test_wallet_creation_valid_seed() {
         let seed = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let wallet = Wallet::from_seed(seed, Network::Regtest);
+        let wallet = Wallet::from_seed(seed, Network::Regtest).await;
         assert!(wallet.is_ok());
     }
 
     #[tokio::test]
     async fn test_wallet_creation_invalid_seed() {
         let seed = "abandon abandon abandon";
-        let wallet = Wallet::from_seed(seed, Network::Regtest);
+        let wallet = Wallet::from_seed(seed, Network::Regtest).await;
         assert!(wallet.is_err());
     }
 }

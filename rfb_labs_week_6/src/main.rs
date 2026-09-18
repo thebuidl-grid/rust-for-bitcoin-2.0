@@ -178,8 +178,8 @@ async fn init_wallet(seed: Option<String>, config: &WalletConfig, db: &Database)
     info!("First receiving address: {}", address);
 
     // Save to database
-    db.save_wallet_info(&config.bitcoin_network, "xpub_placeholder")
-        .await?;
+    let xpub = wallet.get_xpub()?;
+    db.save_wallet_info(&config.bitcoin_network, &xpub).await?;
     db.save_address(&address.to_string(), "m/84'/0'/0'/0/0", "external", 0)
         .await?;
 
