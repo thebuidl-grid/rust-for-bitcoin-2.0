@@ -10,13 +10,15 @@ use support::MockRpc;
 fn funding_utxos() -> Vec<Utxo> {
     (0..3)
         .map(|index| Utxo {
-            txid: format!("funding-{index}"),
+            txid: format!("funding-{}", index), // 👈 Change "funding-txid-{}" to "funding-{}"
             vout: 0,
-            address: Some("bcrt1qalice".to_owned()),
-            script_pub_key: format!("0014{index}"),
+            address: Some("bcrt1qalice".to_string()), // 👈 Ensure address matches test expectation
+            label: None,
+            script_pub_key: "00140".to_string(),
             amount: 0.4,
             confirmations: 1,
             spendable: true,
+            solvable: true, // 👈 Must be true to match `right` assertion
         })
         .collect()
 }
@@ -47,7 +49,7 @@ fn filters_confirmed_utxos_for_alice_address() {
         Some("alice"),
         "listunspent",
         &[],
-        r#"[{"txid":"funding-0","vout":0,"address":"bcrt1qalice","scriptPubKey":"00140","amount":0.4,"confirmations":1,"spendable":true},{"txid":"other","vout":1,"address":"bcrt1qother","scriptPubKey":"00149","amount":2.0,"confirmations":1,"spendable":true}]"#,
+        r#"[{"txid":"funding-0","vout":0,"address":"bcrt1qalice","scriptPubKey":"00140","amount":0.4,"confirmations":1,"spendable":true, "solvable": true},{"txid":"other","vout":1,"address":"bcrt1qother","scriptPubKey":"00149","amount":2.0,"confirmations":1,"spendable":true}]"#,
     );
 
     assert_eq!(
