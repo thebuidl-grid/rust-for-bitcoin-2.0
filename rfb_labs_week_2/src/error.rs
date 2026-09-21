@@ -20,9 +20,50 @@ pub enum TransactionError {
 }
 
 impl fmt::Display for TransactionError {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO(Part 4): return a useful message for every error variant.
-        todo!("implement Display for TransactionError")
+
+        match self {
+            TransactionError::NoInputs => {
+                write!(formatter, "NoInputs: Transaction has no Inputs")
+            }
+            TransactionError::NoOutputs => {
+                write!(formatter, "NoOutputs: Transaction has no Outputs")
+            }
+            TransactionError::ZeroValueOutput => {
+                write!(
+                    formatter,
+                    "ZeroValueOutput: Transaction Output ia Zero and Not OP_RETURN"
+                )
+            }
+            TransactionError::OutputsExceedInputs {
+                total_inputs,
+                total_outputs,
+            } => {
+                write!(formatter, "OutputsExceedInputs: Transaction outputs: {total_outputs} exceeds Transaction Inputs: {total_inputs}")
+            }
+            TransactionError::CoinbaseMixedWithRegularInputs => {
+                write!(formatter, "CoinbaseMixedWithRegularInputs: Transaction contains Both Coinbase and Regu;ar Transaction Inputs")
+            }
+            TransactionError::MultipleCoinbaseInputs => {
+                write!(formatter, "MultipleCoinbaseInputs: Transaction contains more than one Coinbase Transaction Input")
+            }
+            TransactionError::InvalidTxid => {
+                write!(
+                    formatter,
+                    "InvalidTxid: Transaction contains an invalid TXID"
+                )
+            }
+            TransactionError::InsufficientFunds {
+                available,
+                required,
+            } => {
+                write!(
+                    formatter,
+                    "InsufficientFunds: Transaction need {required} sats but ave {available} sats"
+                )
+            }
+        }
     }
 }
 
