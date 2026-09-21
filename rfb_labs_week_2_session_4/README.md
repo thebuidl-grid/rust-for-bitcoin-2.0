@@ -1,62 +1,107 @@
-# Rust for Bitcoin 2.0 — Week 2, Session 4
+use rfb_labs_week_2_session_4::{Item, Library, LibraryError, LoanStatus, MediaKind, Member};
 
-Build a small lending library while practising structs, enums, traits,
-ownership, borrowing, collections, and `Result`-based error handling. No
-Bitcoin and no external crates — just Rust.
+fn library_with_items() -> Library {
+    let mut library = Library::new();
 
-The crate is intentionally incomplete. Search for `TODO` and implement each
-part; do not change the public type names or function signatures.
+    for (id, title, author, kind) in [
+        (1, "Dune", "Frank Herbert", MediaKind::Book { pages: 320 }),
+        (
+            2,
+            "Children of Dune",
+            "Frank Herbert",
+            MediaKind::Book { pages: 180 },
+        ),
+        (
+            3,
+            "Project Hail Mary",
+            "Andy Weir",
+            MediaKind::Audiobook { minutes: 540 },
+        ),
+        (
+            4,
+            "The Rust Programming Language",
+            "Steve Klabnik",
+            MediaKind::Ebook { size_kb: 1_200 },
+        ),
+    ] {
+        library
+            .add_item(Item::new(id, title.into(), author.into(), kind))
+            .unwrap();
+    }
 
-## Recommended workflow
+    library
+        .register_member(Member::new(100, "Ada".into()))
+        .unwrap();
 
-1. Read [ASSIGNMENT.md](ASSIGNMENT.md).
-2. Complete Part 2 in `error.rs`, then Part 3 in `library.rs`.
-3. Remove `#[ignore]` from the relevant test and run it.
-4. Complete the traits in Part 4 and the two operations in Parts 5–6.
-5. Run the ownership experiments and record the errors.
-6. Build the demo in `main.rs`.
-7. Add the remaining required tests yourself.
+    library
+}
 
-```bash
-cargo test
-cargo test -- --ignored
-cargo run
-cargo fmt --check
-cargo clippy --all-targets --all-features -- -D warnings
-```
+// These tests are ignored so the starter repository builds before students
+// implement the TODOs. Remove `#[ignore]` from one test at a time while working.
 
-`cargo test` checks the starter project. Ignored tests intentionally exercise
-unfinished code; enable them progressively rather than leaving them ignored in
-the submission.
+#[test]
+#[ignore = "enable after completing Parts 3 and 5"]
+fn checkout_updates_both_the_item_and_the_member() {
+    let mut library = library_with_items();
 
-## Written answers
+    library.checkout(1, 100, 5).unwrap();
 
-Answer in your own words. Add both ownership compiler errors from Part 7 as
-fenced text blocks, then explain what caused each.
+    assert_eq!(
+        library.find_item(1).unwrap().status,
+        LoanStatus::OnLoan {
+            member_id: 100,
+            day_borrowed: 5,
+        }
+    );
+    assert_eq!(library.find_member(100).unwrap().borrowed_item_ids, vec![1]);
+}
 
-1. Why is `LoanStatus` an enum rather than a `bool` plus two `Option` fields?
-2. What does `match` force you to do when a fourth `MediaKind` is added later?
-3. `Item::new` takes `String` rather than `&str`. Who owns the title afterwards?
-4. Why does `add_item` take `self` by `&mut` but `item` by value?
-5. When `add_item` returns `Err`, what happened to the `Item` the caller passed
-   in? Was that a good design choice, and what is the alternative?
-6. Why does `find_item` return `Option<&Item>` rather than `Option<Item>`?
-7. What is the lifetime `'a` in `items_by_author` actually saying?
-8. Why can't `checkout` hold a `&mut Item` and a `&mut Member` from the same
-   `Library` at once, and how did you structure the method around that?
-9. Why are `Library`'s fields private?
-10. What duplication does the provided `late_fee_cents` remove, and what would
-    you lose by making it a free function instead?
-11. Why is `Result` preferable to `panic!` for validation failures? Name a
-    place in this crate where a panic would be defensible.
-12. Which derive did you deliberately leave off a type, and why?
+#[test]
+#[ignore = "enable after completing Part 5"]
+fn a_member_cannot_exceed_the_borrow_limit() {
+    let mut library = library_with_items();
 
-## Design notes
+    library.checkout(1, 100, 0).unwrap();
+    library.checkout(2, 100, 0).unwrap();
+    library.checkout(3, 100, 0).unwrap();
 
-Describe any choices you made, including how you kept an item's status and its
-borrower's list from drifting apart, and (if attempted) the optional generic
-search.
+    assert_eq!(
+        library.checkout(4, 100, 0),
+        Err(LibraryError::BorrowLimitReached {
+            member_id: 100,
+            limit: 3,
+        })
+    );
+}
 
-## Example output
+#[test]
+#[ignore = "enable after completing Parts 4 and 6"]
+fn returning_a_book_late_charges_a_daily_fee() {
+    let mut library = library_with_items();
 
-Paste the output of `cargo run` here once Part 8 is complete.
+    // A book may be kept 21 days. Held for 30, so 9 days are overdue.
+    library.checkout(1, 100, 10).unwrap();
+
+    assert_eq!(library.return_item(1, 40), Ok(9 * 25));
+    assert_eq!(library.find_item(1).unwrap().status, LoanStatus::Available);
+    assert!(
+        library
+            .find_member(100)
+            .unwrap()
+            .borrowed_item_ids
+            .is_empty()
+    );
+}
+
+#[test]
+#[ignore = "enable after completing Part 3"]
+fn searching_by_author_borrows_rather_than_clones() {
+    let library = library_with_items();
+
+    let found = library.items_by_author("Frank Herbert");
+
+    assert_eq!(found.len(), 2);
+    assert_eq!(found[0].title, "Dune");
+    // `found` holds references into `library`, so these are the same item.
+    assert!(std::ptr::eq(found[0], library.find_item(1).unwrap()));
+}
