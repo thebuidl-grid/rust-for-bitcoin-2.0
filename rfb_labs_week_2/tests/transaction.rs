@@ -99,3 +99,75 @@ fn validation_rejects_mixed_coinbase_and_regular_inputs() {
         Err(rfb_labs_week_2::TransactionError::CoinbaseMixedWithRegularInputs)
     );
 }
+
+#[test]
+fn valid_coinbase_transaction_passes_validation() {
+    let mut transaction = Transaction::new(2, 0);
+    transaction.add_input(InputKind::Coinbase {
+        block_height: 100,
+        reward: 5_000,
+    });
+    transaction.add_output(output(5_000, "bc1qminer"));
+
+    assert_eq!(transaction.validate(), Ok(()));
+    assert_eq!(transaction.fee(), Ok(0));
+}
+
+#[test]
+fn validation_rejects_multiple_coinbase_inputs() {
+    let mut transaction = Transaction::new(2, 0);
+    transaction.add_input(InputKind::Coinbase {
+        block_height: 100,
+        reward: 5_000,
+    });
+    transaction.add_input(InputKind::Coinbase {
+        block_height: 101,
+        reward: 5_000,
+    });
+    transaction.add_output(output(10_000, "bc1qminer"));
+
+    assert_eq!(
+        transaction.validate(),
+        Err(rfb_labs_week_2::TransactionError::MultipleCoinbaseInputs)
+    );
+}
+
+#[test]
+fn validation_rejects_empty_regular_input_txid() {
+    let mut transaction = Transaction::new(2, 0);
+    transaction.add_input(InputKind::Regular {
+        previous_output: OutPoint {
+            txid: String::new(),
+            vout: 0,
+        },
+        value: 1_000,
+        sequence: u32::MAX,
+    });
+    transaction.add_output(output(1_000, "bc1qreceiver"));
+
+    assert_eq!(
+        transaction.validate(),
+        Err(rfb_labs_week_2::TransactionError::InvalidTxid)
+    );
+}
+
+#[test]
+fn finds_highest_value_output_and_recipient_outputs() {
+    let mut transaction = Transaction::new(2, 0);
+    transaction.add_input(regular_input(10_000));
+    transaction.add_output(output(3_000, "bc1qalice"));
+    transaction.add_output(output(5_000, "bc1qbob"));
+    transaction.add_output(output(1_000, "bc1qalice"));
+
+    assert_eq!(
+        rfb_labs_week_2::highest_value_output(&transaction).map(|item| item.value),
+        Some(5_000)
+    );
+
+    let alice_outputs = rfb_labs_week_2::find_outputs_for_recipient(&transaction, "bc1qalice");
+    assert_eq!(alice_outputs.len(), 2);
+    assert_eq!(
+        alice_outputs.iter().map(|item| item.value).sum::<u64>(),
+        4_000
+    );
+}
