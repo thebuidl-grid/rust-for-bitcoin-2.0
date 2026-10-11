@@ -1,0 +1,4 @@
+
+# Local wallet database
+*.sqlite
+
