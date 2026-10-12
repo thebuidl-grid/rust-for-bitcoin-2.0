@@ -1,0 +1,3172 @@
+//! Rendering (PLAN.md §8, §3a rule 2).
+//!
+//! Every emoji, badge, table and human sentence in this project is written
+//! here. Core hands over `Amount`, `FeeRate`, `Txid` and typed enums; this
+//! module turns them into Telegram HTML. Nothing in here may contain bitcoin
+//! logic, and nothing below the boundary may contain a word of this.
+
+use wallet_core::bitcoin::{Amount, Network};
+use wallet_core::types::{BackendStatus, FiatPrice};
+use wallet_core::{BackendError, CoreError};
+
+/// The network badge of §8.1. On mainnet it leads the first line, so a mistaken
+/// network is visible before an amount is read.
+///
+/// **No catch-all arm, deliberately.** `bitcoin::Network` is not
+/// `#[non_exhaustive]`, so an exhaustive match makes a new chain a compile
+/// error right here. This function had a `_ => "❔ UNKNOWN"` and it is exactly
+/// what hid `Testnet4` being missing: every card leads with this badge, so the
+/// whole UI would have read UNKNOWN, and nothing would have failed to build.
+pub fn badge(network: Network) -> &'static str {
+    match network {
+        Network::Bitcoin => "🟠 MAINNET",
+        Network::Regtest => "🧪 REGTEST",
+        Network::Testnet => "🧪 TESTNET",
+        // Spell the 4 out: which testnet you are on is the whole question,
+        // and a screenshot saying only TESTNET does not answer it.
+        Network::Testnet4 => "🧪 TESTNET4",
+        Network::Signet => "🧪 SIGNET",
+    }
+}
+
+/// Where this chain's transactions can be looked up, or `None` where they
+/// cannot.
+///
+/// `Option` rather than an empty string on purpose: it makes "there is no
+/// explorer" a case the caller has to handle, and it makes
+/// `if network == Network::Bitcoin` — which is how three cards quietly lost
+/// their links on every chain but mainnet — impossible to write again.
+///
+/// Exhaustive, for the same reason [`badge`] is.
+fn explorer_base(network: Network) -> Option<&'static str> {
+    match network {
+        Network::Bitcoin => Some("https://mempool.space"),
+        Network::Testnet => Some("https://mempool.space/testnet"),
+        Network::Testnet4 => Some("https://mempool.space/testnet4"),
+        Network::Signet => Some("https://mempool.space/signet"),
+        // A private chain nobody else can see. There is nothing to link to.
+        Network::Regtest => None,
+    }
+}
+
+/// An anchor to one transaction, or empty where the chain has no explorer.
+fn tx_link(network: Network, txid: &str, text: &str) -> String {
+    match explorer_base(network) {
+        Some(base) => format!(
+            "<a href=\"{base}/tx/{}\">{}</a>",
+            escape(txid),
+            escape(text)
+        ),
+        None => String::new(),
+    }
+}
+
+/// Sats with thin separators, plus BTC — every balance is shown both ways (§8.2).
+pub fn sats(amount: Amount) -> String {
+    format!("{} sats", group(amount.to_sat()))
+}
+
+/// Thousands separators without pulling in a formatting crate.
+pub fn group(n: u64) -> String {
+    let digits = n.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// An amount in dollars, as an approximation and never as a fact.
+///
+/// Always prefixed `≈`: the price is a third party's, minutes old, and the
+/// number of sats beside it is the real quantity. Rendered from whole cents so
+/// a float can never leak `$0.30000000000000004` into a card.
+pub fn usd(amount: Amount, price: &FiatPrice) -> String {
+    let cents = price.cents(amount);
+    format!("≈ ${}.{:02}", group(cents / 100), cents % 100)
+}
+
+/// The line that must follow any dollar figure on a test chain.
+///
+/// Regtest coins are worth nothing, and a screenshot of "≈ $262.11" travels
+/// without the 🧪 badge that says so. The caveat travels with the number.
+fn play_money_caveat(network: Network, price: &FiatPrice) -> String {
+    if network == Network::Bitcoin {
+        format!(
+            "\n\n<i>Dollar values are approximate, from {}.</i>",
+            escape(&price.source)
+        )
+    } else {
+        format!(
+            "\n\n<i>Test coins — worth nothing. Dollar values apply the real \
+             mainnet price from {} to play money, so you can see what the \
+             numbers would look like.</i>",
+            escape(&price.source)
+        )
+    }
+}
+
+/// Telegram HTML is a small allowlist of tags; anything user-supplied that
+/// reaches a message must go through here or it can break the parse.
+pub fn escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+/// Something the bot could not route. Distinguishes a mistyped command from
+/// stray conversation, because the useful reply differs (§8.1: errors are
+/// sentences with a next step).
+pub fn unrecognised(text: &str) -> String {
+    if text.starts_with('/') {
+        let name = text.split_whitespace().next().unwrap_or(text);
+        format!(
+            "I don't know <code>{}</code>. /help lists everything I do.",
+            escape(name)
+        )
+    } else {
+        "I only take commands — /help lists them.".into()
+    }
+}
+
+pub fn welcome(network: Network, has_wallet: bool) -> String {
+    let badge = badge(network);
+    if has_wallet {
+        format!(
+            "{badge}\n\n<b>Your wallet is ready.</b>\n\n\
+             /balance — what you hold\n\
+             /receive — an address to be paid at\n\
+             /send — pay someone\n\
+             /help — everything else"
+        )
+    } else {
+        format!(
+            "{badge}\n\n<b>A non-custodial Bitcoin wallet.</b>\n\n\
+             Your seed phrase is generated on this server, encrypted with a PIN only you know, \
+             and never leaves it. Nobody can move your coins without that PIN — and nobody can \
+             recover it for you either.\n\n\
+             /create — a new wallet\n\
+             /restore — an existing seed phrase"
+        )
+    }
+}
+
+/// A command a button can stand in for (§8.2, §8.5).
+///
+/// Every variant is a command that takes no argument, which is the whole
+/// entry rule: a tap carries intent and nothing else, so `cmd:<slug>:-` is
+/// the complete instruction and the handler needs nothing from the card the
+/// button was drawn on. That is what lets a button and the typed command run
+/// the *same* function rather than two that look alike.
+///
+/// Absent, deliberately:
+/// * `/tx`, `/bumpfee`, `/pj_receive`, `/mine` — each needs an argument a
+///   button cannot supply, and a button that opens a prompt for one is a
+///   different flow from the command, not the same one.
+/// * `/export` and `/delete` — §8.1 already rules that a destructive action
+///   takes a typed word rather than a button press. The command that *starts*
+///   one is the same question, so both stay typed-only.
+///
+/// `Send` is here because bare `/send` has its own well-defined behaviour —
+/// it prints the usage card — and that is exactly what the button does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MenuCommand {
+    Create,
+    Restore,
+    Unlock,
+    Lock,
+    Balance,
+    Receive,
+    Send,
+    History,
+    Addresses,
+    PjSessions,
+    Faucet,
+    Status,
+    Network,
+    Help,
+}
+
+/// Every variant, so the round-trip test and the keyboard cannot disagree
+/// about what exists.
+const MENU_COMMANDS: [MenuCommand; 14] = [
+    MenuCommand::Create,
+    MenuCommand::Restore,
+    MenuCommand::Unlock,
+    MenuCommand::Lock,
+    MenuCommand::Balance,
+    MenuCommand::Receive,
+    MenuCommand::Send,
+    MenuCommand::History,
+    MenuCommand::Addresses,
+    MenuCommand::PjSessions,
+    MenuCommand::Faucet,
+    MenuCommand::Status,
+    MenuCommand::Network,
+    MenuCommand::Help,
+];
+
+impl MenuCommand {
+    /// The slug carried in the callback data.
+    ///
+    /// It is the command's own name, so a log line, a callback payload and the
+    /// thing a user could have typed instead all read the same.
+    pub fn slug(self) -> &'static str {
+        match self {
+            MenuCommand::Create => "create",
+            MenuCommand::Restore => "restore",
+            MenuCommand::Unlock => "unlock",
+            MenuCommand::Lock => "lock",
+            MenuCommand::Balance => "balance",
+            MenuCommand::Receive => "receive",
+            MenuCommand::Send => "send",
+            MenuCommand::History => "history",
+            MenuCommand::Addresses => "addresses",
+            MenuCommand::PjSessions => "pj_sessions",
+            MenuCommand::Faucet => "faucet",
+            MenuCommand::Status => "status",
+            MenuCommand::Network => "network",
+            MenuCommand::Help => "help",
+        }
+    }
+
+    /// `None` for anything this build does not recognise — an older card in an
+    /// older chat can outlive the button it carries.
+    pub fn from_slug(slug: &str) -> Option<MenuCommand> {
+        MENU_COMMANDS.into_iter().find(|c| c.slug() == slug)
+    }
+
+    /// What the button says. The cards keep listing the commands in text, so
+    /// the menu is a shortcut for someone who knows them and a hint for
+    /// someone who does not — it never has to be the only way in.
+    fn label(self) -> &'static str {
+        match self {
+            MenuCommand::Create => "🆕 Create wallet",
+            MenuCommand::Restore => "♻️ Restore wallet",
+            MenuCommand::Unlock => "🔓 Unlock",
+            MenuCommand::Lock => "🔒 Lock",
+            MenuCommand::Balance => "💰 Balance",
+            MenuCommand::Receive => "📥 Receive",
+            MenuCommand::Send => "📤 Send",
+            MenuCommand::History => "📜 History",
+            MenuCommand::Addresses => "🏷 Addresses",
+            MenuCommand::PjSessions => "🤝 Payjoin",
+            MenuCommand::Faucet => "🚰 Faucet",
+            MenuCommand::Status => "📡 Status",
+            MenuCommand::Network => "🌐 Network",
+            MenuCommand::Help => "❓ Help",
+        }
+    }
+
+    /// §8.5: `action:subject:arg`. The arg is always `-`, because a command
+    /// that needed one could not be on this menu in the first place.
+    pub fn callback_data(self) -> String {
+        format!("{}{}:-", MENU_PREFIX, self.slug())
+    }
+}
+
+/// The routing prefix of §8.5, in one place so the dispatcher and the buttons
+/// cannot disagree about it.
+pub const MENU_PREFIX: &str = "cmd:";
+
+/// The menu that goes under the `/start` and `/help` cards.
+///
+/// What it offers depends on the wallet and the chain, for the same reason
+/// [`network_card`] is exhaustive: a button core will refuse is worse than no
+/// button, because the user has no way to tell which it was.
+pub fn menu_keyboard(network: Network, has_wallet: bool) -> InlineKeyboardMarkup {
+    let rows: Vec<Vec<MenuCommand>> = if has_wallet {
+        let mut rows = vec![
+            vec![MenuCommand::Balance, MenuCommand::Receive],
+            vec![MenuCommand::Send, MenuCommand::History],
+            vec![MenuCommand::Addresses, MenuCommand::PjSessions],
+            // Both, always. Which one applies depends on a session that can
+            // expire while the card sits in the chat, and a keyboard drawn
+            // from state goes stale silently — one of the two buttons simply
+            // stops being there when it is the one you want.
+            vec![MenuCommand::Unlock, MenuCommand::Lock],
+        ];
+        if network == Network::Regtest {
+            rows.push(vec![MenuCommand::Faucet]);
+        }
+        rows.push(vec![MenuCommand::Status, MenuCommand::Network]);
+        rows.push(vec![MenuCommand::Help]);
+        rows
+    } else {
+        // No /balance, no /receive: there is nothing to show yet, and core
+        // would answer every one of them with NoWallet.
+        vec![
+            vec![MenuCommand::Create, MenuCommand::Restore],
+            vec![MenuCommand::Status, MenuCommand::Network],
+            vec![MenuCommand::Help],
+        ]
+    };
+
+    InlineKeyboardMarkup::new(rows.into_iter().map(|row| {
+        row.into_iter()
+            .map(|c| InlineKeyboardButton::callback(c.label(), c.callback_data()))
+            .collect::<Vec<_>>()
+    }))
+}
+
+/// `/status` (§8.2). The call budget appears only where there is one to spend.
+///
+/// The price row is always drawn, including when there is no price. A missing
+/// dollar figure elsewhere is invisible — the card simply renders without it —
+/// so this is the one place that can distinguish "the feature is off" from
+/// "the price source is unreachable", which is exactly the question an
+/// operator has when the numbers stop appearing.
+pub fn status(
+    s: &BackendStatus,
+    session: Option<std::time::Duration>,
+    price: Option<&FiatPrice>,
+) -> String {
+    let mut out = format!(
+        "{}\n\n<b>Backend</b>\nTip      {}\nLatency  {} ms",
+        badge(s.network),
+        group(u64::from(s.tip_height)),
+        s.latency.as_millis()
+    );
+
+    if let (Some(used), Some(budget)) = (s.calls_used, s.call_budget) {
+        out.push_str(&format!("\nCalls    {used} / {budget} per minute"));
+    }
+
+    if s.degraded {
+        out.push_str("\n\n⚠️ The backend is slow or rate-limited; commands may lag.");
+    }
+
+    out.push_str(&match price {
+        Some(p) => format!(
+            "\n\n<b>Price</b>\n1 BTC ≈ ${} ({})",
+            group(p.usd_per_btc.round() as u64),
+            escape(&p.source)
+        ),
+        None => "\n\n<b>Price</b>\nUnavailable — dollar values are hidden.".to_string(),
+    });
+
+    out.push_str(&match session {
+        Some(left) => format!(
+            "\n\n<b>Session</b>\n🔓 Unlocked, {} min left",
+            left.as_secs() / 60
+        ),
+        None => "\n\n<b>Session</b>\n🔒 Locked".to_string(),
+    });
+
+    out
+}
+
+/// What this instance is bound to, and that its state is namespaced (§8.2).
+pub fn network_card(network: Network) -> String {
+    // Exhaustive, because the `_` arm this replaced told every chain but
+    // mainnet that `/mine 101` mints blocks — true only where nobody has to
+    // do real work to make a block.
+    let body = match network {
+        Network::Bitcoin => {
+            "Real bitcoin, on the real chain. Transactions cannot be reversed.\n\n\
+             Because this instance reaches Core through a hosted, allowlisted proxy, two \
+             things differ from a full node:\n\
+             • incoming payments are invisible until they confirm in a block;\n\
+             • fee estimates come from an external API, and every rate is floored at the \
+             node's own minimum."
+        }
+        Network::Regtest => {
+            "A private test chain. These coins are worth nothing — which is exactly what \
+             makes it the right place to learn the flows.\n\n\
+             <code>/mine 101</code> mints blocks (admins only)."
+        }
+        Network::Testnet | Network::Testnet4 | Network::Signet => {
+            "A public test chain. The coins are worth nothing and anyone can get them \
+             from a faucet — but everything else is real: real blocks, real miners, real \
+             waiting, and a real chain behind you.\n\n\
+             There is no <code>/mine</code> and no <code>/faucet</code> here. Nobody owns \
+             this chain, so blocks arrive when they arrive, and coins come from a public \
+             faucet rather than from this bot."
+        }
+    };
+    format!(
+        "{}\n\n{body}\n\nState for each network is stored separately; they can never mix.",
+        badge(network)
+    )
+}
+
+/// `CoreError` → "what happened + what to do" (§8.1).
+///
+/// This `match` is the reason no user-facing prose exists below the boundary.
+/// A raw backend string is surfaced in exactly one place — a broadcast
+/// rejection — where the node's own reason is the useful part.
+pub fn render_error(e: &CoreError) -> String {
+    match e {
+        CoreError::NoWallet =>
+            "You don't have a wallet yet. /create makes one, /restore brings an existing seed phrase.".into(),
+        CoreError::WalletExists =>
+            "You already have a wallet here. /delete removes it first — make sure your seed phrase is written down.".into(),
+        CoreError::BackupCheckFailed =>
+            "Those words don't match. Check the numbered words against what you wrote down, then try again.".into(),
+        CoreError::InvalidMnemonic =>
+            "That isn't a valid seed phrase. Check the spelling and the word order, then try /restore again.".into(),
+        CoreError::InvalidPin { min, max } =>
+            format!("A PIN must be {min}–{max} digits. Try again."),
+        CoreError::WrongPin { remaining } =>
+            format!("Wrong PIN. {remaining} attempt(s) left before a lockout."),
+        CoreError::PinLocked { .. } =>
+            "Too many wrong PINs. Wait for the lockout to clear, then try again.".into(),
+        CoreError::Locked =>
+            "Your wallet is locked. /unlock first.".into(),
+        CoreError::RestoreTooDeep { depth, max, eta } =>
+            format!(
+                "That birthday is {} blocks back — over the {} block limit, and about {} hours of \
+                 scanning. Use a later birthday if you know one.",
+                group(u64::from(*depth)), group(u64::from(*max)), eta.as_secs() / 3600
+            ),
+        CoreError::InvalidPaymentTarget { network } =>
+            format!("That isn't a valid address or BIP21 URI for {}.", badge(*network)),
+        CoreError::InsufficientFunds { needed, available } =>
+            format!(
+                "Not enough funds: this would cost {}, and you have {}.",
+                sats(*needed), sats(*available)
+            ),
+        CoreError::FeeBelowFloor { given, floor } =>
+            format!(
+                "{} sat/vB is below the network's current minimum of {} sat/vB, so it would never \
+                 relay. Choose a higher rate.",
+                given.to_sat_per_vb_ceil(), floor.to_sat_per_vb_ceil()
+            ),
+        CoreError::OverSendCap { amount, cap } =>
+            format!(
+                "{} is over this bot's per-payment cap of {}.",
+                sats(*amount), sats(*cap)
+            ),
+        CoreError::CannotBumpFee { reason } => {
+            use wallet_core::error::FeeBumpRefusal;
+            match reason {
+                FeeBumpRefusal::AlreadyConfirmed =>
+                    "That transaction is already in a block, so its fee can't be changed — \
+                     and it doesn't need to be. /tx shows how many confirmations it has."
+                        .into(),
+                FeeBumpRefusal::NotFound =>
+                    "I don't know that transaction. /history lists the ones this wallet has, \
+                     and the txid has to be the whole thing.".into(),
+                FeeBumpRefusal::NotReplaceable =>
+                    "That transaction didn't signal replace-by-fee, so no node would accept a \
+                     replacement. You'll have to wait for it to confirm.".into(),
+                FeeBumpRefusal::RateTooLow { required } => format!(
+                    "A replacement has to outbid the original, and that rate doesn't. \
+                     The lowest the network will take here is {} sat/vB — choose that or higher.",
+                    required.to_sat_per_vb_ceil()
+                ),
+                FeeBumpRefusal::AbsoluteFeeTooLow { required } => format!(
+                    "A replacement has to pay more in total than the transaction it replaces. \
+                     That means at least {} here.",
+                    sats(*required)
+                ),
+            }
+        }
+        CoreError::QuoteExpired =>
+            "That payment card has expired, so the fee it quoted may be stale. Start /send again.".into(),
+        CoreError::BroadcastRejected { reason } =>
+            // The node's own words: the one place a raw string is the useful part.
+            format!("The network rejected the transaction:\n<code>{}</code>", escape(reason)),
+        CoreError::UnsupportedOnNetwork { network } =>
+            format!("That command isn't available on {}.", badge(*network)),
+        CoreError::Payjoin(_) =>
+            "The payjoin couldn't be completed. Your funds are untouched — /pj_sessions shows what happened.".into(),
+        CoreError::NoSuchSession =>
+            "No such payjoin session.".into(),
+        CoreError::Backend(b) => render_backend_error(b),
+        CoreError::NetworkMismatch { .. } | CoreError::MainnetNotAcknowledged
+        | CoreError::MissingConfig(_) | CoreError::InvalidConfig { .. } =>
+            "This bot is misconfigured and can't serve that safely. Tell whoever runs it.".into(),
+        // `CoreError` is `#[non_exhaustive]`, so core can grow a variant without
+        // breaking this crate. A new one reads as an internal fault until it is
+        // given its own sentence here, which is the safe direction to fail.
+        CoreError::Storage(_) | CoreError::Wallet(_) | CoreError::Crypto(_) | _ =>
+            "Something went wrong on this server. Nothing was sent. Try again in a moment.".into(),
+    }
+}
+
+fn render_backend_error(e: &BackendError) -> String {
+    match e {
+        BackendError::MissingApiKey | BackendError::Forbidden { .. } => {
+            "This bot can't reach the Bitcoin backend — check its BITRPC_API_KEY. Nothing was sent."
+                .into()
+        }
+        BackendError::RateLimited { .. } => {
+            "The backend is rate-limited right now. Try again in a minute; nothing was sent.".into()
+        }
+        BackendError::NodeUnavailable => {
+            "The Bitcoin node is unavailable. Try again shortly; nothing was sent.".into()
+        }
+        BackendError::Rpc { message, .. } => format!(
+            "The node refused that request:\n<code>{}</code>",
+            escape(message)
+        ),
+        BackendError::Transport(_) | _ => {
+            "Couldn't reach the Bitcoin backend. Try again shortly; nothing was sent.".into()
+        }
+    }
+}
+
+// ---------------------------------------------------------------- lifecycle
+// The wording of §5 and §8.1: what is about to happen, why it matters, and
+// what the user must do. No step asks for a secret without saying what becomes
+// of it.
+
+pub fn ask_pin_new() -> String {
+    "<b>Choose a PIN</b>\n\n\
+     6–8 digits. It encrypts your seed phrase on this server, and it is the only \
+     thing standing between someone with the database and your coins.\n\n\
+     There is no way to reset it. Send it now — I'll delete your message straight away."
+        .into()
+}
+
+pub fn ask_pin_again() -> String {
+    "Send the same PIN once more, so a typo can't lock you out.".into()
+}
+
+pub fn pin_mismatch() -> String {
+    "Those two didn't match. Let's start the PIN again — send the one you want.".into()
+}
+
+pub fn ask_pin() -> String {
+    "Send your PIN. I'll delete the message as soon as it arrives.".into()
+}
+
+/// A mistyped PIN at the confirm step. Its own message because it is now the
+/// common way a send goes wrong, and because the first thing the user needs to
+/// know is that no money moved.
+pub fn wrong_pin_retry(remaining: u32) -> String {
+    format!(
+        "Wrong PIN — nothing was signed and nothing was sent.\n\n\
+         {remaining} attempt(s) left. Send it again."
+    )
+}
+
+pub fn ask_mnemonic() -> String {
+    "<b>Send your seed phrase</b>\n\n\
+     12 or 24 words, in order, separated by spaces. I'll delete your message the \
+     instant it arrives.\n\n\
+     Only do this in a chat you trust, on a device you trust."
+        .into()
+}
+
+pub fn ask_birthday() -> String {
+    "<b>When was this wallet first used?</b>\n\n\
+     Send the block height if you know it — scanning starts there instead of from \
+     the beginning of the chain, which is much faster.\n\n\
+     Send <code>skip</code> if you don't know."
+        .into()
+}
+
+/// §6: the front end renders the verdict; the policy behind it is core's.
+pub fn restore_plan(network: Network, plan: &wallet_core::types::RestorePlan) -> String {
+    use wallet_core::types::RestoreVerdict;
+
+    let head = format!("{}\n\n<b>Restore</b>", badge(network));
+    let depth = format!(
+        "\nFrom block {} to {} — {} blocks.",
+        group(u64::from(plan.birthday)),
+        group(u64::from(plan.tip)),
+        group(u64::from(plan.depth))
+    );
+
+    match &plan.verdict {
+        RestoreVerdict::Proceed => format!("{head}{depth}\n\nThis will be quick."),
+        RestoreVerdict::Warn => format!(
+            "{head}{depth}\n\n⏳ Scanning that far back takes about {}. \
+             You can keep using the chat meanwhile; balances will fill in as it goes.",
+            duration(plan.eta)
+        ),
+        RestoreVerdict::Refuse { max } => format!(
+            "{head}{depth}\n\n❌ That's more than this bot will scan ({} blocks, about {}).\n\n\
+             The limit exists because every block costs calls against a shared, rate-limited \
+             backend. If you know a later block height for this wallet, send /restore again \
+             and use it.",
+            group(u64::from(*max)),
+            duration(plan.eta)
+        ),
+    }
+}
+
+pub fn duration(d: std::time::Duration) -> String {
+    let mins = d.as_secs() / 60;
+    match mins {
+        0 => "under a minute".into(),
+        1..=90 => format!("{mins} minutes"),
+        _ => format!("{} hours", mins / 60),
+    }
+}
+
+/// §5, §8.1: shown once, in a message that removes itself after `ttl`.
+///
+/// `ttl` is the caller's real deletion deadline rather than a number written
+/// here, so the card can never promise a window the deleter does not honour.
+pub fn mnemonic_card(words: &str, ttl: std::time::Duration) -> String {
+    format!(
+        "<b>Write these down, in order, on paper.</b>\n\n\
+         <tg-spoiler><code>{}</code></tg-spoiler>\n\n\
+         ⏳ This message deletes itself in {} seconds.\n\n\
+         Anyone with these words has your coins. Never type them into anything that \
+         asks for them — including, after today, this bot.",
+        escape(words),
+        ttl.as_secs()
+    )
+}
+
+pub fn ask_backup_word(index: u8, nth: usize) -> String {
+    format!(
+        "<b>Check {nth} of 3</b>\n\nWhat is word number {}?",
+        index as usize + 1
+    )
+}
+
+pub fn wallet_ready(network: Network) -> String {
+    format!(
+        "{}\n\n✅ <b>Your wallet is ready.</b>\n\n\
+         /receive — an address to be paid at\n\
+         /balance — what you hold\n\
+         /send — pay someone",
+        badge(network)
+    )
+}
+
+pub fn restored(network: Network) -> String {
+    format!(
+        "{}\n\n✅ <b>Restored.</b> Scanning for your history now — /balance will fill \
+         in as it goes.",
+        badge(network)
+    )
+}
+
+pub fn unlocked(remaining: std::time::Duration) -> String {
+    format!("🔓 Unlocked for {} minutes.", remaining.as_secs() / 60)
+}
+
+pub fn locked() -> String {
+    "🔒 Locked.".into()
+}
+
+pub fn ask_delete_word() -> String {
+    "<b>Delete this wallet?</b>\n\n\
+     Your seed phrase and every address this bot knows for you will be erased here. \
+     If you have the words written down you can restore later; if you don't, the \
+     coins are gone.\n\n\
+     Type <code>DELETE</code> in capitals to continue, or anything else to stop."
+        .into()
+}
+
+pub fn delete_cancelled() -> String {
+    "Nothing deleted.".into()
+}
+
+pub fn deleted() -> String {
+    "Wallet deleted. <b>/restore</b> brings it back if you have the seed phrase.".into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mainnet_is_badged_first_so_the_chain_is_read_before_the_amount() {
+        let card = welcome(Network::Bitcoin, true);
+        assert!(card.starts_with("🟠 MAINNET"));
+    }
+
+    #[test]
+    fn amounts_are_grouped() {
+        assert_eq!(group(0), "0");
+        assert_eq!(group(999), "999");
+        assert_eq!(group(1_000), "1,000");
+        assert_eq!(group(2_100_000_000_000_000), "2,100,000,000,000,000");
+    }
+
+    #[test]
+    fn html_from_a_node_message_cannot_break_the_parse() {
+        let rendered = render_error(&CoreError::BroadcastRejected {
+            reason: "bad-txns <script>".into(),
+        });
+        assert!(rendered.contains("&lt;script&gt;"));
+        assert!(!rendered.contains("<script>"));
+    }
+
+    #[test]
+    fn every_error_renders_to_a_sentence_with_a_next_step() {
+        let rendered = render_error(&CoreError::Locked);
+        assert!(rendered.contains("/unlock"));
+    }
+
+    /// Every slug the keyboard can draw is one `from_slug` reads back.
+    ///
+    /// This is the join between the two halves of the feature: the button is
+    /// rendered here and routed in `handlers::menu`, and a slug that only one
+    /// side knows is a button that does nothing when it is tapped.
+    #[test]
+    fn menu_slugs_round_trip() {
+        for command in MENU_COMMANDS {
+            assert_eq!(
+                MenuCommand::from_slug(command.slug()),
+                Some(command),
+                "`{}` is drawn on a button but routes to nothing",
+                command.slug()
+            );
+        }
+        assert_eq!(MenuCommand::from_slug("nonsense"), None);
+    }
+
+    /// The slugs are the command names, which is the property that lets a
+    /// reader of `cmd:balance:-` know what was tapped without a lookup table.
+    #[test]
+    fn a_menu_slug_is_the_command_it_runs() {
+        assert_eq!(MenuCommand::Balance.slug(), "balance");
+        // The underscored one specifically: a rename rule mangling it is
+        // exactly how /pj_receive once became an update nothing handled.
+        assert_eq!(MenuCommand::PjSessions.slug(), "pj_sessions");
+    }
+
+    /// §8.5 again, for the menu: the data is a command name and nothing else,
+    /// so a replayed tap can only re-run something the user could type.
+    #[test]
+    fn menu_callback_data_is_a_command_and_an_empty_argument() {
+        for command in MENU_COMMANDS {
+            let data = command.callback_data();
+            assert!(data.starts_with(MENU_PREFIX));
+            assert!(data.ends_with(":-"), "{data} should carry no argument");
+            assert!(
+                data.len() <= 64,
+                "Telegram's callback data limit is 64 bytes"
+            );
+        }
+    }
+
+    /// A button core would refuse is worse than no button: the user cannot
+    /// tell a chain that has no faucet from a bot that is broken.
+    #[test]
+    fn the_faucet_button_appears_only_where_there_is_a_faucet() {
+        assert!(menu_has(Network::Regtest, true, MenuCommand::Faucet));
+        for chain in [
+            Network::Bitcoin,
+            Network::Testnet,
+            Network::Testnet4,
+            Network::Signet,
+        ] {
+            assert!(
+                !menu_has(chain, true, MenuCommand::Faucet),
+                "{chain} has no /faucet, so it must not be offered one"
+            );
+        }
+    }
+
+    /// Before a wallet exists the only useful commands are the two that make
+    /// one; /balance would answer NoWallet and teach the user nothing.
+    #[test]
+    fn the_menu_before_a_wallet_offers_only_what_works_without_one() {
+        assert!(menu_has(Network::Regtest, false, MenuCommand::Create));
+        assert!(menu_has(Network::Regtest, false, MenuCommand::Restore));
+        assert!(!menu_has(Network::Regtest, false, MenuCommand::Balance));
+        assert!(!menu_has(Network::Regtest, false, MenuCommand::Send));
+
+        // And once there is one, /create is not on offer — core refuses it.
+        assert!(!menu_has(Network::Regtest, true, MenuCommand::Create));
+        assert!(menu_has(Network::Regtest, true, MenuCommand::Balance));
+    }
+
+    /// §8.1: a destructive action takes a typed word. Neither of the two
+    /// commands that start one may be reachable by a tap.
+    #[test]
+    fn nothing_destructive_is_one_tap_away() {
+        for has_wallet in [true, false] {
+            for chain in [Network::Bitcoin, Network::Regtest] {
+                let data = menu_data(chain, has_wallet);
+                for forbidden in ["export", "delete", "mine"] {
+                    assert!(
+                        !data.iter().any(|d| d.contains(forbidden)),
+                        "/{forbidden} must stay a typed command"
+                    );
+                }
+            }
+        }
+    }
+
+    fn menu_data(network: Network, has_wallet: bool) -> Vec<String> {
+        menu_keyboard(network, has_wallet)
+            .inline_keyboard
+            .iter()
+            .flatten()
+            .filter_map(|b| match &b.kind {
+                teloxide::types::InlineKeyboardButtonKind::CallbackData(d) => Some(d.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn menu_has(network: Network, has_wallet: bool, command: MenuCommand) -> bool {
+        menu_data(network, has_wallet).contains(&command.callback_data())
+    }
+}
+
+#[cfg(test)]
+mod lifecycle_tests {
+    use super::*;
+    use std::time::Duration;
+    use wallet_core::types::{RestorePlan, RestoreVerdict};
+
+    fn plan(depth: u32, verdict: RestoreVerdict, eta_secs: u64) -> RestorePlan {
+        RestorePlan {
+            birthday: 900_000 - depth,
+            tip: 900_000,
+            depth,
+            eta: Duration::from_secs(eta_secs),
+            verdict,
+        }
+    }
+
+    /// §8.1: a mnemonic message says, on the message itself, that it will go —
+    /// and says the window the caller will actually honour, not a literal that
+    /// can drift away from `MNEMONIC_TTL`.
+    #[test]
+    fn the_mnemonic_card_warns_that_it_self_destructs() {
+        let ttl = Duration::from_secs(30);
+        let card = mnemonic_card("abandon abandon about", ttl);
+        assert!(
+            card.contains(&format!("{} seconds", ttl.as_secs())),
+            "the card must quote the deletion deadline it was handed"
+        );
+        assert!(card.contains("paper"));
+        assert!(card.contains("abandon abandon about"));
+    }
+
+    #[test]
+    fn a_refused_restore_says_why_and_what_to_do_instead() {
+        let rendered = restore_plan(
+            Network::Bitcoin,
+            &plan(500_000, RestoreVerdict::Refuse { max: 10_000 }, 900_000),
+        );
+        assert!(rendered.starts_with("🟠 MAINNET"));
+        assert!(rendered.contains("10,000"));
+        assert!(
+            rendered.contains("/restore"),
+            "a refusal must name the next step"
+        );
+    }
+
+    #[test]
+    fn a_warned_restore_quotes_the_wait_rather_than_just_warning() {
+        let rendered = restore_plan(Network::Regtest, &plan(5_000, RestoreVerdict::Warn, 9_000));
+        assert!(rendered.contains("hours") || rendered.contains("minutes"));
+    }
+
+    #[test]
+    fn a_quick_restore_says_nothing_alarming() {
+        let rendered = restore_plan(Network::Regtest, &plan(50, RestoreVerdict::Proceed, 5));
+        assert!(!rendered.contains('❌'));
+        assert!(rendered.contains("quick"));
+    }
+
+    #[test]
+    fn durations_read_as_english() {
+        assert_eq!(duration(Duration::from_secs(30)), "under a minute");
+        assert_eq!(duration(Duration::from_secs(600)), "10 minutes");
+        assert_eq!(duration(Duration::from_secs(7_200)), "2 hours");
+    }
+
+    /// §5: the PIN prompt has to say that it cannot be reset, because the user
+    /// is choosing it in the three seconds before they forget it.
+    #[test]
+    fn the_pin_prompt_states_the_consequence_of_losing_it() {
+        let prompt = ask_pin_new();
+        assert!(prompt.contains("no way to reset"));
+        assert!(prompt.contains("delete your message"));
+    }
+
+    #[test]
+    fn the_delete_prompt_requires_a_typed_word_and_names_the_risk() {
+        let prompt = ask_delete_word();
+        assert!(prompt.contains("DELETE"));
+        assert!(prompt.contains("gone"));
+    }
+
+    #[test]
+    fn a_backup_question_is_one_based_for_a_human() {
+        // Core counts from zero; a user counts from one.
+        assert!(ask_backup_word(0, 1).contains("word number 1"));
+        assert!(ask_backup_word(11, 3).contains("word number 12"));
+    }
+}
+
+// ------------------------------------------------------------------- on-chain
+// `comfy-table` into a <pre> block is the one place monospace survives a
+// Telegram client, which is why the plan keeps it for /history and /addresses
+// (§2, §8.2).
+
+use comfy_table::{ContentArrangement, Table, presets::UTF8_BORDERS_ONLY};
+use wallet_core::types::{
+    AddressInfo, BalanceView, Page, Paged, TxDetail, TxDirection, TxStatus, TxSummary,
+};
+
+pub fn sats_and_btc(amount: Amount) -> String {
+    format!("{} ({:.8} BTC)", sats(amount), amount.to_btc())
+}
+
+/// §8.2: confirmed, pending and immature, in sats *and* BTC.
+///
+/// The mainnet caveat is not a footnote: without `getrawmempool` an incoming
+/// payment that has not confirmed is not zero, it is unseen, and a user staring
+/// at a balance deserves to be told which (§4b).
+pub fn balance(network: Network, b: &BalanceView, price: Option<&FiatPrice>) -> String {
+    let mut out = format!(
+        "{}\n\n<b>Balance</b>\n<code>Confirmed  {}</code>",
+        badge(network),
+        sats_and_btc(b.confirmed)
+    );
+
+    if b.trusted_pending > Amount::ZERO {
+        out.push_str(&format!(
+            "\n<code>Sending    {}</code>",
+            sats(b.trusted_pending)
+        ));
+    }
+    if b.untrusted_pending > Amount::ZERO {
+        out.push_str(&format!(
+            "\n<code>Incoming   {}</code>",
+            sats(b.untrusted_pending)
+        ));
+    }
+    if b.immature > Amount::ZERO {
+        out.push_str(&format!("\n<code>Immature   {}</code>", sats(b.immature)));
+    }
+
+    out.push_str(&format!("\n\n<b>Total {}</b>", sats_and_btc(b.total)));
+
+    if let Some(price) = price {
+        out.push_str(&format!("\n<b>{}</b>", usd(b.total, price)));
+    }
+
+    if !b.unconfirmed_incoming_visible {
+        out.push_str(
+            "\n\nℹ️ Payments to you appear here once they're in a block, not before — \
+             this bot's node connection can't see the mempool.",
+        );
+    }
+
+    if let Some(price) = price {
+        out.push_str(&play_money_caveat(network, price));
+    }
+
+    out
+}
+
+/// §8.2: address, BIP21 and the mainnet caveat, as a photo caption.
+/// `mempool_visible` rather than a network check: the real question is whether
+/// this backend can see unconfirmed transactions, and that is a capability,
+/// not a chain. `balance` already takes it as data; this was the last card
+/// asking "is it mainnet?" when it meant "can we see the mempool?".
+pub fn receive(network: Network, info: &AddressInfo, mempool_visible: bool) -> String {
+    let mut out = format!(
+        "{}\n\n<b>Your address</b>\n<code>{}</code>\n\nUnused address #{}",
+        badge(network),
+        escape(&info.address.to_string()),
+        info.index
+    );
+
+    if !mempool_visible {
+        out.push_str(
+            "\n\nℹ️ A payment here shows up once it's in a block. Until then it won't \
+             appear in /balance, even though it's on its way.",
+        );
+    }
+
+    out
+}
+
+pub fn addresses(network: Network, page: &Paged<AddressInfo>) -> String {
+    if page.items.is_empty() {
+        return format!(
+            "{}\n\nNo addresses yet. /receive makes one.",
+            badge(network)
+        );
+    }
+
+    let mut table = Table::new();
+    table
+        .load_style(UTF8_BORDERS_ONLY)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["#", "Address", "Used", "Received"]);
+
+    for a in &page.items {
+        table.add_row(vec![
+            a.index.to_string(),
+            shorten(&a.address.to_string()),
+            if a.used { "yes" } else { "—" }.to_string(),
+            if a.received > Amount::ZERO {
+                group(a.received.to_sat())
+            } else {
+                "—".into()
+            },
+        ]);
+    }
+
+    format!(
+        "{}\n\n<pre>{}</pre>\n{}",
+        badge(network),
+        escape(&table.to_string()),
+        pager(page.page, page.total_pages())
+    )
+}
+
+pub fn history(network: Network, page: &Paged<TxSummary>) -> String {
+    if page.items.is_empty() {
+        return empty_history(network, page);
+    }
+
+    let mut table = Table::new();
+    table
+        .load_style(UTF8_BORDERS_ONLY)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["", "Amount", "Fee", "Status"]);
+
+    for tx in &page.items {
+        table.add_row(vec![
+            direction_mark(tx.direction).to_string(),
+            group(tx.amount.to_sat()),
+            tx.fee
+                .map(|f| group(f.to_sat()))
+                .unwrap_or_else(|| "—".into()),
+            status_text(tx.status),
+        ]);
+    }
+
+    let mut out = format!(
+        "{}\n\n<pre>{}</pre>\n{}",
+        badge(network),
+        escape(&table.to_string()),
+        pager(page.page, page.total_pages())
+    );
+
+    // Worth linking wherever an explorer exists; on regtest there is nothing
+    // to link to, because nobody else can see that chain.
+    if explorer_base(network).is_some() {
+        out.push_str("\n\n");
+        for tx in &page.items {
+            let id = tx.txid.to_string();
+            out.push_str(&tx_link(network, &id, &shorten(&id)));
+            out.push_str("  ");
+        }
+    }
+
+    out
+}
+
+/// §8.2: one transaction in detail.
+/// Two different nothings.
+///
+/// A wallet with no transactions at all, and a page past the end of one that
+/// has them. `/history 99` has always answered both with "No transactions yet",
+/// which is a lie in the second case — and the Next button is what turns that
+/// from a typo nobody makes into a thumb away.
+fn empty_history(network: Network, page: &Paged<TxSummary>) -> String {
+    if page.total == 0 {
+        return format!(
+            "{}\n\nNo transactions yet. /receive gives you an address to be paid at.",
+            badge(network)
+        );
+    }
+
+    let pages = match page.total_pages() {
+        1 => "one page".to_string(),
+        n => format!("{n} pages"),
+    };
+    format!(
+        "{}\n\nThat page is past the end — your history has {pages}. \
+         /history goes back to the first.",
+        badge(network)
+    )
+}
+
+/// Previous and Next for `/history` (§8.2).
+///
+/// `None` where there is nothing to navigate: one page needs no buttons, and a
+/// keyboard whose every button is absent is worse than no keyboard, because the
+/// card grows a row that does nothing.
+///
+/// The data carries a page index, which is not an id core minted — the one
+/// exception §8.5 allows itself, for the same reason `send:fee:` carries a
+/// label. An index is a read offset. It names no amount and no address, core
+/// re-reads the page under it, and replaying one can only show the user their
+/// own history again.
+pub fn history_keyboard(page: &Paged<TxSummary>) -> Option<InlineKeyboardMarkup> {
+    let mut row: Vec<InlineKeyboardButton> = Vec::with_capacity(2);
+
+    if page.has_prev() {
+        row.push(InlineKeyboardButton::callback(
+            "◀ Previous",
+            history_page_data(page.page.index - 1),
+        ));
+    }
+    if page.has_next() {
+        row.push(InlineKeyboardButton::callback(
+            "Next ▶",
+            history_page_data(page.page.index + 1),
+        ));
+    }
+
+    (!row.is_empty()).then(|| InlineKeyboardMarkup::new([row]))
+}
+
+/// The routing prefix of §8.5 for a page turn, in one place so the buttons and
+/// the dispatcher cannot disagree about it.
+pub const HISTORY_PAGE_PREFIX: &str = "hist:page:";
+
+fn history_page_data(index: u32) -> String {
+    format!("{HISTORY_PAGE_PREFIX}{index}")
+}
+
+/// The index a `hist:page:` tap asks for, or `None` for anything else.
+pub fn history_page_from_data(data: &str) -> Option<u32> {
+    data.strip_prefix(HISTORY_PAGE_PREFIX)?.parse().ok()
+}
+
+pub fn tx_detail(network: Network, d: &TxDetail, price: Option<&FiatPrice>) -> String {
+    let s = &d.summary;
+    let mut out = format!(
+        "{}\n\n<b>{} {}</b>\n<code>{}</code>\n\n<code>Status  {}</code>",
+        badge(network),
+        match s.direction {
+            TxDirection::Incoming => "Received",
+            TxDirection::Outgoing => "Sent",
+            TxDirection::Internal => "Moved",
+        },
+        sats(s.amount),
+        escape(&s.txid.to_string()),
+        status_text(s.status)
+    );
+
+    if let Some(fee) = s.fee {
+        out.push_str(&format!("\n<code>Fee     {}</code>", sats(fee)));
+    }
+    if let Some(rate) = d.fee_rate {
+        out.push_str(&format!(
+            "\n<code>Rate    {} sat/vB</code>",
+            rate.to_sat_per_vb_ceil()
+        ));
+    }
+    out.push_str(&format!(
+        "\n<code>Size    {} vB</code>\n<code>In/Out  {} / {}</code>",
+        d.vsize, d.inputs, d.outputs
+    ));
+
+    // Today's price on a possibly old transaction, so say "today" rather than
+    // let it read as what the payment was worth when it was made.
+    if let Some(price) = price {
+        out.push_str(&format!("\n<code>Today   {}</code>", usd(s.amount, price)));
+    }
+
+    let link = tx_link(network, &s.txid.to_string(), "See it on mempool.space");
+    if !link.is_empty() {
+        out.push_str("\n\n");
+        out.push_str(&link);
+    }
+
+    out
+}
+
+fn direction_mark(d: TxDirection) -> &'static str {
+    match d {
+        TxDirection::Incoming => "📥",
+        TxDirection::Outgoing => "📤",
+        TxDirection::Internal => "🔁",
+    }
+}
+
+fn status_text(s: TxStatus) -> String {
+    match s {
+        TxStatus::Unconfirmed => "pending".into(),
+        TxStatus::Confirmed { confirmations, .. } if confirmations >= 6 => {
+            format!("✅ {confirmations} confs")
+        }
+        TxStatus::Confirmed { confirmations, .. } => format!("{confirmations} conf"),
+    }
+}
+
+/// The middle of a long identifier is the part nobody reads.
+pub fn shorten(s: &str) -> String {
+    if s.len() <= 16 {
+        return s.to_string();
+    }
+    format!("{}…{}", &s[..8], &s[s.len() - 4..])
+}
+
+fn pager(page: Page, total_pages: u32) -> String {
+    if total_pages <= 1 {
+        return String::new();
+    }
+    format!("Page {} of {}", page.index + 1, total_pages)
+}
+
+// -------------------------------------------------------------- notifications
+// §8.6: one match, one message. Core supplies the numbers; every word is here.
+
+pub fn incoming(amount: Amount, status: TxStatus, price: Option<&FiatPrice>) -> String {
+    let mut out = match status {
+        TxStatus::Unconfirmed => format!("📥 Incoming {} — unconfirmed", sats(amount)),
+        TxStatus::Confirmed { confirmations, .. } => {
+            format!("📥 Received {} — ✅ {} conf", sats(amount), confirmations)
+        }
+    };
+    if let Some(price) = price {
+        out.push_str(&format!("\n{}", usd(amount, price)));
+    }
+    out
+}
+
+/// A whole wallet's history arriving at once, collapsed. The first sync of a
+/// restored wallet — or of a regtest chain `/mine 101` just filled — finds
+/// every payment it ever received in a single pass, and announcing them one by
+/// one buries the only two numbers anyone wants: how many, and how much.
+pub fn incoming_many(count: usize, total: Amount, price: Option<&FiatPrice>) -> String {
+    let mut out = format!("📥 Received {count} payments — {}", sats(total));
+    if let Some(price) = price {
+        out.push_str(&format!("\n{}", usd(total, price)));
+    }
+    out.push_str("\n\n/history lists them; /balance has the total.");
+    out
+}
+
+pub fn confirmed(txid: &str, confirmations: u32) -> String {
+    // Short in the sentence so it reads, whole in a code block so it is usable.
+    format!(
+        "✅ {} — {} confs\n<code>{}</code>",
+        shorten(txid),
+        confirmations,
+        escape(txid)
+    )
+}
+
+/// A burst of confirmations, collapsed. One line, because the alternative is
+/// the hundred-and-one-line chat that `/mine 101` used to produce.
+pub fn confirmed_many(count: usize) -> String {
+    format!("✅ {count} transactions confirmed.\n\n/history lists them; /balance has the total.")
+}
+
+pub fn session_expired() -> String {
+    "🔒 Session locked after inactivity.".into()
+}
+
+pub fn backend_degraded() -> String {
+    "⚠️ The Bitcoin backend is slow or rate-limited; commands may lag.".into()
+}
+
+pub fn backend_recovered() -> String {
+    "✅ Backend healthy again.".into()
+}
+
+#[cfg(test)]
+mod onchain_tests {
+    use super::*;
+    use wallet_core::bitcoin::Txid;
+    use wallet_core::types::{Page, Paged, TxDirection, TxSummary};
+
+    fn view(confirmed: u64, untrusted: u64, visible: bool) -> BalanceView {
+        BalanceView {
+            confirmed: Amount::from_sat(confirmed),
+            trusted_pending: Amount::ZERO,
+            untrusted_pending: Amount::from_sat(untrusted),
+            immature: Amount::ZERO,
+            total: Amount::from_sat(confirmed + untrusted),
+            unconfirmed_incoming_visible: visible,
+        }
+    }
+
+    fn txid(byte: u8) -> Txid {
+        Txid::from_raw_hash(wallet_core::bitcoin::hashes::Hash::from_byte_array(
+            [byte; 32],
+        ))
+    }
+
+    /// §4b's most user-visible consequence has to be *said*, not implied by a
+    /// zero that looks like a lost payment.
+    #[test]
+    fn a_backend_without_a_mempool_says_so_on_the_balance() {
+        let rendered = balance(Network::Bitcoin, &view(100_000, 0, false), None);
+        assert!(rendered.contains("in a block"));
+        assert!(rendered.starts_with("🟠 MAINNET"));
+    }
+
+    #[test]
+    fn a_backend_with_a_mempool_adds_no_caveat() {
+        let rendered = balance(Network::Regtest, &view(100_000, 5_000, true), None);
+        assert!(!rendered.contains("in a block"));
+        assert!(rendered.contains("Incoming"));
+    }
+
+    #[test]
+    fn a_dollar_figure_is_an_approximation_and_says_so_on_a_test_chain() {
+        let price = FiatPrice {
+            usd_per_btc: 100_000.0,
+            source: "mempool.space".into(),
+            fetched_at: std::time::SystemTime::now(),
+        };
+
+        // 250,000 sats at $100,000/BTC is exactly $250.00.
+        let card = balance(Network::Regtest, &view(250_000, 0, true), Some(&price));
+        assert!(card.contains("≈ $250.00"), "got: {card}");
+        assert!(
+            card.contains("worth nothing"),
+            "a regtest dollar figure travels with the caveat: {card}"
+        );
+
+        // Mainnet attributes the price but does not disclaim the coins.
+        let real = balance(Network::Bitcoin, &view(250_000, 0, true), Some(&price));
+        assert!(real.contains("≈ $250.00"));
+        assert!(!real.contains("worth nothing"));
+        assert!(real.contains("mempool.space"));
+
+        // And with no price, no line and no caveat.
+        let none = balance(Network::Regtest, &view(250_000, 0, true), None);
+        assert!(!none.contains('$'), "got: {none}");
+    }
+
+    /// Cents are formatted from an integer, so a float can never leak a
+    /// twelve-decimal tail into a card.
+    #[test]
+    fn dollar_amounts_are_formatted_from_whole_cents() {
+        let price = FiatPrice {
+            usd_per_btc: 100_000.0,
+            source: "t".into(),
+            fetched_at: std::time::SystemTime::now(),
+        };
+        assert_eq!(usd(Amount::from_sat(1), &price), "≈ $0.00");
+        assert_eq!(usd(Amount::from_sat(1_000), &price), "≈ $1.00");
+        assert_eq!(usd(Amount::from_sat(100_000_000), &price), "≈ $100,000.00");
+    }
+
+    #[test]
+    fn a_balance_is_shown_in_sats_and_btc() {
+        let rendered = balance(Network::Regtest, &view(150_000, 0, true), None);
+        assert!(rendered.contains("150,000 sats"));
+        assert!(rendered.contains("0.00150000 BTC"));
+    }
+
+    #[test]
+    fn zero_categories_are_left_out_rather_than_shown_as_zero() {
+        let rendered = balance(Network::Regtest, &view(1_000, 0, true), None);
+        assert!(!rendered.contains("Immature"));
+        assert!(!rendered.contains("Incoming"));
+    }
+
+    #[test]
+    fn an_empty_history_offers_the_next_step() {
+        let empty: Paged<TxSummary> = Paged {
+            items: vec![],
+            page: Page::new(0),
+            total: 0,
+        };
+        assert!(history(Network::Regtest, &empty).contains("/receive"));
+    }
+
+    #[test]
+    fn history_links_txids_on_mainnet_and_not_on_regtest() {
+        let page = Paged {
+            items: vec![TxSummary {
+                txid: txid(1),
+                direction: TxDirection::Incoming,
+                amount: Amount::from_sat(25_000),
+                fee: None,
+                status: TxStatus::Confirmed {
+                    height: 100,
+                    confirmations: 3,
+                },
+                timestamp: None,
+            }],
+            page: Page::new(0),
+            total: 1,
+        };
+
+        assert!(history(Network::Bitcoin, &page).contains("mempool.space"));
+        assert!(!history(Network::Regtest, &page).contains("mempool.space"));
+
+        // Every public chain gets its own explorer path, and mainnet must not
+        // be sent to one of them — a careless edit to `explorer_base` would
+        // otherwise point real transactions at a test explorer.
+        let testnet4 = history(Network::Testnet4, &page);
+        assert!(
+            testnet4.contains("mempool.space/testnet4/tx/"),
+            "{testnet4}"
+        );
+        assert!(!history(Network::Bitcoin, &page).contains("/testnet4/"));
+    }
+
+    /// Every card leads with the badge, so a chain the badge does not know
+    /// makes the whole UI read UNKNOWN. That is what a `_` arm bought here
+    /// before `Testnet4` was added, and the HTML fixture would never have
+    /// caught it: `❔ UNKNOWN` is perfectly valid HTML.
+    #[test]
+    fn no_chain_badges_as_unknown() {
+        for network in [
+            Network::Bitcoin,
+            Network::Regtest,
+            Network::Testnet,
+            Network::Testnet4,
+            Network::Signet,
+        ] {
+            let b = badge(network);
+            assert!(!b.contains("UNKNOWN"), "{network} badges as {b}");
+            assert!(!b.is_empty());
+        }
+    }
+
+    /// A public test chain must not be told it can mint its own blocks.
+    #[test]
+    fn only_regtest_is_told_it_can_mine() {
+        let regtest = network_card(Network::Regtest);
+        assert!(regtest.contains("/mine 101"));
+
+        for network in [Network::Testnet4, Network::Testnet, Network::Signet] {
+            let card = network_card(network);
+            assert!(
+                !card.contains("/mine 101"),
+                "{network} cannot mine, but its card says it can:\n{card}"
+            );
+            assert!(
+                card.contains("faucet"),
+                "{network} should say where coins come from"
+            );
+        }
+
+        assert!(!network_card(Network::Bitcoin).contains("/mine"));
+    }
+
+    /// Regtest is the one chain with nowhere to link to, and the `Option` is
+    /// what keeps that a decision rather than an accident.
+    #[test]
+    fn only_a_private_chain_has_no_explorer() {
+        assert_eq!(explorer_base(Network::Regtest), None);
+        for network in [
+            Network::Bitcoin,
+            Network::Testnet,
+            Network::Testnet4,
+            Network::Signet,
+        ] {
+            assert!(
+                explorer_base(network).is_some(),
+                "{network} has an explorer"
+            );
+        }
+        assert_eq!(tx_link(Network::Regtest, "abc", "see it"), "");
+    }
+
+    #[test]
+    fn a_pager_appears_only_when_there_is_more_than_one_page() {
+        let one: Paged<TxSummary> = Paged {
+            items: vec![],
+            page: Page::new(0),
+            total: 3,
+        };
+        assert_eq!(pager(one.page, one.total_pages()), "");
+
+        let many: Paged<TxSummary> = Paged {
+            items: vec![],
+            page: Page::new(1),
+            total: 25,
+        };
+        assert_eq!(pager(many.page, many.total_pages()), "Page 2 of 3");
+    }
+
+    /// One row of history on each page, so a fixture can be any shape of
+    /// listing without carrying ten transactions around.
+    fn listing(index: u32, total: usize) -> Paged<TxSummary> {
+        Paged {
+            items: vec![TxSummary {
+                txid: txid(1),
+                direction: TxDirection::Incoming,
+                amount: Amount::from_sat(25_000),
+                fee: None,
+                status: TxStatus::Unconfirmed,
+                timestamp: None,
+            }],
+            page: Page::new(index),
+            total,
+        }
+    }
+
+    fn buttons(keyboard: &InlineKeyboardMarkup) -> Vec<(String, String)> {
+        keyboard
+            .inline_keyboard
+            .iter()
+            .flatten()
+            .filter_map(|b| match &b.kind {
+                teloxide::types::InlineKeyboardButtonKind::CallbackData(d) => {
+                    Some((b.text.clone(), d.clone()))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// The first page can only go forward, the last only back, and a middle
+    /// page both ways. Getting this wrong is a button that pages off the end.
+    #[test]
+    fn history_offers_only_the_pages_that_exist() {
+        // 25 transactions at ten a page is three pages: 0, 1, 2.
+        let first = history_keyboard(&listing(0, 25)).expect("more than one page");
+        assert_eq!(
+            buttons(&first),
+            vec![("Next ▶".to_string(), "hist:page:1".to_string())],
+            "the first page has nothing behind it"
+        );
+
+        let middle = history_keyboard(&listing(1, 25)).expect("more than one page");
+        assert_eq!(
+            buttons(&middle),
+            vec![
+                ("◀ Previous".to_string(), "hist:page:0".to_string()),
+                ("Next ▶".to_string(), "hist:page:2".to_string()),
+            ]
+        );
+
+        let last = history_keyboard(&listing(2, 25)).expect("more than one page");
+        assert_eq!(
+            buttons(&last),
+            vec![("◀ Previous".to_string(), "hist:page:1".to_string())],
+            "the last page must not offer a Next that pages off the end"
+        );
+    }
+
+    /// A row of no buttons is worse than no row: the card grows something that
+    /// does nothing.
+    #[test]
+    fn a_single_page_of_history_gets_no_buttons() {
+        assert!(history_keyboard(&listing(0, 1)).is_none());
+        assert!(history_keyboard(&listing(0, 10)).is_none());
+        // Eleven is two pages, and then there is somewhere to go.
+        assert!(history_keyboard(&listing(0, 11)).is_some());
+    }
+
+    /// The round trip the dispatcher depends on: what the button carries is
+    /// what the handler reads back out of it.
+    #[test]
+    fn a_page_button_round_trips_through_its_callback_data() {
+        for (_, data) in buttons(&history_keyboard(&listing(1, 25)).expect("two buttons")) {
+            assert!(history_page_from_data(&data).is_some(), "{data} parses");
+            assert!(
+                data.len() <= 64,
+                "Telegram's callback data limit is 64 bytes"
+            );
+        }
+        assert_eq!(history_page_from_data("hist:page:7"), Some(7));
+
+        // Nothing else is claimed, so this endpoint cannot swallow a tap that
+        // belongs to the send flow, to Refresh or to the menu.
+        for other in [
+            "hist:page:",
+            "hist:page:x",
+            "hist:page:-1",
+            "bal:refresh",
+            "cmd:history:-",
+            "send:confirm:01HXYZ",
+        ] {
+            assert_eq!(history_page_from_data(other), None, "{other}");
+        }
+    }
+
+    /// Two different nothings, and they used to read the same.
+    ///
+    /// `/history 99` on a wallet with transactions said "No transactions yet",
+    /// which is a lie — and a Next button is how a user reaches that card
+    /// without having typed a page number at all.
+    #[test]
+    fn a_page_past_the_end_does_not_claim_the_wallet_is_empty() {
+        let past_the_end = Paged::<TxSummary> {
+            items: vec![],
+            page: Page::new(99),
+            total: 25,
+        };
+        let card = history(Network::Regtest, &past_the_end);
+        assert!(card.contains("past the end"), "got: {card}");
+        assert!(
+            card.contains("3 pages"),
+            "it says how many there are: {card}"
+        );
+        assert!(
+            !card.contains("No transactions yet"),
+            "the wallet has 25 of them: {card}"
+        );
+
+        // A genuinely empty wallet still gets the invitation.
+        let empty = Paged::<TxSummary> {
+            items: vec![],
+            page: Page::new(0),
+            total: 0,
+        };
+        let card = history(Network::Regtest, &empty);
+        assert!(card.contains("No transactions yet"));
+        assert!(!card.contains("past the end"));
+    }
+
+    #[test]
+    fn six_confirmations_reads_as_settled() {
+        assert!(
+            status_text(TxStatus::Confirmed {
+                height: 1,
+                confirmations: 6
+            })
+            .contains('✅')
+        );
+        assert_eq!(status_text(TxStatus::Unconfirmed), "pending");
+    }
+
+    #[test]
+    fn long_identifiers_are_shortened_in_the_middle() {
+        let full = txid(2).to_string();
+        let short = shorten(&full);
+        assert!(short.starts_with(&full[..8]));
+        assert!(short.ends_with(&full[full.len() - 4..]));
+        assert!(short.len() < full.len());
+        // Short strings are left alone.
+        assert_eq!(shorten("bc1qshort"), "bc1qshort");
+    }
+
+    #[test]
+    fn a_mainnet_receive_warns_that_incoming_is_invisible_until_confirmed() {
+        let info = AddressInfo {
+            address: "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu"
+                .parse::<wallet_core::bitcoin::Address<_>>()
+                .expect("parses")
+                .assume_checked(),
+            index: 0,
+            used: false,
+            received: Amount::ZERO,
+            bip21: "bitcoin:bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu".into(),
+        };
+        assert!(receive(Network::Bitcoin, &info, false).contains("in a block"));
+        assert!(!receive(Network::Regtest, &info, true).contains("in a block"));
+    }
+
+    #[test]
+    fn notifications_distinguish_arrival_from_confirmation() {
+        assert!(
+            incoming(Amount::from_sat(25_000), TxStatus::Unconfirmed, None).contains("unconfirmed")
+        );
+        assert!(
+            incoming(
+                Amount::from_sat(25_000),
+                TxStatus::Confirmed {
+                    height: 1,
+                    confirmations: 1
+                },
+                None,
+            )
+            .contains("Received")
+        );
+        assert!(confirmed(&txid(3).to_string(), 6).contains("6 confs"));
+    }
+
+    /// The whole point of the grouped line: a sync that finds a hundred
+    /// payments says how many and how much, and nothing per transaction.
+    #[test]
+    fn a_burst_of_arrivals_collapses_to_a_count_and_a_total() {
+        let text = incoming_many(101, Amount::from_sat(246_582_006), None);
+        assert!(text.contains("101 payments"));
+        assert!(text.contains("246,582,006 sats"));
+        assert!(text.contains("/history"));
+        // One line of numbers, then the pointer — not a line per payment.
+        assert!(text.lines().filter(|l| l.contains("sats")).count() == 1);
+    }
+}
+
+// ----------------------------------------------------------------- the send flow
+// §8.3, screen by screen. Two cards and one rule: money never moves without a
+// confirm card, and the card carries every number the user is agreeing to.
+
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
+use wallet_core::bitcoin::FeeRate;
+use wallet_core::types::{Broadcast, BumpOptions, FeeLabel, FeeOptions, FeeSource, SendQuote};
+
+/// The fee screen (§8.3). The same code on both networks: it draws the presets
+/// it is handed and nothing more.
+pub fn fee_card(network: Network, amount: Option<Amount>, to: &str, fees: &FeeOptions) -> String {
+    let what = match amount {
+        Some(a) => format!(
+            "Sending {} to <code>{}</code>",
+            sats(a),
+            escape(&shorten(to))
+        ),
+        None => format!("Sending to <code>{}</code>", escape(&shorten(to))),
+    };
+
+    let provenance = match &fees.source {
+        FeeSource::Node => "Rates from your node".to_string(),
+        FeeSource::External { name } => format!("Rates from {}", escape(name)),
+        FeeSource::Unavailable => {
+            // §6: it never silently guesses. Say why the buttons are missing.
+            "No fee estimate available right now — enter a rate yourself".to_string()
+        }
+    };
+
+    format!(
+        "{} · <b>Choose a fee</b>\n{what}\n{provenance} · floor {} sat/vB",
+        badge(network),
+        fees.floor.to_sat_per_vb_ceil()
+    )
+}
+
+pub fn fee_keyboard(fees: &FeeOptions) -> InlineKeyboardMarkup {
+    let mut presets: Vec<InlineKeyboardButton> = fees
+        .presets
+        .iter()
+        .map(|(label, rate)| {
+            InlineKeyboardButton::callback(
+                format!("{} {}", fee_label(*label), rate.to_sat_per_vb_ceil()),
+                format!("send:fee:{}", fee_slug(*label)),
+            )
+        })
+        .collect();
+
+    // Keep a row from growing past what a phone shows.
+    presets.truncate(3);
+
+    let mut rows = Vec::new();
+    if !presets.is_empty() {
+        rows.push(presets);
+    }
+
+    rows.push(custom_and_cancel(fees));
+    InlineKeyboardMarkup::new(rows)
+}
+
+/// The row every fee keyboard ends with.
+fn custom_and_cancel(fees: &FeeOptions) -> Vec<InlineKeyboardButton> {
+    let mut last = Vec::new();
+    if fees.allows_custom {
+        last.push(InlineKeyboardButton::callback(
+            "Custom sat/vB",
+            "send:fee:custom",
+        ));
+    }
+    last.push(InlineKeyboardButton::callback("✖ Cancel", "send:cancel:-"));
+    last
+}
+
+/// The fee card for a replacement (§6).
+///
+/// Says what the stuck transaction paid and what a replacement must pay,
+/// because without both numbers "at least 3 sat/vB" looks arbitrary.
+pub fn bump_fee_card(network: Network, b: &BumpOptions) -> String {
+    let mut out = format!(
+        "{} · <b>Raise the fee</b>\n\n\
+         Replacing <code>{}</code>\n\n\
+         <code>It paid   {} sat/vB</code>\n\
+         <code>Minimum   {} sat/vB</code>\n\n\
+         A replacement has to outbid what it replaces, so anything at or \
+         above the minimum will relay and anything below it will not.",
+        badge(network),
+        escape(&b.replaces.to_string()),
+        b.current.to_sat_per_vb_ceil(),
+        b.fees.floor.to_sat_per_vb_ceil()
+    );
+
+    if b.fees.presets.is_empty() {
+        out.push_str(
+            "\n\nThis chain has no fee estimates above that, so the minimum is \
+             the only rate worth offering — or type your own.",
+        );
+    }
+    out
+}
+
+/// The keyboard for [`bump_fee_card`].
+///
+/// Only presets that would actually be accepted, plus the minimum itself —
+/// which is the useful answer, and on a fresh regtest chain the only one.
+pub fn bump_fee_keyboard(b: &BumpOptions) -> InlineKeyboardMarkup {
+    let mut presets: Vec<InlineKeyboardButton> = b
+        .fees
+        .presets
+        .iter()
+        .map(|(label, rate)| {
+            InlineKeyboardButton::callback(
+                format!("{} {}", fee_label(*label), rate.to_sat_per_vb_ceil()),
+                format!("send:fee:{}", fee_slug(*label)),
+            )
+        })
+        .collect();
+    presets.truncate(3);
+
+    let mut rows = vec![vec![InlineKeyboardButton::callback(
+        format!("At least {} sat/vB", b.fees.floor.to_sat_per_vb_ceil()),
+        "send:fee:min",
+    )]];
+    if !presets.is_empty() {
+        rows.push(presets);
+    }
+    rows.push(custom_and_cancel(&b.fees));
+
+    InlineKeyboardMarkup::new(rows)
+}
+
+pub fn fee_rate_out_of_range() -> String {
+    "That is not a fee rate I can use. Send a whole number of sat/vB.".into()
+}
+
+fn fee_label(l: FeeLabel) -> &'static str {
+    match l {
+        FeeLabel::Fast => "Fast",
+        FeeLabel::Normal => "Normal",
+        FeeLabel::Slow => "Slow",
+    }
+}
+
+pub fn fee_slug(l: FeeLabel) -> &'static str {
+    match l {
+        FeeLabel::Fast => "fast",
+        FeeLabel::Normal => "normal",
+        FeeLabel::Slow => "slow",
+    }
+}
+
+pub fn fee_from_slug(slug: &str) -> Option<FeeLabel> {
+    match slug {
+        "fast" => Some(FeeLabel::Fast),
+        "normal" => Some(FeeLabel::Normal),
+        "slow" => Some(FeeLabel::Slow),
+        _ => None,
+    }
+}
+
+pub fn ask_custom_fee(floor: FeeRate) -> String {
+    format!(
+        "Send a fee rate in sat/vB — a whole number, at least {}.",
+        floor.to_sat_per_vb_ceil()
+    )
+}
+
+/// The confirm card (§8.3). Every number the user is agreeing to, and the
+/// countdown that says the quote will not wait forever.
+pub fn confirm_card(network: Network, q: &SendQuote, price: Option<&FiatPrice>) -> String {
+    let header = if q.replaces.is_some() {
+        "Fee bump"
+    } else {
+        "Confirm payment"
+    };
+
+    let mut out = format!(
+        "{} · <b>{header}</b>\n\n\
+         <code>To      {}</code>\n\
+         <code>Amount  {}</code>\n\
+         <code>Fee     {} @ {} sat/vB{}</code>\n\
+         <code>Total   {}</code>",
+        badge(network),
+        escape(&shorten(&q.recipient.to_string())),
+        sats_and_btc(q.amount),
+        sats(q.fee),
+        q.fee_rate.to_sat_per_vb_ceil(),
+        match price {
+            Some(p) => format!(" · {}", usd(q.fee, p)),
+            None => String::new(),
+        },
+        sats(q.total)
+    );
+
+    // Under the total rather than beside it: the <code> rows are aligned by
+    // padding, and an inline suffix would ragged them.
+    if let Some(price) = price {
+        out.push_str(&format!("\n<code>        {}</code>", usd(q.total, price)));
+    }
+
+    if q.change > Amount::ZERO {
+        out.push_str(&format!("\n<code>Change  {}</code>", sats(q.change)));
+    }
+    if q.is_payjoin {
+        out.push_str("\n\n🤝 Payjoin will be attempted — it makes this payment harder to trace.");
+    }
+    if let Some(replaced) = q.replaces {
+        out.push_str(&format!(
+            "\n\nReplaces <code>{}</code>",
+            escape(&shorten(&replaced.to_string()))
+        ));
+    }
+
+    out.push_str(&format!("\n\n⏳ Expires in {}", countdown(q)));
+    out
+}
+
+fn countdown(q: &SendQuote) -> String {
+    match q.expires_at.duration_since(std::time::SystemTime::now()) {
+        Ok(left) => format!("{}:{:02}", left.as_secs() / 60, left.as_secs() % 60),
+        Err(_) => "0:00".into(),
+    }
+}
+
+pub fn confirm_keyboard(q: &SendQuote) -> InlineKeyboardMarkup {
+    InlineKeyboardMarkup::new([[
+        InlineKeyboardButton::callback("✅ Confirm & sign", format!("send:confirm:{}", q.id)),
+        InlineKeyboardButton::callback("✖ Cancel", format!("send:cancel:{}", q.id)),
+    ]])
+}
+
+pub fn quote_expired_card(network: Network) -> String {
+    format!(
+        "{} · <b>Expired</b>\n\nThat card quoted a fee that may now be stale, so it was not \
+         signed. Nothing was sent. Start /send again.",
+        badge(network)
+    )
+}
+
+pub fn broadcasting() -> String {
+    "📡 Signing and broadcasting…".into()
+}
+
+pub fn broadcast_done(network: Network, b: &Broadcast, price: Option<&FiatPrice>) -> String {
+    // The *whole* txid, in a code block so a tap copies it. A shortened one
+    // looks tidier and is useless: it cannot be pasted into /tx or /bumpfee,
+    // and it cannot be looked up anywhere.
+    let txid = b.txid.to_string();
+
+    let mut out = format!(
+        "{} · 📡 <b>Sent</b>\n\n<code>{}</code>\n\n{} + {} fee",
+        badge(network),
+        escape(&txid),
+        sats(b.amount),
+        sats(b.fee)
+    );
+
+    if let Some(price) = price {
+        out.push_str(&format!("\n{}", usd(b.amount, price)));
+    }
+    out.push_str("\n\nTracking confirmations.");
+
+    if b.payjoin {
+        out.push_str("\n🤝 Payjoin ✅");
+    }
+
+    out.push_str(&format!(
+        "\n\n<code>/tx {txid}</code>\n<code>/bumpfee {txid}</code>"
+    ));
+
+    let link = tx_link(network, &txid, "See it on mempool.space");
+    if !link.is_empty() {
+        out.push_str("\n\n");
+        out.push_str(&link);
+    }
+
+    out
+}
+
+pub fn send_usage(network: Network) -> String {
+    format!(
+        "{}\n\n<b>Send bitcoin</b>\n\n\
+         <code>/send &lt;address&gt; &lt;sats&gt;</code>\n\
+         <code>/send &lt;address&gt; max</code>\n\
+         <code>/send &lt;bitcoin: URI&gt;</code>\n\n\
+         A BIP21 URI can carry its own amount, and a payjoin endpoint if the \
+         receiver offers one.",
+        badge(network)
+    )
+}
+
+pub fn send_cancelled() -> String {
+    "Cancelled. Nothing was sent.".into()
+}
+
+// ---------------------------------------------------------------- faucet
+// Regtest only. The wording leans on "test coins" throughout: the one thing
+// that must never be ambiguous is that these are worth nothing.
+
+pub fn faucet_usage(min: u64, max: u64) -> String {
+    format!(
+        "<code>/faucet [sats]</code> — test coins for this regtest chain.\n\n\
+         Between {} and {} sats, or leave it out for the default.",
+        group(min),
+        group(max)
+    )
+}
+
+pub fn faucet_needs_wallet() -> String {
+    "There is nowhere to put them yet. /create a wallet first, then /faucet.".into()
+}
+
+/// The node has nothing to hand out — every regtest chain starts this way.
+pub fn faucet_dry(available: Amount) -> String {
+    format!(
+        "The faucet is empty: the node's own wallet holds {}.\n\n\
+         Its coins come from mining, so <code>/mine 101</code> fills it — a coinbase \
+         needs 100 blocks before it can be spent, which is where the 101 comes from.",
+        sats(available)
+    )
+}
+
+pub fn faucet_sent(
+    network: Network,
+    address: &str,
+    amount: Amount,
+    txid: &str,
+    balance: Option<&BalanceView>,
+    price: Option<&FiatPrice>,
+) -> String {
+    let mut out = format!(
+        "{} · 🚰 Sent {} to your wallet, and mined a block so it is spendable now.\n\n\
+         <code>{}</code>",
+        badge(network),
+        sats(amount),
+        escape(address)
+    );
+
+    if let Some(b) = balance {
+        out.push_str(&format!(
+            "\n\n<b>Confirmed {}</b>",
+            sats_and_btc(b.confirmed)
+        ));
+        if let Some(p) = price {
+            out.push_str(&format!("\n<b>{}</b>", usd(b.confirmed, p)));
+        }
+    }
+
+    // In full, inside <code>, for the same reason /send does it: a shortened
+    // txid cannot be pasted anywhere.
+    out.push_str(&format!(
+        "\n\n<code>{}</code>\n/tx {}",
+        escape(txid),
+        escape(txid)
+    ));
+    out
+}
+
+/// Mining is under way. Replaced in place by [`mined`] when it finishes, so a
+/// long `/mine 500` is not a silent minute (§8.1's one-message-edited rule).
+pub fn mining(network: Network, blocks: u32) -> String {
+    format!(
+        "{} · ⛏ Mining {blocks} blocks — processing…",
+        badge(network)
+    )
+}
+
+/// What `/mine` leaves behind: one message, whatever the block count.
+///
+/// The balance is folded in rather than left to a follow-up `/balance`,
+/// because the number a miner wants is what they just earned.
+pub fn mined(
+    network: Network,
+    blocks: usize,
+    to_self: bool,
+    balance: Option<&BalanceView>,
+    price: Option<&FiatPrice>,
+) -> String {
+    let mut out = format!("{} · ⛏ Mined {blocks} block(s).", badge(network));
+
+    if let Some(b) = balance {
+        out.push_str(&format!(
+            "\n\n<code>Confirmed  {}</code>",
+            sats_and_btc(b.confirmed)
+        ));
+        if b.immature > Amount::ZERO {
+            out.push_str(&format!("\n<code>Immature   {}</code>", sats(b.immature)));
+        }
+        if let Some(p) = price {
+            out.push_str(&format!(
+                "\n<code>           {}</code>",
+                usd(b.confirmed, p)
+            ));
+        }
+    }
+
+    if to_self {
+        // A coinbase output needs 100 confirmations before it can be spent, so
+        // say so rather than let /balance look broken.
+        out.push_str(
+            "\n\nThe rewards are yours, but a freshly mined coin needs 100 more blocks \
+             before it can be spent — it shows under immature until then.",
+        );
+    }
+    out
+}
+
+#[cfg(test)]
+mod send_tests {
+    use super::*;
+    use std::time::{Duration, SystemTime};
+    use wallet_core::bitcoin::Txid;
+    use wallet_core::types::QuoteId;
+
+    fn vb(n: u64) -> FeeRate {
+        FeeRate::from_sat_per_vb(n).expect("a valid rate")
+    }
+
+    fn address() -> wallet_core::bitcoin::Address {
+        "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu"
+            .parse::<wallet_core::bitcoin::Address<_>>()
+            .expect("parses")
+            .require_network(Network::Bitcoin)
+            .expect("mainnet")
+    }
+
+    fn quote() -> SendQuote {
+        SendQuote {
+            id: QuoteId::new(),
+            recipient: address(),
+            amount: Amount::from_sat(50_000),
+            fee: Amount::from_sat(1_410),
+            fee_rate: vb(6),
+            total: Amount::from_sat(51_410),
+            change: Amount::from_sat(212_590),
+            is_payjoin: false,
+            payjoin_uri: None,
+            replaces: None,
+            expires_at: SystemTime::now() + Duration::from_secs(300),
+        }
+    }
+
+    fn options(presets: Vec<(FeeLabel, FeeRate)>, source: FeeSource) -> FeeOptions {
+        FeeOptions {
+            presets,
+            floor: vb(1),
+            source,
+            allows_custom: true,
+        }
+    }
+
+    /// §8.3: the card carries every number the user is agreeing to.
+    #[test]
+    fn the_confirm_card_shows_amount_fee_total_and_change() {
+        let card = confirm_card(Network::Bitcoin, &quote(), None);
+        assert!(card.contains("50,000 sats"));
+        assert!(card.contains("1,410 sats"));
+        assert!(card.contains("51,410 sats"));
+        assert!(card.contains("212,590 sats"));
+        assert!(card.contains("6 sat/vB"));
+        assert!(card.contains("Expires in"));
+        assert!(card.starts_with("🟠 MAINNET"));
+    }
+
+    #[test]
+    fn a_payjoin_quote_says_so_on_the_card() {
+        let mut q = quote();
+        q.is_payjoin = true;
+        assert!(confirm_card(Network::Regtest, &q, None).contains("Payjoin"));
+        assert!(!confirm_card(Network::Regtest, &quote(), None).contains("Payjoin"));
+    }
+
+    /// §8.3: /bumpfee reuses the card; only the header and one line differ.
+    #[test]
+    fn a_fee_bump_is_the_same_card_with_a_different_header() {
+        let mut q = quote();
+        q.replaces = Some(Txid::from_raw_hash(
+            wallet_core::bitcoin::hashes::Hash::from_byte_array([4u8; 32]),
+        ));
+        let card = confirm_card(Network::Bitcoin, &q, None);
+        assert!(card.contains("Fee bump"));
+        assert!(card.contains("Replaces"));
+        assert!(!confirm_card(Network::Bitcoin, &quote(), None).contains("Fee bump"));
+    }
+
+    #[test]
+    fn a_drained_wallet_shows_no_change_line() {
+        let mut q = quote();
+        q.change = Amount::ZERO;
+        assert!(!confirm_card(Network::Regtest, &q, None).contains("Change"));
+    }
+
+    /// §6: the keyboard draws whatever presets it is handed — the same code on
+    /// both networks.
+    #[test]
+    fn the_fee_keyboard_draws_the_presets_it_is_handed() {
+        let three = fee_keyboard(&options(
+            vec![
+                (FeeLabel::Fast, vb(12)),
+                (FeeLabel::Normal, vb(6)),
+                (FeeLabel::Slow, vb(2)),
+            ],
+            FeeSource::External {
+                name: "mempool.space".into(),
+            },
+        ));
+        assert_eq!(three.inline_keyboard[0].len(), 3);
+
+        // No estimate: no preset row at all, just Custom and Cancel.
+        let none = fee_keyboard(&options(vec![], FeeSource::Unavailable));
+        assert_eq!(none.inline_keyboard.len(), 1);
+        assert_eq!(none.inline_keyboard[0].len(), 2);
+    }
+
+    fn replaced() -> wallet_core::bitcoin::Txid {
+        use wallet_core::bitcoin::hashes::Hash as _;
+        wallet_core::bitcoin::Txid::from_raw_hash(
+            wallet_core::bitcoin::hashes::sha256d::Hash::from_byte_array([3u8; 32]),
+        )
+    }
+
+    fn bump(presets: Vec<(FeeLabel, FeeRate)>, current: FeeRate, minimum: FeeRate) -> BumpOptions {
+        BumpOptions {
+            replaces: replaced(),
+            current,
+            fees: FeeOptions {
+                presets,
+                floor: minimum,
+                source: FeeSource::Unavailable,
+                allows_custom: true,
+            },
+        }
+    }
+
+    /// The bug this whole change exists for: on a fresh regtest chain the only
+    /// preset is the rate the original already paid, so an ordinary fee
+    /// keyboard would offer nothing but buttons the network refuses.
+    ///
+    /// The minimum button is what makes a one-tap bump possible there.
+    #[test]
+    fn a_bump_always_offers_a_rate_that_would_be_accepted() {
+        let nothing_survives = bump(vec![], vb(2), vb(3));
+        let keyboard = bump_fee_keyboard(&nothing_survives);
+
+        assert_eq!(
+            keyboard.inline_keyboard[0].len(),
+            1,
+            "the minimum is always on its own row, even with no presets"
+        );
+        assert_eq!(
+            keyboard.inline_keyboard[0][0].text, "At least 3 sat/vB",
+            "the button names the rate it will use"
+        );
+        // Minimum row, then Custom + Cancel. No preset row.
+        assert_eq!(keyboard.inline_keyboard.len(), 2);
+
+        // And where presets do survive, they are offered too.
+        let some_survive = bump_fee_keyboard(&bump(
+            vec![(FeeLabel::Fast, vb(12)), (FeeLabel::Normal, vb(6))],
+            vb(2),
+            vb(3),
+        ));
+        assert_eq!(some_survive.inline_keyboard.len(), 3);
+        assert_eq!(some_survive.inline_keyboard[1].len(), 2);
+    }
+
+    /// "At least 3 sat/vB" is arbitrary without the number it has to beat.
+    #[test]
+    fn the_bump_card_says_what_it_is_outbidding() {
+        let card = bump_fee_card(Network::Regtest, &bump(vec![], vb(2), vb(3)));
+        assert!(card.contains("2 sat/vB"), "what the original paid");
+        assert!(card.contains("3 sat/vB"), "what a replacement must pay");
+        assert!(card.contains(&replaced().to_string()), "which transaction");
+    }
+
+    /// §6: when there is no estimate, say why rather than showing a bare prompt.
+    #[test]
+    fn an_unavailable_estimator_is_explained_on_the_fee_card() {
+        let card = fee_card(
+            Network::Bitcoin,
+            Some(Amount::from_sat(50_000)),
+            "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu",
+            &options(vec![], FeeSource::Unavailable),
+        );
+        assert!(card.contains("No fee estimate available"));
+        assert!(card.contains("floor 1 sat/vB"));
+    }
+
+    #[test]
+    fn the_fee_card_names_its_source() {
+        let card = fee_card(
+            Network::Bitcoin,
+            None,
+            "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu",
+            &options(
+                vec![(FeeLabel::Normal, vb(6))],
+                FeeSource::External {
+                    name: "mempool.space".into(),
+                },
+            ),
+        );
+        assert!(card.contains("mempool.space"));
+    }
+
+    /// §8.5: callback data carries an opaque id, never an amount or a rate.
+    #[test]
+    fn callback_data_holds_no_money() {
+        let q = quote();
+        let keyboard = confirm_keyboard(&q);
+        let data: Vec<String> = keyboard
+            .inline_keyboard
+            .iter()
+            .flatten()
+            .filter_map(|b| match &b.kind {
+                teloxide::types::InlineKeyboardButtonKind::CallbackData(d) => Some(d.clone()),
+                _ => None,
+            })
+            .collect();
+
+        assert!(data.iter().any(|d| d == &format!("send:confirm:{}", q.id)));
+        for d in &data {
+            assert!(d.len() <= 64, "Telegram's callback data limit is 64 bytes");
+            assert!(!d.contains("50000"), "an amount must not be replayable");
+            assert!(!d.contains("bc1q"), "an address must not be replayable");
+        }
+    }
+
+    #[test]
+    fn fee_slugs_round_trip() {
+        for label in [FeeLabel::Fast, FeeLabel::Normal, FeeLabel::Slow] {
+            assert_eq!(fee_from_slug(fee_slug(label)), Some(label));
+        }
+        assert_eq!(fee_from_slug("nonsense"), None);
+    }
+
+    /// §8.1: an expired card must say that nothing was sent, not merely that
+    /// something failed.
+    #[test]
+    fn the_expiry_card_says_nothing_was_sent() {
+        let card = quote_expired_card(Network::Bitcoin);
+        assert!(card.contains("Nothing was sent"));
+        assert!(card.contains("/send"));
+    }
+}
+
+// ------------------------------------------------------------------- payjoin
+// §7's UX note: explain the privacy benefit, badge the outcome, and never make
+// a fallback look like a failure — the payment went through either way.
+
+use wallet_core::types::{PayjoinReceipt, PayjoinRole, PayjoinSessionView, PayjoinState};
+
+pub fn payjoin_receipt(network: Network, amount: Amount, r: &PayjoinReceipt) -> String {
+    let mut out = format!(
+        "{} · 🤝 <b>Payjoin request for {}</b>\n\n<code>{}</code>\n\n\
+         Pay this with a wallet that supports payjoin and your two wallets build the \
+         transaction together — so the usual assumption that every input belongs to the \
+         sender stops holding for this payment.\n\n\
+         If the sender's wallet doesn't do payjoin, they can still pay it normally.",
+        badge(network),
+        sats(amount),
+        escape(&r.bip21)
+    );
+
+    if network == Network::Bitcoin {
+        // §7's privacy note, stated rather than implied.
+        out.push_str(
+            "\n\nℹ️ This hides the payment from outside observers, not from the node \
+             provider this bot talks to.",
+        );
+    }
+
+    out.push_str("\n\nThis request expires in an hour. /pj_sessions shows how it's going.");
+    out
+}
+
+pub fn payjoin_sessions(network: Network, sessions: &[PayjoinSessionView]) -> String {
+    if sessions.is_empty() {
+        return format!(
+            "{}\n\nNo payjoin sessions. /pj_receive &lt;sats&gt; starts one.",
+            badge(network)
+        );
+    }
+
+    let mut out = format!("{}\n\n<b>Payjoin sessions</b>", badge(network));
+    for s in sessions {
+        out.push_str(&format!(
+            "\n\n{} {}{} — {}\n<code>{}</code>",
+            payjoin_badge(&s.state),
+            match s.role {
+                PayjoinRole::Receiver => "Receiving",
+                PayjoinRole::Sender => "Sending",
+            },
+            // Core recorded the amount from the first commit but never read it
+            // back, so this line could not be written until now.
+            match s.amount {
+                Some(amount) => format!(" {}", sats(amount)),
+                None => String::new(),
+            },
+            payjoin_state_text(&s.state),
+            escape(&shorten(&s.id.to_string()))
+        ));
+
+        // The transaction that settled it, where there is one. A `Completed`
+        // row used to carry an all-zeros txid, so printing it would have been
+        // worse than leaving it out.
+        if let PayjoinState::Completed { txid } | PayjoinState::FellBack { txid } = &s.state {
+            let id = txid.to_string();
+            let link = tx_link(network, &id, &shorten(&id));
+            out.push_str(&format!(
+                "\n{}",
+                // Regtest has no explorer, so fall back to the bare id rather
+                // than an empty line.
+                if link.is_empty() {
+                    format!("<code>{}</code>", escape(&shorten(&id)))
+                } else {
+                    link
+                }
+            ));
+        }
+    }
+    out
+}
+
+pub fn payjoin_badge(state: &PayjoinState) -> &'static str {
+    match state {
+        PayjoinState::Completed { .. } => "✅",
+        PayjoinState::FellBack { .. } => "↩️",
+        PayjoinState::Failed { .. } => "⚠️",
+        PayjoinState::Expired | PayjoinState::Cancelled => "—",
+        _ => "⏳",
+    }
+}
+
+/// §7: no scary errors. A fallback is an outcome, not a failure.
+pub fn payjoin_state_text(state: &PayjoinState) -> String {
+    match state {
+        PayjoinState::Waiting => "waiting for the other side".into(),
+        PayjoinState::ProposalReceived => "checking their proposal".into(),
+        PayjoinState::ProposalSent => "proposal sent, waiting".into(),
+        PayjoinState::Completed { .. } => "done — payjoin".into(),
+        PayjoinState::FellBack { .. } => "sent as a regular transaction".into(),
+        PayjoinState::Expired => "expired".into(),
+        PayjoinState::Cancelled => "cancelled".into(),
+        PayjoinState::Failed { .. } => "didn't complete — funds untouched".into(),
+    }
+}
+
+/// §8.6: the push notification for a payjoin state change.
+pub fn payjoin_event(state: &PayjoinState) -> Option<String> {
+    Some(match state {
+        PayjoinState::ProposalReceived => "🤝 Payjoin proposal received — verifying".into(),
+        PayjoinState::Completed { txid } => {
+            format!("🤝 Payjoin ✅ — {}", shorten(&txid.to_string()))
+        }
+        PayjoinState::FellBack { txid } => format!(
+            "↩️ Sent as a regular transaction (payjoin didn't complete) — {}",
+            shorten(&txid.to_string())
+        ),
+        PayjoinState::Expired => "Payjoin request expired. Nothing was sent.".into(),
+        PayjoinState::Failed { .. } => {
+            "The payjoin didn't complete. Your funds are untouched — /pj_sessions has the detail."
+                .into()
+        }
+        // Waiting, ProposalSent and Cancelled are visible in /pj_sessions; a
+        // notification for each would be noise.
+        _ => return None,
+    })
+}
+
+pub fn payjoin_usage(network: Network) -> String {
+    format!(
+        "{}\n\n<code>/pj_receive &lt;sats&gt;</code> — ask to be paid with payjoin.",
+        badge(network)
+    )
+}
+
+/// A payjoin that could not even start. Distinct from one that failed midway,
+/// because the cause is almost always the directory or relay being unreachable
+/// and the operator is the person who can fix it (§8.1: a next step).
+pub fn payjoin_unavailable(e: &CoreError) -> String {
+    match e {
+        CoreError::Payjoin(reason) => format!(
+            "Couldn't start a payjoin request — the payjoin directory or relay didn't \
+             answer. Nothing was sent, and /receive still works for an ordinary \
+             payment.\n\n<code>{}</code>",
+            escape(reason)
+        ),
+        other => render_error(other),
+    }
+}
+
+pub fn payjoin_cancelled() -> String {
+    "Payjoin session cancelled.".into()
+}
+
+#[cfg(test)]
+mod payjoin_tests {
+    use super::*;
+    use wallet_core::bitcoin::Txid;
+    use wallet_core::types::SessionId;
+
+    fn txid(b: u8) -> Txid {
+        Txid::from_raw_hash(wallet_core::bitcoin::hashes::Hash::from_byte_array([b; 32]))
+    }
+
+    fn session(state: PayjoinState, role: PayjoinRole) -> PayjoinSessionView {
+        PayjoinSessionView {
+            id: SessionId::new(),
+            role,
+            state,
+            amount: None,
+            created_at: std::time::SystemTime::now(),
+            expires_at: std::time::SystemTime::now(),
+        }
+    }
+
+    /// §7: explain the privacy benefit rather than assuming the user knows it.
+    #[test]
+    fn a_receive_request_explains_what_payjoin_buys() {
+        let receipt = PayjoinReceipt {
+            session_id: SessionId::new(),
+            bip21: "bitcoin:bc1qexample?amount=0.0005&pj=https://payjo.in/X".into(),
+            expires_at: std::time::SystemTime::now(),
+        };
+        let card = payjoin_receipt(Network::Regtest, Amount::from_sat(50_000), &receipt);
+
+        assert!(card.contains("together"));
+        assert!(
+            card.contains("pay it normally"),
+            "a non-payjoin sender is not stuck"
+        );
+        assert!(card.contains("payjo.in"));
+    }
+
+    /// §7's privacy note: payjoin hides the payment from observers, not from
+    /// the backend this bot talks to.
+    #[test]
+    fn mainnet_says_who_can_still_see_the_payment() {
+        let receipt = PayjoinReceipt {
+            session_id: SessionId::new(),
+            bip21: "bitcoin:bc1qexample?pj=https://payjo.in/X".into(),
+            expires_at: std::time::SystemTime::now(),
+        };
+        let card = payjoin_receipt(Network::Bitcoin, Amount::from_sat(50_000), &receipt);
+        assert!(card.contains("not from the node provider"));
+
+        let regtest = payjoin_receipt(Network::Regtest, Amount::from_sat(50_000), &receipt);
+        assert!(!regtest.contains("node provider"));
+    }
+
+    /// §7: no scary errors. A fallback is an outcome, not a failure.
+    #[test]
+    fn a_fallback_reads_as_a_completed_payment() {
+        let line = payjoin_event(&PayjoinState::FellBack { txid: txid(1) })
+            .expect("a fallback is worth announcing");
+        assert!(line.contains("Sent as a regular transaction"));
+        assert!(!line.to_lowercase().contains("fail"));
+        assert!(!line.contains('⚠'));
+    }
+
+    #[test]
+    fn a_failure_says_the_funds_are_untouched() {
+        let line = payjoin_event(&PayjoinState::Failed {
+            reason: "check failed".into(),
+        })
+        .expect("worth announcing");
+        assert!(line.contains("untouched"));
+    }
+
+    #[test]
+    fn quiet_transitions_produce_no_notification() {
+        // A message for every transition would be noise.
+        assert!(payjoin_event(&PayjoinState::Waiting).is_none());
+        assert!(payjoin_event(&PayjoinState::ProposalSent).is_none());
+        assert!(payjoin_event(&PayjoinState::Cancelled).is_none());
+    }
+
+    #[test]
+    fn an_empty_session_list_offers_the_next_step() {
+        assert!(payjoin_sessions(Network::Regtest, &[]).contains("/pj_receive"));
+    }
+
+    #[test]
+    fn sessions_are_badged_by_outcome() {
+        let list = [
+            session(PayjoinState::Waiting, PayjoinRole::Receiver),
+            session(
+                PayjoinState::Completed { txid: txid(2) },
+                PayjoinRole::Sender,
+            ),
+            session(
+                PayjoinState::FellBack { txid: txid(3) },
+                PayjoinRole::Sender,
+            ),
+        ];
+        let rendered = payjoin_sessions(Network::Regtest, &list);
+
+        assert!(rendered.contains("Receiving"));
+        assert!(rendered.contains("Sending"));
+        assert!(rendered.contains("done — payjoin"));
+        assert!(rendered.contains("sent as a regular transaction"));
+    }
+
+    #[test]
+    fn every_state_has_a_badge_and_a_sentence() {
+        for state in [
+            PayjoinState::Waiting,
+            PayjoinState::ProposalReceived,
+            PayjoinState::ProposalSent,
+            PayjoinState::Completed { txid: txid(4) },
+            PayjoinState::FellBack { txid: txid(5) },
+            PayjoinState::Expired,
+            PayjoinState::Cancelled,
+            PayjoinState::Failed { reason: "x".into() },
+        ] {
+            assert!(!payjoin_badge(&state).is_empty());
+            assert!(!payjoin_state_text(&state).is_empty());
+        }
+    }
+}
+
+#[cfg(test)]
+mod html_tests {
+    use super::*;
+    use std::time::{Duration, SystemTime};
+    use wallet_core::bitcoin::Txid;
+    use wallet_core::types::{
+        BalanceView, Broadcast, FeeLabel, FeeOptions, FeeSource, Page, Paged, PayjoinReceipt,
+        PayjoinRole, PayjoinSessionView, PayjoinState, QuoteId, RestorePlan, RestoreVerdict,
+        SendQuote, SessionId, TxDirection, TxStatus, TxSummary,
+    };
+
+    /// Every tag Telegram accepts in `ParseMode::Html`. Anything else makes it
+    /// reject the *whole* message, so a stray `<n>` in prose takes a command
+    /// down completely — which is exactly what happened to /network:
+    ///
+    ///     Bad Request: can't parse entities: Unsupported start tag "n"
+    const ALLOWED: [&str; 14] = [
+        "b",
+        "strong",
+        "i",
+        "em",
+        "u",
+        "ins",
+        "s",
+        "strike",
+        "del",
+        "span",
+        "tg-spoiler",
+        "a",
+        "code",
+        "pre",
+    ];
+
+    /// Reject what Telegram would reject: an angle bracket that opens a tag it
+    /// does not know.
+    fn assert_sendable(label: &str, text: &str) {
+        let bytes = text.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] != b'<' {
+                i += 1;
+                continue;
+            }
+
+            let rest = &text[i + 1..];
+            let end = rest
+                .find('>')
+                .unwrap_or_else(|| panic!("{label}: unterminated `<` at byte {i}:\n{text}"));
+            let inner = &rest[..end];
+
+            // Closing tags, and attributes on an opening tag.
+            let name = inner
+                .trim_start_matches('/')
+                .split([' ', '='])
+                .next()
+                .unwrap_or("")
+                .to_ascii_lowercase();
+
+            assert!(
+                ALLOWED.contains(&name.as_str()),
+                "{label}: `<{inner}>` is not a tag Telegram accepts, so it would reject \
+                 the whole message. Escape it with ui::escape, or write it as \
+                 &lt;{inner}&gt;.\n\nFull text:\n{text}"
+            );
+            i += 1 + end + 1;
+        }
+
+        // A line that starts with a run of spaces is almost always a `\`
+        // continuation that lost its backslash: the source indentation ends up
+        // inside the string and Telegram renders it. It is invisible in review
+        // and obvious in the chat, which is the worst combination.
+        //
+        // Alignment padding inside the monospace cards is fine — that sits
+        // after a `<code>` tag, never at the start of a line.
+        for (n, line) in text.split('\n').enumerate() {
+            let indent = line.len() - line.trim_start_matches(' ').len();
+            assert!(
+                indent < 3,
+                "{label}: line {} begins with {indent} spaces, which Telegram will show. \
+                 A `\\n` in a wrapped string literal needs a trailing `\\` or the source \
+                 indentation becomes part of the message.\n\nFull text:\n{text}",
+                n + 1
+            );
+        }
+    }
+
+    fn txid(b: u8) -> Txid {
+        Txid::from_raw_hash(wallet_core::bitcoin::hashes::Hash::from_byte_array([b; 32]))
+    }
+
+    fn address() -> wallet_core::bitcoin::Address {
+        "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu"
+            .parse::<wallet_core::bitcoin::Address<_>>()
+            .expect("parses")
+            .require_network(Network::Bitcoin)
+            .expect("mainnet")
+    }
+
+    /// §8.1 says every message is a sentence with a next step. It also has to
+    /// *arrive*, and a message Telegram refuses arrives as nothing at all.
+    #[test]
+    fn every_message_is_valid_telegram_html() {
+        for network in [Network::Regtest, Network::Bitcoin] {
+            // The one that was broken.
+            assert_sendable("network_card", &network_card(network));
+
+            assert_sendable("welcome/new", &welcome(network, false));
+            assert_sendable("welcome/has", &welcome(network, true));
+            assert_sendable("wallet_ready", &wallet_ready(network));
+            assert_sendable("restored", &restored(network));
+            assert_sendable("quote_expired", &quote_expired_card(network));
+            assert_sendable("send_usage", &send_usage(network));
+            assert_sendable("payjoin_usage", &payjoin_usage(network));
+            let bump_options = |presets: Vec<(FeeLabel, FeeRate)>| BumpOptions {
+                replaces: txid(3),
+                current: FeeRate::from_sat_per_vb(2).expect("valid"),
+                fees: FeeOptions {
+                    presets,
+                    floor: FeeRate::from_sat_per_vb(3).expect("valid"),
+                    source: FeeSource::Unavailable,
+                    allows_custom: true,
+                },
+            };
+            assert_sendable(
+                "bump_fee_card/no presets",
+                &bump_fee_card(network, &bump_options(vec![])),
+            );
+            assert_sendable(
+                "bump_fee_card/presets",
+                &bump_fee_card(
+                    network,
+                    &bump_options(vec![(
+                        FeeLabel::Fast,
+                        FeeRate::from_sat_per_vb(12).expect("valid"),
+                    )]),
+                ),
+            );
+            // Every card that can carry a dollar figure, rendered with one.
+            // The caveat uses <i> and interpolates the source name, so these
+            // shapes need validating as much as the unpriced ones do.
+            let price = FiatPrice {
+                usd_per_btc: 104_852.37,
+                source: "mempool.space".into(),
+                fetched_at: SystemTime::now(),
+            };
+            assert_sendable(
+                "balance/priced",
+                &balance(
+                    network,
+                    &BalanceView {
+                        confirmed: Amount::from_sat(250_000),
+                        trusted_pending: Amount::ZERO,
+                        untrusted_pending: Amount::ZERO,
+                        immature: Amount::ZERO,
+                        total: Amount::from_sat(250_000),
+                        unconfirmed_incoming_visible: true,
+                    },
+                    Some(&price),
+                ),
+            );
+            // /status had no coverage at all, and it now interpolates a
+            // third-party string (the price source's own name) into a
+            // message. Both shapes: with a price and without one.
+            let backend = wallet_core::types::BackendStatus {
+                network,
+                tip_height: 969_591,
+                tip_hash: wallet_core::bitcoin::BlockHash::from_raw_hash(
+                    wallet_core::bitcoin::hashes::Hash::from_byte_array([0u8; 32]),
+                ),
+                latency: Duration::from_millis(42),
+                calls_used: Some(7),
+                call_budget: Some(90),
+                degraded: true,
+            };
+            assert_sendable(
+                "status/priced",
+                &status(&backend, Some(Duration::from_secs(300)), Some(&price)),
+            );
+            assert_sendable("status/no price", &status(&backend, None, None));
+
+            assert_sendable(
+                "incoming/priced",
+                &incoming(
+                    Amount::from_sat(25_000),
+                    TxStatus::Unconfirmed,
+                    Some(&price),
+                ),
+            );
+            let earned = BalanceView {
+                confirmed: Amount::from_sat(5_000_000_000),
+                trusted_pending: Amount::ZERO,
+                untrusted_pending: Amount::ZERO,
+                immature: Amount::from_sat(500_000_000_000),
+                total: Amount::from_sat(505_000_000_000),
+                unconfirmed_incoming_visible: true,
+            };
+            assert_sendable(
+                "mined/priced",
+                &mined(network, 101, true, Some(&earned), Some(&price)),
+            );
+            assert_sendable(
+                "faucet_sent/priced",
+                &faucet_sent(
+                    network,
+                    "bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
+                    Amount::from_sat(100_000),
+                    &txid(7).to_string(),
+                    Some(&earned),
+                    Some(&price),
+                ),
+            );
+
+            assert_sendable("wrong_pin_retry", &wrong_pin_retry(3));
+            assert_sendable("fee_rate_out_of_range", &fee_rate_out_of_range());
+            assert_sendable("faucet_usage", &faucet_usage(1_000, 10_000_000));
+            assert_sendable("faucet_needs_wallet", &faucet_needs_wallet());
+            assert_sendable("faucet_dry", &faucet_dry(Amount::ZERO));
+            assert_sendable(
+                "faucet_sent",
+                &faucet_sent(
+                    network,
+                    "bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
+                    Amount::from_sat(100_000),
+                    &txid(7).to_string(),
+                    None,
+                    None,
+                ),
+            );
+            assert_sendable("mining", &mining(network, 101));
+            assert_sendable("mined/self", &mined(network, 101, true, None, None));
+            assert_sendable("mined/node", &mined(network, 1, false, None, None));
+
+            // With a balance folded in, which is the shape /mine actually
+            // sends when it mined to the caller's own wallet.
+            let mined_balance = BalanceView {
+                confirmed: Amount::from_sat(5_000_000_000),
+                trusted_pending: Amount::ZERO,
+                untrusted_pending: Amount::ZERO,
+                immature: Amount::from_sat(500_000_000_000),
+                total: Amount::from_sat(505_000_000_000),
+                unconfirmed_incoming_visible: true,
+            };
+            assert_sendable(
+                "mined/balance",
+                &mined(network, 101, true, Some(&mined_balance), None),
+            );
+
+            let b = Broadcast {
+                txid: txid(1),
+                amount: Amount::from_sat(50_000),
+                fee: Amount::from_sat(410),
+                payjoin: false,
+            };
+            assert_sendable("broadcast_done", &broadcast_done(network, &b, None));
+            assert_sendable(
+                "broadcast_done/payjoin",
+                &broadcast_done(network, &Broadcast { payjoin: true, ..b }, None),
+            );
+
+            let view = BalanceView {
+                confirmed: Amount::from_sat(100_000),
+                trusted_pending: Amount::from_sat(1),
+                untrusted_pending: Amount::from_sat(2),
+                immature: Amount::from_sat(3),
+                total: Amount::from_sat(100_006),
+                unconfirmed_incoming_visible: network == Network::Regtest,
+            };
+            assert_sendable("balance", &balance(network, &view, None));
+
+            let info = AddressInfo {
+                address: address(),
+                index: 0,
+                used: false,
+                received: Amount::ZERO,
+                bip21: "bitcoin:bc1qexample".into(),
+            };
+            // Both shapes: a backend that can see the mempool and one that
+            // cannot, since the caveat is the only difference.
+            assert_sendable("receive/mempool", &receive(network, &info, true));
+            assert_sendable("receive/no mempool", &receive(network, &info, false));
+            assert_sendable(
+                "addresses",
+                &addresses(
+                    network,
+                    &Paged {
+                        items: vec![info.clone()],
+                        page: Page::new(0),
+                        total: 1,
+                    },
+                ),
+            );
+            assert_sendable(
+                "addresses/empty",
+                &addresses(
+                    network,
+                    &Paged {
+                        items: vec![],
+                        page: Page::new(0),
+                        total: 0,
+                    },
+                ),
+            );
+
+            let summary = TxSummary {
+                txid: txid(2),
+                direction: TxDirection::Incoming,
+                amount: Amount::from_sat(25_000),
+                fee: Some(Amount::from_sat(300)),
+                status: TxStatus::Confirmed {
+                    height: 100,
+                    confirmations: 3,
+                },
+                timestamp: None,
+            };
+            assert_sendable(
+                "history",
+                &history(
+                    network,
+                    &Paged {
+                        items: vec![summary.clone()],
+                        page: Page::new(0),
+                        total: 1,
+                    },
+                ),
+            );
+            assert_sendable(
+                "history/empty",
+                &history(
+                    network,
+                    &Paged {
+                        items: vec![],
+                        page: Page::new(0),
+                        total: 0,
+                    },
+                ),
+            );
+            // The other empty: a page past the end, which a stale Next button
+            // can reach.
+            assert_sendable(
+                "history/past the end",
+                &history(
+                    network,
+                    &Paged {
+                        items: vec![],
+                        page: Page::new(99),
+                        total: 25,
+                    },
+                ),
+            );
+            assert_sendable(
+                "tx_detail",
+                &tx_detail(
+                    network,
+                    &wallet_core::types::TxDetail {
+                        summary,
+                        fee_rate: FeeRate::from_sat_per_vb(6),
+                        inputs: 1,
+                        outputs: 2,
+                        vsize: 141,
+                    },
+                    None,
+                ),
+            );
+
+            let fees = FeeOptions {
+                presets: vec![(FeeLabel::Normal, FeeRate::from_sat_per_vb(6).expect("ok"))],
+                floor: FeeRate::from_sat_per_vb(1).expect("ok"),
+                source: FeeSource::External {
+                    name: "mempool.space".into(),
+                },
+                allows_custom: true,
+            };
+            assert_sendable(
+                "fee_card",
+                &fee_card(network, Some(Amount::from_sat(1)), "bc1q", &fees),
+            );
+
+            let quote = SendQuote {
+                id: QuoteId::new(),
+                recipient: address(),
+                amount: Amount::from_sat(50_000),
+                fee: Amount::from_sat(410),
+                fee_rate: FeeRate::from_sat_per_vb(6).expect("ok"),
+                total: Amount::from_sat(50_410),
+                change: Amount::from_sat(1_000),
+                is_payjoin: true,
+                payjoin_uri: None,
+                replaces: Some(txid(3)),
+                expires_at: SystemTime::now() + Duration::from_secs(300),
+            };
+            assert_sendable("confirm_card", &confirm_card(network, &quote, None));
+
+            let receipt = PayjoinReceipt {
+                session_id: SessionId::new(),
+                bip21: "bitcoin:bc1qexample?amount=0.0005&pj=https://payjo.in/X".into(),
+                expires_at: SystemTime::now(),
+            };
+            assert_sendable(
+                "payjoin_receipt",
+                &payjoin_receipt(network, Amount::from_sat(25_000), &receipt),
+            );
+            assert_sendable(
+                "payjoin_sessions",
+                &payjoin_sessions(
+                    network,
+                    &[PayjoinSessionView {
+                        id: SessionId::new(),
+                        role: PayjoinRole::Receiver,
+                        state: PayjoinState::Waiting,
+                        amount: None,
+                        created_at: SystemTime::now(),
+                        expires_at: SystemTime::now(),
+                    }],
+                ),
+            );
+            assert_sendable("payjoin_sessions/empty", &payjoin_sessions(network, &[]));
+
+            for depth in [50u32, 5_000, 500_000] {
+                let verdict = match depth {
+                    50 => RestoreVerdict::Proceed,
+                    5_000 => RestoreVerdict::Warn,
+                    _ => RestoreVerdict::Refuse { max: 10_000 },
+                };
+                assert_sendable(
+                    "restore_plan",
+                    &restore_plan(
+                        network,
+                        &RestorePlan {
+                            birthday: 0,
+                            tip: depth,
+                            depth,
+                            eta: Duration::from_secs(600),
+                            verdict,
+                        },
+                    ),
+                );
+            }
+        }
+
+        // The prompts, which have no network in them.
+        assert_sendable("ask_pin_new", &ask_pin_new());
+        assert_sendable("ask_pin_again", &ask_pin_again());
+        assert_sendable("ask_pin", &ask_pin());
+        assert_sendable("pin_mismatch", &pin_mismatch());
+        assert_sendable("ask_mnemonic", &ask_mnemonic());
+        assert_sendable("ask_birthday", &ask_birthday());
+        assert_sendable("ask_delete_word", &ask_delete_word());
+        assert_sendable("deleted", &deleted());
+        assert_sendable("delete_cancelled", &delete_cancelled());
+        assert_sendable(
+            "mnemonic_card",
+            &mnemonic_card("abandon abandon about", Duration::from_secs(30)),
+        );
+        assert_sendable("ask_backup_word", &ask_backup_word(0, 1));
+        assert_sendable("unlocked", &unlocked(Duration::from_secs(600)));
+        assert_sendable("locked", &locked());
+        assert_sendable("broadcasting", &broadcasting());
+        assert_sendable("send_cancelled", &send_cancelled());
+        assert_sendable("payjoin_cancelled", &payjoin_cancelled());
+        assert_sendable(
+            "ask_custom_fee",
+            &ask_custom_fee(FeeRate::from_sat_per_vb(1).expect("ok")),
+        );
+        assert_sendable("unrecognised/cmd", &unrecognised("/nonsense"));
+        assert_sendable("unrecognised/text", &unrecognised("hello"));
+        assert_sendable("confirmed", &confirmed(&txid(4).to_string(), 6));
+        assert_sendable("confirmed_many", &confirmed_many(101));
+        assert_sendable(
+            "incoming",
+            &incoming(Amount::from_sat(1), TxStatus::Unconfirmed, None),
+        );
+        assert_sendable(
+            "incoming_many",
+            &incoming_many(101, Amount::from_sat(246_582_006), None),
+        );
+        assert_sendable("session_expired", &session_expired());
+        assert_sendable("backend_degraded", &backend_degraded());
+        assert_sendable("backend_recovered", &backend_recovered());
+    }
+
+    /// Every `CoreError` renders into something sendable, including the
+    /// variants that carry text straight from a node.
+    #[test]
+    fn every_error_message_is_valid_telegram_html() {
+        use wallet_core::error::FeeBumpRefusal;
+        use wallet_core::{BackendError, CoreError};
+
+        let errors = [
+            CoreError::NoWallet,
+            CoreError::WalletExists,
+            CoreError::InvalidMnemonic,
+            CoreError::BackupCheckFailed,
+            CoreError::InvalidPin { min: 6, max: 8 },
+            CoreError::WrongPin { remaining: 2 },
+            CoreError::Locked,
+            CoreError::QuoteExpired,
+            // The dangerous one: a node's own words, which can contain anything.
+            CoreError::BroadcastRejected {
+                reason: "bad-txns-inputs-missingorspent <script>".into(),
+            },
+            CoreError::Backend(BackendError::Rpc {
+                code: -26,
+                message: "min relay fee not met <b>".into(),
+            }),
+            CoreError::Payjoin("directory said <no>".into()),
+            CoreError::Storage("attempt to write a readonly database".into()),
+            // Every refusal /bumpfee can give. These were rendered but never
+            // validated, and the two newest carry numbers.
+            CoreError::CannotBumpFee {
+                reason: FeeBumpRefusal::AlreadyConfirmed,
+            },
+            CoreError::CannotBumpFee {
+                reason: FeeBumpRefusal::NotFound,
+            },
+            CoreError::CannotBumpFee {
+                reason: FeeBumpRefusal::NotReplaceable,
+            },
+            CoreError::CannotBumpFee {
+                reason: FeeBumpRefusal::RateTooLow {
+                    required: FeeRate::from_sat_per_vb(3).expect("valid"),
+                },
+            },
+            CoreError::CannotBumpFee {
+                reason: FeeBumpRefusal::AbsoluteFeeTooLow {
+                    required: Amount::from_sat(1_410),
+                },
+            },
+        ];
+
+        for e in &errors {
+            assert_sendable("render_error", &render_error(e));
+            assert_sendable("payjoin_unavailable", &payjoin_unavailable(e));
+        }
+    }
+
+    /// The txid has to be usable, not just pretty: a shortened one cannot be
+    /// pasted into /tx or /bumpfee, which is the whole reason it is shown.
+    #[test]
+    fn a_broadcast_gives_back_the_whole_txid() {
+        let id = txid(7);
+        let full = id.to_string();
+        let card = broadcast_done(
+            Network::Regtest,
+            &Broadcast {
+                txid: id,
+                amount: Amount::from_sat(50_000),
+                fee: Amount::from_sat(410),
+                payjoin: false,
+            },
+            None,
+        );
+
+        assert!(card.contains(&full), "the whole txid must be present");
+        assert!(
+            card.contains(&format!("/tx {full}")),
+            "and offered to /tx, ready to copy"
+        );
+        assert!(
+            card.contains(&format!("/bumpfee {full}")),
+            "and to /bumpfee, which is the other thing you need it for"
+        );
+
+        // A confirmation notification too.
+        assert!(confirmed(&full, 6).contains(&full));
+    }
+
+    /// /network has to actually name the network.
+    #[test]
+    fn the_network_card_names_the_chain() {
+        assert!(network_card(Network::Bitcoin).contains("MAINNET"));
+        assert!(network_card(Network::Regtest).contains("REGTEST"));
+    }
+}

@@ -88,6 +88,13 @@
 │   ├── Cargo.lock    # Dependency lock file
 │   ├── LABS.md       # Lab documentation
 │   └── README.md     # Week 5 specific README
+├── Capstone/         # Capstone project: Telegram + CLI Bitcoin wallet
+│   ├── crates/       # wallet-core, bot (Telegram), wallet-cli
+│   ├── docs/         # Architecture and setup notes
+│   ├── scripts/      # Regtest and BitRPC helper scripts
+│   ├── Cargo.toml    # Workspace configuration
+│   ├── Cargo.lock    # Dependency lock file
+│   └── README.md     # Capstone specific README
 ├── .gitignore        # Git ignore patterns
 ├── README.md         # This file
 └── x.sh              # Setup/utility script
@@ -118,6 +125,7 @@
   - **`ASSIGNMENT.md`** - Requirements in implementation order
   - **`README.md`** - Student workflow, commands, and written questions
 - **`rfb_labs_week_5/`** - Week 5 labs on Bitcoin address formats and HD wallets (BIP39, BIP32, BIP44)
+- **`Capstone/`** - Capstone project: a non-custodial multi-user Bitcoin wallet driven from Telegram, with a second CLI front end over the same core and payjoin (BIP77 v2, BIP78 v1) support
   - **`grader/`** - Automated grading scripts for evaluating lab submissions
   - **`src/`** - Source code including lab implementations and supporting modules
   - **`submissions/`** - Templates for participants to submit their lab evidence
@@ -170,6 +178,14 @@ All participants will complete a capstone project demonstrating their skills and
 - **Transaction Explorer** - Transaction visualization and analysis
 - **Block Explorer** - Blockchain block exploration interface
 - **Wallet Library** - Reusable wallet functionality library
+
+### This Submission
+
+The capstone in this repository lives in [`Capstone/`](Capstone/) — a non-custodial
+Bitcoin wallet used through a Telegram chat, with a `wallet-cli` front end over
+the same `wallet-core` to prove the boundary holds. See
+[`Capstone/README.md`](Capstone/README.md) for the architecture, security model
+and setup.
 
 ### Final Deliverables
 
