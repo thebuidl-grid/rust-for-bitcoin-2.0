@@ -28,8 +28,9 @@ pub struct Output {
     pub script_pubkey: Vec<u8>,
 }
 
+// Serialize the converted BTC float
 fn as_btc<S: Serializer, T: BitcoinValue>(t: &T, s: S) -> Result<S::Ok, S::Error> {
-
+    s.serialize_f64(t.to_btc())
 }
 
 #[derive(Debug)]
@@ -53,9 +54,12 @@ impl Txid {
     }
 }
 
+// Serialize Txid as a hex string (requires hex formatting)
 impl Serialize for Txid {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-       
+        // Formats raw bytes as a hexadecimal string
+        let hex_str = self.0.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+        s.serialize_str(&hex_str)
     }
 }
 
@@ -64,9 +68,10 @@ trait BitcoinValue {
     fn to_btc(&self) -> f64;
 }
 
+// Convert satoshis (u64) to BTC (f64)
 impl BitcoinValue for Amount {
     fn to_btc(&self) -> f64 {
-       
+        self.0 as f64 / 100_000_000.0
     }
 }
 

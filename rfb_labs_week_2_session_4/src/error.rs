@@ -44,7 +44,58 @@ impl fmt::Display for LibraryError {
     fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO(Part 2): return a useful, human-readable message for every
         // variant. Include the ids and numbers the variant carries.
-        todo!("implement Display for LibraryError")
+        // todo!("implement Display for LibraryError")
+
+        match self {
+            LibraryError::EmptyTitle => {
+                write!(_formatter, "item title cannot be empty")
+            }
+            LibraryError::DuplicateItemId { id } => {
+                write!(
+                    _formatter,
+                    "an item with ID {id} already exists in the catalog"
+                )
+            }
+            LibraryError::DuplicateMemberId { id } => {
+                write!(_formatter, "a member with ID {id} is already registered")
+            }
+            LibraryError::ItemNotFound { id } => {
+                write!(_formatter, "item with ID {id} was not found in the catalog")
+            }
+            LibraryError::MemberNotFound { id } => {
+                write!(_formatter, "member with ID {id} was not found")
+            }
+            LibraryError::ItemAlreadyOnLoan { id, member_id } => {
+                write!(
+                    _formatter,
+                    "item {id} is already checked out by member {member_id}"
+                )
+            }
+            LibraryError::ItemNotOnLoan { id } => {
+                write!(
+                    _formatter,
+                    "item {id} cannot be returned because it is not currently on loan"
+                )
+            }
+            LibraryError::ItemIsLost { id } => {
+                write!(_formatter, "item {id} is marked as lost")
+            }
+            LibraryError::BorrowLimitReached { member_id, limit } => {
+                write!(
+                    _formatter,
+                    "member {member_id} has reached their borrow limit of {limit} items"
+                )
+            }
+            LibraryError::InvalidReturnDay {
+                day_borrowed,
+                day_returned,
+            } => {
+                write!(
+                    _formatter,
+                    "return day ({day_returned}) cannot be earlier than borrowed day ({day_borrowed})"
+                )
+            }
+        }
     }
 }
 
