@@ -6,20 +6,36 @@ use crate::LabResult;
 
 /// Read height, best-block hash, and accumulated chainwork from one node.
 pub fn get_chain_tip<C: RpcClient>(client: &C) -> LabResult<ChainTip> {
-    // TODO: call getblockchaininfo and decode blocks, bestblockhash, and chainwork.
-    todo!("Lab 10: inspect one node's chain tip")
+    let raw = client.call(None, "getblockchaininfo", &[])?;
+
+    let info: serde_json::Value = serde_json::from_str(&raw)?;
+
+    Ok(ChainTip {
+        height: info["blocks"].as_u64().unwrap_or_default(),
+        best_block_hash: info["bestblockhash"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned(),
+        chainwork: info["chainwork"].as_str().unwrap_or_default().to_owned(),
+    })
 }
 
 /// Disconnect a peer by its address.
 pub fn disconnect_peer<C: RpcClient>(client: &C, peer_address: &str) -> LabResult<()> {
-    // TODO: call disconnectnode with the peer address.
-    todo!("Lab 10: disconnect competing nodes")
+    client.call(None, "disconnectnode", &[peer_address.to_owned()])?;
+
+    Ok(())
 }
 
 /// Reconnect a peer for a one-time synchronization attempt.
 pub fn reconnect_peer<C: RpcClient>(client: &C, peer_address: &str) -> LabResult<()> {
-    // TODO: call addnode with the address and `onetry`.
-    todo!("Lab 10: reconnect competing nodes")
+    client.call(
+        None,
+        "addnode",
+        &[peer_address.to_owned(), "onetry".to_owned()],
+    )?;
+
+    Ok(())
 }
 
 /// Compare the private competing tips with the final synchronized tips.
@@ -28,6 +44,13 @@ pub fn build_reorg_report(
     competing_tips: ForkSnapshot,
     final_tips: ForkSnapshot,
 ) -> ReorgReport {
-    // TODO: nodes converge when their final best hashes and heights match.
-    todo!("Lab 10: report most-work-chain convergence")
+    let converged = final_tips.node_a.height == final_tips.node_b.height
+        && final_tips.node_a.best_block_hash == final_tips.node_b.best_block_hash;
+
+    ReorgReport {
+        common_tip_before_split: common_tip_before_split.to_owned(),
+        competing_tips,
+        final_tips,
+        converged,
+    }
 }
