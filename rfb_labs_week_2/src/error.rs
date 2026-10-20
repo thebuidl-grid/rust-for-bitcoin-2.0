@@ -20,9 +20,42 @@ pub enum TransactionError {
 }
 
 impl fmt::Display for TransactionError {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 4): return a useful message for every error variant.
-        todo!("implement Display for TransactionError")
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TransactionError::NoInputs => write!(f, "Transaction has no inputs"),
+            TransactionError::NoOutputs => write!(f, "Transaction has no outputs"),
+            TransactionError::ZeroValueOutput => {
+                write!(f, "Transaction contains a non-OP_RETURN zero-value output")
+            }
+            TransactionError::OutputsExceedInputs {
+                total_inputs,
+                total_outputs,
+            } => write!(
+                f,
+                "Outputs exceed inputs: total inputs = {} sats, total outputs = {} sats",
+                total_inputs, total_outputs
+            ),
+            TransactionError::CoinbaseMixedWithRegularInputs => {
+                write!(f, "Cannot mix coinbase inputs with regular inputs")
+            }
+            TransactionError::MultipleCoinbaseInputs => {
+                write!(f, "Transaction has multiple coinbase inputs")
+            }
+            TransactionError::InvalidTxid => {
+                write!(
+                    f,
+                    "Input has an invalid TXID (must be a 64-character hex string)"
+                )
+            }
+            TransactionError::InsufficientFunds {
+                available,
+                required,
+            } => write!(
+                f,
+                "Insufficient funds: available = {} sats, required = {} sats",
+                available, required
+            ),
+        }
     }
 }
 
