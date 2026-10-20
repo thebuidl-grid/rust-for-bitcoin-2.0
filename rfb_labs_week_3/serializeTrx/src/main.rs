@@ -1,3 +1,4 @@
+use clap::Parser;
 use std::error::Error;
 
 #[derive(Debug)]
@@ -27,8 +28,38 @@ struct Transaction {
 }
 
 
+/// Construct and serialize a Bitcoin transaction from command-line arguments.
+#[derive(Parser, Debug)]
+#[command(name = "serializeTrx", about = "Construct and serialize a Bitcoin transaction")]
+struct Cli {
+    /// Transaction version
+    #[arg(long, default_value_t = 2)]
+    version: i32,
+
+    /// Locktime
+    #[arg(long, default_value_t = 0)]
+    locktime: u32,
+
+    /// Mark the transaction as SegWit (adds marker/flag bytes and witness data)
+    #[arg(long)]
+    segwit: bool,
+
+    /// Transaction input, repeatable: TXID_HEX:VOUT:SEQUENCE[:SCRIPTSIG_HEX]
+    #[arg(long = "input", value_name = "TXID:VOUT:SEQUENCE[:SCRIPTSIG_HEX]")]
+    inputs: Vec<String>,
+
+    /// Transaction output, repeatable: VALUE_SATS:SCRIPTPUBKEY_HEX
+    #[arg(long = "output", value_name = "VALUE:SCRIPTPUBKEY_HEX")]
+    outputs: Vec<String>,
+
+    /// Witness item, repeatable and order-sensitive per input: INPUT_INDEX:ITEM_HEX
+    #[arg(long = "witness", value_name = "INPUT_INDEX:ITEM_HEX")]
+    witnesses: Vec<String>,
+}
+
+
 fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn Error>> {
-    if hex.len() % 2 != 0 {
+    if !hex.len().is_multiple_of(2) {
         return Err("Hex string must have even length".into());
     }
 
@@ -46,53 +77,161 @@ fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     Ok(bytes)
 }
 
+/// Validates that a string is well-formed hexadecimal, then converts it to bytes.
+/// `field_name` is used to produce a meaningful, field-specific error message.
+fn parse_hex_field(field_name: &str, hex: &str) -> Result<Vec<u8>, String> {
+    if hex.is_empty() {
+        return Ok(Vec::new());
+    }
+    if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(format!(
+            "{field_name}: '{hex}' contains non-hexadecimal characters"
+        ));
+    }
+    hex_to_bytes(hex).map_err(|e| format!("{field_name}: {e}"))
+}
 
-fn main() -> Result<(), Box<dyn Error>> { 
+/// Parses "TXID_HEX:VOUT:SEQUENCE[:SCRIPTSIG_HEX]" into a TxInput.
+fn parse_input(spec: &str) -> Result<TxInput, String> {
+    let parts: Vec<&str> = spec.split(':').collect();
+    if parts.len() < 3 || parts.len() > 4 {
+        return Err(format!(
+            "invalid --input '{spec}': expected TXID:VOUT:SEQUENCE[:SCRIPTSIG_HEX]"
+        ));
+    }
 
-    let input = TxInput {
-        prev_txid: hex_to_bytes(
-            "8fb0d07bb3766421bff2d908b70e5de818e4d85a436ea3606310c1052b0dc821"
-        )?,
-        vout: 1,
-        script_sig: vec![],
-        sequence: 0xffffffff,
-        witness: vec![
-            hex_to_bytes("3045022100f8704a3e7d55d4b5ee448cc6365caeffa42c2b00f74a37726d4fa3c11982e3e502203591c4a4bde9200281755ae5a8759116ce6e0cc7f5d30cf0eeb5b2b74f74bab301")?,
-            hex_to_bytes("029cbb1e568de08f469a8751aa2000331f130ca92ad49012d9cececaf6f8eb2358")?   
-        ]
+    let prev_txid = parse_hex_field("input txid", parts[0])?;
+    if prev_txid.len() != 32 {
+        return Err(format!(
+            "invalid --input '{spec}': txid must be 32 bytes (64 hex chars), got {} bytes",
+            prev_txid.len()
+        ));
+    }
+
+    let vout: u32 = parts[1].parse().map_err(|_| {
+        format!("invalid --input '{spec}': vout '{}' is not a valid u32", parts[1])
+    })?;
+
+    let sequence: u32 = parts[2].parse().map_err(|_| {
+        format!(
+            "invalid --input '{spec}': sequence '{}' is not a valid u32",
+            parts[2]
+        )
+    })?;
+
+    let script_sig = if parts.len() == 4 {
+        parse_hex_field("scriptSig", parts[3])?
+    } else {
+        Vec::new()
     };
 
-    let output_0 = TxOutput {
-        value: 69886,
-        script_pubkey: hex_to_bytes("0014a632c1fff47af29f8c81dc4c6e91eb49a116c12b")?,
-    };
+    Ok(TxInput {
+        prev_txid,
+        vout,
+        script_sig,
+        sequence,
+        witness: Vec::new(),
+    })
+}
 
-    let output_1 = TxOutput {
-        value: 29442,
-        script_pubkey: hex_to_bytes("00149831122b93d21715c70db626ccc844d3c21f9687")?,
-    };
-    
+/// Parses "VALUE_SATS:SCRIPTPUBKEY_HEX" into a TxOutput.
+fn parse_output(spec: &str) -> Result<TxOutput, String> {
+    let parts: Vec<&str> = spec.split(':').collect();
+    if parts.len() != 2 {
+        return Err(format!(
+            "invalid --output '{spec}': expected VALUE:SCRIPTPUBKEY_HEX"
+        ));
+    }
+
+    let value: u64 = parts[0].parse().map_err(|_| {
+        format!(
+            "invalid --output '{spec}': value '{}' is not a valid u64",
+            parts[0]
+        )
+    })?;
+
+    let script_pubkey = parse_hex_field("scriptPubKey", parts[1])?;
+
+    Ok(TxOutput { value, script_pubkey })
+}
+
+/// Parses "INPUT_INDEX:ITEM_HEX" into (input index, witness item bytes).
+fn parse_witness(spec: &str) -> Result<(usize, Vec<u8>), String> {
+    let parts: Vec<&str> = spec.split(':').collect();
+    if parts.len() != 2 {
+        return Err(format!(
+            "invalid --witness '{spec}': expected INPUT_INDEX:ITEM_HEX"
+        ));
+    }
+
+    let index: usize = parts[0].parse().map_err(|_| {
+        format!(
+            "invalid --witness '{spec}': input index '{}' is not a valid number",
+            parts[0]
+        )
+    })?;
+
+    let item = parse_hex_field("witness item", parts[1])?;
+
+    Ok((index, item))
+}
+
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let cli = Cli::parse();
+
+    if cli.inputs.is_empty() {
+        return Err("at least one --input is required".into());
+    }
+    if cli.outputs.is_empty() {
+        return Err("at least one --output is required".into());
+    }
+    if !cli.segwit && !cli.witnesses.is_empty() {
+        return Err("--witness was provided but --segwit was not set".into());
+    }
+
+    let mut inputs = Vec::new();
+    for spec in &cli.inputs {
+        inputs.push(parse_input(spec)?);
+    }
+
+    let outputs = cli
+        .outputs
+        .iter()
+        .map(|spec| parse_output(spec))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    for spec in &cli.witnesses {
+        let (index, item) = parse_witness(spec)?;
+        let input_count = inputs.len();
+        let input = inputs.get_mut(index).ok_or_else(|| {
+            format!(
+                "invalid --witness '{spec}': input index {index} does not exist ({input_count} input(s) defined)"
+            )
+        })?;
+        input.witness.push(item);
+    }
+
     let trx = Transaction {
-        version : 2,
-        inputs: vec![input],
-        outputs: vec![output_0, output_1],
-        locktime: 0,
-        segwit: true
+        version: cli.version,
+        inputs,
+        outputs,
+        locktime: cli.locktime,
+        segwit: cli.segwit,
     };
 
-       // Serialize
+    // Serialize
     let serialized = serialize_transaction(&trx);
 
     println!("Serialized transaction:");
-    println!("{:?}", &serialized);
+    println!("{:?}", serialized);
     println!("Serialized Hex transaction:");
     println!("{}", bytes_to_hex(&serialized));
 
     println!("\nTransaction size: {} bytes", serialized.len());
 
     Ok(())
-
-}   
+}
 
 fn bytes_to_hex(bytes: &[u8]) -> String {
     bytes
@@ -141,7 +280,7 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
         // witness contains the signature and public key for a native SegWit input.
      result.extend_from_slice(&encode_varint(trx.inputs.len()));
 
-     // input data 
+     // input data
         for input in &trx.inputs {
         // Previous transaction ID
         result.extend_from_slice(&input.prev_txid);
@@ -161,7 +300,7 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
     // OUTPUT COUNT
     result.extend_from_slice(&encode_varint(trx.outputs.len()));
 
-    // OUTPUT DATA 
+    // OUTPUT DATA
         for output in &trx.outputs {
         // Value in satoshis
         result.extend_from_slice(&output.value.to_le_bytes());
@@ -189,10 +328,10 @@ fn serialize_transaction(trx: &Transaction) -> Vec<u8> {
         }
     }
 
-    // add locktime 
+    // add locktime
     result.extend_from_slice(&trx.locktime.to_le_bytes());
 
-    result 
+    result
 
 }
 
