@@ -42,9 +42,32 @@ pub enum LibraryError {
 
 impl fmt::Display for LibraryError {
     fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO(Part 2): return a useful, human-readable message for every
-        // variant. Include the ids and numbers the variant carries.
-        todo!("implement Display for LibraryError")
+        match self {
+            Self::EmptyTitle => write!(_formatter, "item has an empty title"),
+            Self::DuplicateItemId { id } => write!(_formatter, "id: {id} already exists"),
+            Self::DuplicateMemberId { id } => {
+                write!(_formatter, "member with id: {id} already exists")
+            }
+            Self::ItemNotFound { id } => write!(_formatter, "item with id: {id} not found"),
+            Self::MemberNotFound { id } => write!(_formatter, "member with id: {id} not found"),
+            Self::ItemAlreadyOnLoan { id, member_id } => write!(
+                _formatter,
+                "item with id: {id} is already on loan to member with id: {member_id}"
+            ),
+            Self::ItemNotOnLoan { id } => write!(_formatter, "item with id: {id} is not on loan"),
+            Self::ItemIsLost { id } => write!(_formatter, "item with id: {id} is lost"),
+            Self::BorrowLimitReached { member_id, limit } => write!(
+                _formatter,
+                "member with id: {member_id} has reached borrow limit of {limit}"
+            ),
+            Self::InvalidReturnDay {
+                day_borrowed,
+                day_returned,
+            } => write!(
+                _formatter,
+                "day returned {day_returned} is before the day it was borrowed {day_borrowed}"
+            ),
+        }
     }
 }
 
