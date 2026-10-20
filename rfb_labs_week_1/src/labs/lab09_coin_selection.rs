@@ -1,5 +1,10 @@
 //! Lab 09 — force and audit multi-UTXO coin selection.
 
+use crate::labs::lab04_utxos::list_unspent;
+use crate::labs::lab05_mempool::send_btc;
+use crate::labs::lab06_decode::{
+    calculate_fee, decode_verbose_transaction, identify_payment_and_change,
+};
 use crate::model::{MultiUtxoAudit, Utxo};
 use crate::rpc::RpcClient;
 use crate::LabResult;
@@ -10,8 +15,10 @@ pub fn create_three_funding_transactions<C: RpcClient>(
     miner_wallet: &str,
     alice_address: &str,
 ) -> LabResult<Vec<String>> {
-    // TODO: call sendtoaddress three times, each for 0.4 BTC.
-    todo!("Lab 09: create three separate funding transactions")
+    let t1 = send_btc(client, miner_wallet, alice_address, 0.4)?;
+    let t2 = send_btc(client, miner_wallet, alice_address, 0.4)?;
+    let t3 = send_btc(client, miner_wallet, alice_address, 0.4)?;
+    Ok(vec![t1, t2, t3])
 }
 
 /// Return confirmed UTXOs belonging to the supplied address.
@@ -20,8 +27,12 @@ pub fn confirmed_utxos_for_address<C: RpcClient>(
     wallet_name: &str,
     address: &str,
 ) -> LabResult<Vec<Utxo>> {
-    // TODO: call listunspent and retain confirmed outputs for this address.
-    todo!("Lab 09: locate Alice's confirmed UTXOs")
+    let unspent = list_unspent(client, wallet_name)?;
+    let filtered = unspent
+        .into_iter()
+        .filter(|u| u.address.as_deref() == Some(address) && u.confirmations >= 1 && u.spendable)
+        .collect();
+    Ok(filtered)
 }
 
 /// Send 1 BTC from Alice and return the new TXID.
@@ -30,8 +41,7 @@ pub fn send_combined_payment<C: RpcClient>(
     alice_wallet: &str,
     receiver_address: &str,
 ) -> LabResult<String> {
-    // TODO: call sendtoaddress for 1 BTC.
-    todo!("Lab 09: create a spend requiring multiple inputs")
+    send_btc(client, alice_wallet, receiver_address, 1.0)
 }
 
 /// Decode Alice's spend and prove that multiple funding UTXOs were combined.
@@ -41,11 +51,18 @@ pub fn audit_multi_utxo_spend<C: RpcClient>(
     receiver_address: &str,
     funding_utxos: &[Utxo],
 ) -> LabResult<MultiUtxoAudit> {
-    // TODO:
-    // 1. Send the 1 BTC payment.
-    // 2. Reuse Lab 06 to decode it.
-    // 3. Identify payment and change.
-    // 4. Calculate fee and input count.
-    // 5. Record the funding outpoints.
-    todo!("Lab 09: audit multi-UTXO coin selection")
+    let spend_txid = send_combined_payment(client, alice_wallet, receiver_address)?;
+    let decoded = decode_verbose_transaction(client, &spend_txid)?;
+    let payment_and_change = identify_payment_and_change(&decoded, receiver_address)?;
+    let fee = calculate_fee(&decoded)?;
+    let spend_input_count = decoded.inputs.len();
+    let funding_outpoints = funding_utxos.iter().map(|u| u.outpoint()).collect();
+
+    Ok(MultiUtxoAudit {
+        funding_outpoints,
+        spend_txid,
+        spend_input_count,
+        payment_and_change,
+        fee,
+    })
 }
